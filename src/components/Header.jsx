@@ -1,6 +1,6 @@
 import React from 'react'
 
-export default function Header({ t, langs, setLang, page, go, menuOpen, setMenuOpen }) {
+export default function Header({ t, langs, setLang, page, go, menuOpen, setMenuOpen, user, onSignIn, onLogout }) {
   const navKeys = ['home', 'services', 'track', 'coverage', 'about', 'contact']
   const allKeys = ['home', 'services', 'track', 'quote', 'pickup', 'coverage', 'how', 'about', 'contact', 'faq']
 
@@ -71,11 +71,22 @@ export default function Header({ t, langs, setLang, page, go, menuOpen, setMenuO
         <div className="desk-only" style={{
           display: 'flex', alignItems: 'center', gap: 10, flex: '0 0 auto',
         }}>
-          <button onClick={() => go('contact')} style={{
-            padding: '12px 18px', background: '#fff',
-            border: '1.5px solid #DCE6F5', borderRadius: 10,
-            color: '#001B45', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}>{t.common.signin}</button>
+          {user ? (
+            <>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#001B45' }}>{user.name}</span>
+              <button onClick={onLogout} style={{
+                padding: '12px 18px', background: '#fff',
+                border: '1.5px solid #DCE6F5', borderRadius: 10,
+                color: '#001B45', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}>Cerrar sesión</button>
+            </>
+          ) : (
+            <button onClick={onSignIn} style={{
+              padding: '12px 18px', background: '#fff',
+              border: '1.5px solid #DCE6F5', borderRadius: 10,
+              color: '#001B45', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>{t.common.signin}</button>
+          )}
           <button onClick={() => go('quote')} style={{
             padding: '13px 20px', background: '#087CF0',
             border: 'none', borderRadius: 10,
@@ -125,10 +136,20 @@ export default function Header({ t, langs, setLang, page, go, menuOpen, setMenuO
             ))}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button onClick={() => go('contact')} style={{
-              padding: 15, background: '#fff', border: '1.5px solid #DCE6F5',
-              borderRadius: 10, color: '#001B45', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}>{t.common.signin}</button>
+            {user ? (
+              <>
+                <span style={{ fontSize: 14, fontWeight: 600, color: '#001B45', textAlign: 'center' }}>{user.name}</span>
+                <button onClick={onLogout} style={{
+                  padding: 15, background: '#fff', border: '1.5px solid #DCE6F5',
+                  borderRadius: 10, color: '#001B45', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}>Cerrar sesión</button>
+              </>
+            ) : (
+              <button onClick={onSignIn} style={{
+                padding: 15, background: '#fff', border: '1.5px solid #DCE6F5',
+                borderRadius: 10, color: '#001B45', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              }}>{t.common.signin}</button>
+            )}
             <button onClick={() => go('quote')} style={{
               padding: 15, background: '#087CF0', border: 'none', borderRadius: 10,
               color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',

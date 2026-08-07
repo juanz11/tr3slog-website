@@ -1,10 +1,12 @@
 import React from 'react'
 import { i18n, langList } from './i18n'
+import { api } from './api'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import CTA from './components/CTA'
 import Toast from './components/Toast'
 import LegalModal from './components/LegalModal'
+import AuthModal from './components/AuthModal'
 import Home from './pages/Home'
 import Services from './pages/Services'
 import Track from './pages/Track'
@@ -25,6 +27,8 @@ export default function App() {
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [toast, setToast] = React.useState('')
   const [legal, setLegal] = React.useState(null)
+  const [user, setUser] = React.useState(null)
+  const [authOpen, setAuthOpen] = React.useState(false)
   const toastTimer = React.useRef(null)
 
   React.useEffect(() => {
@@ -41,7 +45,37 @@ export default function App() {
     clearTimeout(toastTimer.current)
   }, [])
 
+  React.useEffect(() => {
+    let token = null
+    try { token = localStorage.getItem('tr3slog-token') } catch (e) {}
+    if (token) {
+      api.me(token).then((data) => {
+        setUser(data)
+      }).catch(() => {
+        try { localStorage.removeItem('tr3slog-token') } catch (e) {}
+      })
+    }
+  }, [])
+
   const t = i18n[lang] || i18n.es
+
+  const handleLogin = (u, token) => {
+    setUser(u)
+    try { localStorage.setItem('tr3slog-token', token) } catch (e) {}
+  }
+
+  const handleLogout = async () => {
+    if (user) {
+      let token = null
+      try { token = localStorage.getItem('tr3slog-token') } catch (e) {}
+      if (token) {
+        try { await api.logout(token) } catch (e) {}
+      }
+    }
+    setUser(null)
+    try { localStorage.removeItem('tr3slog-token') } catch (e) {}
+    showToast('Sesión cerrada')
+  }
 
   const go = (p) => {
     setPage(p)
@@ -99,12 +133,16 @@ export default function App() {
         go={go}
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
+        user={user}
+        onSignIn={() => setAuthOpen(true)}
+        onLogout={handleLogout}
       />
       {renderPage()}
       <CTA t={t} go={go} />
       <Footer t={t} langs={langs} setLang={setLang} go={go} setLegal={setLegal} />
       {legal && <LegalModal t={t} legal={legal} onClose={() => setLegal(null)} />}
       {toast && <Toast text={toast} />}
+      {authOpen && <AuthModal t={t} lang={lang} langs={langs} setLang={setLang} onClose={() => setAuthOpen(false)} onLogin={handleLogin} />}
     </div>
   )
 }

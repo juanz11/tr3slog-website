@@ -1,0 +1,265 @@
+.auth-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  min-height: 100vh;
+  background: #EEF4FC;
+}
+
+.auth-split {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.05fr .95fr;
+}
+
+.auth-art {
+  background: #001B45;
+  padding: 56px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-art::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 200px;
+  background: repeating-linear-gradient(102deg, rgba(217,154,0,.14) 0 2px, transparent 2px 44px);
+  pointer-events: none;
+}
+
+.auth-form-wrap {
+  background: #fff;
+  padding: 56px 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.auth-form-inner {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.auth-logo-text {
+  font-family: Montserrat, 'Noto Sans SC', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: #fff;
+  letter-spacing: -.02em;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  z-index: 1;
+}
+
+.auth-title-art {
+  font-family: Montserrat, 'Noto Sans SC', sans-serif;
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 1.2;
+  color: #fff;
+  margin: 0 0 14px;
+  max-width: 420px;
+  z-index: 1;
+}
+
+.auth-sub-art {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #C8D6EC;
+  margin: 0;
+  max-width: 420px;
+  z-index: 1;
+}
+
+.auth-h1 {
+  font-family: Montserrat, 'Noto Sans SC', sans-serif;
+  font-weight: 800;
+  font-size: 30px;
+  letter-spacing: -.02em;
+  margin: 0 0 10px;
+  color: #001B45;
+}
+
+.auth-sub {
+  font-size: 15px;
+  line-height: 1.65;
+  color: #10233F;
+  margin: 0 0 28px;
+}
+
+.auth-langs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 32px;
+}
+
+.auth-lang-btn {
+  padding: 8px 13px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #DCE6F5;
+  background: #fff;
+  color: #10233F;
+}
+
+.auth-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #6C82A6;
+  margin-bottom: 8px;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 15px;
+  border: 1.5px solid #DCE6F5;
+  border-radius: 11px;
+  background: #EEF4FC;
+  font-size: 15px;
+  color: #001B45;
+  outline: none;
+  font-family: inherit;
+}
+
+.auth-input:focus {
+  border-color: #087CF0;
+  background: #fff;
+}
+
+.auth-input-err {
+  border-color: #E0A0A0;
+  background: #fff8f8;
+}
+
+.auth-check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-check {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.auth-check-box {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid #DCE6F5;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: #fff;
+  font-size: 13px;
+}
+
+.auth-check-box.on {
+  border-color: #087CF0;
+  background: #087CF0;
+}
+
+.auth-check-label {
+  font-size: 14px;
+  color: #10233F;
+}
+
+.auth-forgot {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #087CF0;
+}
+
+.auth-error {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: #C0392B;
+}
+
+.auth-submit {
+  padding: 16px;
+  background: #087CF0;
+  border: none;
+  border-radius: 11px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-submit:hover {
+  background: #001B45;
+}
+
+.auth-submit:disabled {
+  background: #8FC6F7;
+  cursor: not-allowed;
+}
+
+.auth-alt {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  color: #10233F;
+}
+
+.auth-alt-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #087CF0;
+}
+
+@media (max-width: 1080px) {
+  .auth-split {
+    grid-template-columns: 1fr;
+  }
+  .auth-art {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .auth-form-wrap {
+    padding: 32px 20px;
+  }
+  .auth-h1 {
+    font-size: 26px;
+  }
+  .auth-title-art {
+    font-size: 26px;
+  }
+}

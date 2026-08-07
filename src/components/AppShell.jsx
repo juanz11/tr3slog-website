@@ -1,0 +1,239 @@
+import React from 'react'
+import { appI18n } from '../i18n-app'
+import NavIcon from './NavIcon'
+import './AppShell.css'
+
+const STATUS_TONE = [
+  { bg: '#EEF4FC', fg: '#10233F' },
+  { bg: 'rgba(8,124,240,.1)', fg: '#0768C9' },
+  { bg: 'rgba(217,154,0,.16)', fg: '#8A6300' },
+  { bg: 'rgba(19,122,69,.12)', fg: '#0F5F36' },
+  { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
+]
+
+export default function AppShell({ user, lang, langs, setLang, onLogout }) {
+  const app = appI18n[lang] || appI18n.es
+  const isAdmin = user?.role === 'admin'
+  const nav = isAdmin ? app.navA : app.navC
+  const navKeys = Object.keys(nav)
+  const [activeKey, setActiveKey] = React.useState(navKeys[0])
+  const [hquery, setHquery] = React.useState('')
+  const [mobileOpen, setMobileOpen] = React.useState(false)
+
+  const accountInitials = (user?.name || 'US').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+  const accountName = user?.name || user?.email || 'Usuario'
+  const accountRole = isAdmin ? app.shell.admin : app.shell.portal
+
+  const dashRows = [
+    { id: 'TR3-260729-PRSJ-08821', route: 'San Juan → Miami', statusIdx: 1, eta: '12 Ago' },
+    { id: 'TR3-260729-EUAL-08744', route: 'Miami → Madrid', statusIdx: 2, eta: '13 Ago' },
+    { id: 'TR3-260729-RDPC-08790', route: 'Santo Domingo → San Juan', statusIdx: 3, eta: '14 Ago' },
+    { id: 'TR3-260729-VZLM-08803', route: 'Miami → Valencia', statusIdx: 4, eta: '16 Ago' },
+    { id: 'TR3-260729-COCO-08912', route: 'Miami → Bogotá', statusIdx: 0, eta: 'Pendiente' },
+  ]
+
+  const isDash = activeKey === navKeys[0]
+
+  const Nav = ({ compact = false }) => (
+    <nav className="app-nav">
+      {navKeys.map((k) => {
+        const on = k === activeKey
+        return (
+          <button
+            key={k}
+            onClick={() => { setActiveKey(k); setMobileOpen(false) }}
+            className={`app-nav-item ${on ? 'on' : ''}`}
+          >
+            <NavIcon name={k} color={on ? '#fff' : '#6C82A6'} />
+            <span>{nav[k]}</span>
+          </button>
+        )
+      })}
+    </nav>
+  )
+
+  const Langs = () => (
+    <div className="app-langs">
+      {langs.map((l) => (
+        <button
+          key={l.code}
+          onClick={() => setLang(l.code)}
+          className="app-lang-btn"
+          style={{ background: l.bg, color: l.fg, borderColor: l.border }}
+        >
+          {l.label}
+        </button>
+      ))}
+    </div>
+  )
+
+  const Sidebar = ({ mobile = false }) => (
+    <>
+      {!mobile && (
+        <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 22, color: '#001B45', letterSpacing: '-.02em', display: 'flex', alignItems: 'center', gap: 3, margin: '6px 6px 0' }}>
+          <span>TR3</span><span style={{ color: '#D99A00' }}>S</span><span>LOG</span>
+        </div>
+      )}
+      {mobile && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 20, color: '#001B45', letterSpacing: '-.02em', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <span>TR3</span><span style={{ color: '#D99A00' }}>S</span><span>LOG</span>
+          </div>
+          <button onClick={() => setMobileOpen(false)} style={{ marginLeft: 'auto', width: 40, height: 40, border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', cursor: 'pointer', color: '#001B45', fontSize: 18, lineHeight: 1 }}>✕</button>
+        </div>
+      )}
+      <div className="app-account" style={mobile ? { padding: 14 } : {}}>
+        <span className="app-avatar" style={mobile ? { width: 40, height: 40, fontSize: 14 } : {}}>{accountInitials}</span>
+        <div style={{ minWidth: 0 }}>
+          <div className="app-account-name" style={mobile ? { fontSize: 14 } : {}}>{accountName}</div>
+          <div className="app-account-role" style={mobile ? { fontSize: 12 } : {}}>{accountRole}</div>
+        </div>
+      </div>
+      <Nav compact={mobile} />
+      <div className="app-sidebar-foot" style={mobile ? { gap: 12, paddingTop: 16 } : {}}>
+        <Langs />
+        <button onClick={() => { onLogout(); setMobileOpen(false) }} className="app-signout" style={mobile ? { padding: 14, background: '#EEF4FC', color: '#001B45', borderRadius: 11 } : {}}>{app.shell.signout}</button>
+      </div>
+    </>
+  )
+
+  return (
+    <div className="app-shell">
+      <aside className="app-sidebar">
+        <Sidebar />
+      </aside>
+
+      <div className="app-main">
+        <header className="app-header">
+          <div className="app-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B9DBA" strokeWidth="1.8">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="M20 20l-4.5-4.5"></path>
+            </svg>
+            <input
+              value={hquery}
+              onChange={(e) => setHquery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { /* placeholder */ } }}
+              placeholder={app.shell.searchPh}
+              aria-label={app.shell.searchHint}
+            />
+            <button onClick={() => {}} className="app-search-btn">{app.shell.searchHint}</button>
+          </div>
+          <button onClick={() => {}} className="app-primary">{app.dash.newShipment}</button>
+          <button onClick={() => setMobileOpen(true)} className="app-mobnav" aria-label="Menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M4 7h16M4 12h16M4 17h16"></path>
+            </svg>
+          </button>
+        </header>
+
+        {mobileOpen && (
+          <div className="app-mob-drawer" onClick={() => setMobileOpen(false)}>
+            <div className="app-mob-panel" onClick={(e) => e.stopPropagation()}>
+              <Sidebar mobile />
+            </div>
+          </div>
+        )}
+
+        <main className="app-content">
+          {isDash ? (
+            <Dashboard app={app} dashRows={dashRows} />
+          ) : (
+            <div className="app-empty">{app.empty}</div>
+          )}
+        </main>
+      </div>
+    </div>
+  )
+}
+
+function Dashboard({ app, dashRows }) {
+  const d = app.dash
+  return (
+    <div>
+      <div className="app-motif" aria-hidden="true">
+        <span style={{ background: '#D99A00' }}></span>
+        <span style={{ background: '#087CF0', width: 9 }}></span>
+      </div>
+      <div className="app-greeting">{d.greeting}</div>
+      <h1 className="app-h1">{d.title}</h1>
+
+      <div className="app-kpis">
+        {d.kpis.map((k, i) => (
+          <div key={i} className="app-kpi">
+            <div className="app-kpi-label">{k.l}</div>
+            <div className="app-kpi-value">{k.v}</div>
+            <div className="app-kpi-note">{k.n}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="app-split">
+        <div className="app-card">
+          <div className="app-card-head">
+            <span className="app-card-title">{d.activeT}</span>
+            <button onClick={() => {}} className="app-card-link">{d.seeAll}</button>
+          </div>
+          <div className="app-table-scroll">
+            <div className="app-table">
+              <div className="app-table-head">
+                <span>{app.ship.cols[0]}</span>
+                <span>{app.ship.cols[1]}</span>
+                <span>{app.ship.cols[3]}</span>
+                <span>{app.ship.cols[4]}</span>
+              </div>
+              {dashRows.map((r, i) => (
+                <button key={i} onClick={() => {}} className="app-table-row">
+                  <span className="app-table-id">{r.id}</span>
+                  <span className="app-table-text">{r.route}</span>
+                  <span className="app-status" style={{ background: STATUS_TONE[r.statusIdx].bg, color: STATUS_TONE[r.statusIdx].fg }}>
+                    {app.ship.filters[r.statusIdx]}
+                  </span>
+                  <span className="app-table-text">{r.eta}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="app-stack">
+          <div className="app-card" style={{ padding: 20 }}>
+            <div className="app-card-title" style={{ marginBottom: 14 }}>{d.quickT}</div>
+            <div className="app-quick-grid">
+              {d.quick.map((q, i) => (
+                <button key={i} onClick={() => {}} className="app-quick-btn">{q}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="app-card" style={{ padding: 20 }}>
+            <div className="app-card-title" style={{ marginBottom: 14 }}>{d.alertsT}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {d.alerts.map((a, i) => (
+                <div key={i} className="app-alert">
+                  <div className="app-alert-title">{a.t}</div>
+                  <div className="app-alert-text">{a.d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="app-card" style={{ padding: 20 }}>
+            <div className="app-card-title" style={{ marginBottom: 14 }}>{d.activityT}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {d.activity.map((a, i) => (
+                <div key={i} className="app-activity-item">
+                  <span className="app-dot"></span>
+                  <div>
+                    <div className="app-activity-title">{a.t}</div>
+                    <div className="app-activity-meta">{a.m}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
