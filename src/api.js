@@ -40,4 +40,16 @@ export const api = {
     method: 'POST',
     headers: headers(token),
   }).then(handle),
+
+  forgot: (data) => fetch(`${API_URL}/forgot-password`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  reset: (data) => fetch(`${API_URL}/reset-password`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(data),
+  }).then(handle),
 }

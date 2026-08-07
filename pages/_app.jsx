@@ -163,7 +163,7 @@ export default function App({ Component, pageProps }) {
         onSignIn={() => setAuthOpen(true)}
         onLogout={handleLogout}
       />
-      <Component t={t} go={go} showToast={showToast} {...pageProps} />
+      <Component t={t} go={go} showToast={showToast} lang={lang} langs={langs} setLang={setLang} user={user} onLogout={handleLogout} {...pageProps} />
       <CTA t={t} go={go} />
       <Footer t={t} langs={langs} setLang={setLang} go={go} setLegal={setLegal} />
       {legal && <LegalModal t={t} legal={legal} onClose={() => setLegal(null)} />}

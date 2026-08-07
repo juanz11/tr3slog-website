@@ -74,6 +74,11 @@ export default function Header({ t, langs, setLang, page, go, menuOpen, setMenuO
           {user ? (
             <>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#001B45' }}>{user.name}</span>
+              <button onClick={() => go('dashboard')} style={{
+                padding: '12px 18px', background: '#fff',
+                border: '1.5px solid #DCE6F5', borderRadius: 10,
+                color: '#001B45', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}>{t.common.dashboard}</button>
               <button onClick={onLogout} style={{
                 padding: '12px 18px', background: '#fff',
                 border: '1.5px solid #DCE6F5', borderRadius: 10,
@@ -139,6 +144,10 @@ export default function Header({ t, langs, setLang, page, go, menuOpen, setMenuO
             {user ? (
               <>
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#001B45', textAlign: 'center' }}>{user.name}</span>
+                <button onClick={() => { go('dashboard'); setMenuOpen(false) }} style={{
+                  padding: 15, background: '#fff', border: '1.5px solid #DCE6F5',
+                  borderRadius: 10, color: '#001B45', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}>{t.common.dashboard}</button>
                 <button onClick={onLogout} style={{
                   padding: 15, background: '#fff', border: '1.5px solid #DCE6F5',
                   borderRadius: 10, color: '#001B45', fontSize: 14, fontWeight: 600, cursor: 'pointer',

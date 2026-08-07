@@ -1,7 +1,11 @@
 import React from 'react'
 import { appI18n } from '../i18n-app'
 import NavIcon from './NavIcon'
-import './AppShell.css'
+import ShipmentCreate from './ShipmentCreate'
+import ShipmentsList from './ShipmentsList'
+import Payments from './Payments'
+import Addresses from './Addresses'
+import Support from './Support'
 
 const STATUS_TONE = [
   { bg: '#EEF4FC', fg: '#10233F' },
@@ -33,6 +37,11 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
   ]
 
   const isDash = activeKey === navKeys[0]
+  const isCreate = activeKey === 'create'
+  const isShipments = activeKey === 'shipments'
+  const isPayments = activeKey === 'payments'
+  const isAddresses = activeKey === 'addresses'
+  const isSupport = activeKey === 'support'
 
   const Nav = ({ compact = false }) => (
     <nav className="app-nav">
@@ -119,7 +128,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
             />
             <button onClick={() => {}} className="app-search-btn">{app.shell.searchHint}</button>
           </div>
-          <button onClick={() => {}} className="app-primary">{app.dash.newShipment}</button>
+          <button onClick={() => setActiveKey('create')} className="app-primary">{app.dash.newShipment}</button>
           <button onClick={() => setMobileOpen(true)} className="app-mobnav" aria-label="Menu">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M4 7h16M4 12h16M4 17h16"></path>
@@ -136,7 +145,17 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
         )}
 
         <main className="app-content">
-          {isDash ? (
+          {isCreate ? (
+            <ShipmentCreate app={app} />
+          ) : isShipments ? (
+            <ShipmentsList app={app} />
+          ) : isPayments ? (
+            <Payments app={app} />
+          ) : isAddresses ? (
+            <Addresses app={app} />
+          ) : isSupport ? (
+            <Support app={app} />
+          ) : isDash ? (
             <Dashboard app={app} dashRows={dashRows} />
           ) : (
             <div className="app-empty">{app.empty}</div>

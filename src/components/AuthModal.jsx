@@ -15,6 +15,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin })
   const [terms, setTerms] = React.useState(false)
   const [error, setError] = React.useState('')
   const [errorKey, setErrorKey] = React.useState('')
+  const [success, setSuccess] = React.useState('')
   const [loading, setLoading] = React.useState(false)
 
   const reset = () => {
@@ -28,6 +29,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin })
     setTerms(false)
     setError('')
     setErrorKey('')
+    setSuccess('')
   }
 
   React.useEffect(() => {
@@ -48,6 +50,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin })
       setErrorKey('email')
       return false
     }
+    if (mode === 'forgot') return true
     if (mode === 'signup') {
       if (!name.trim()) {
         setError(t.common.required)
@@ -83,9 +86,16 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin })
     e.preventDefault()
     setError('')
     setErrorKey('')
+    setSuccess('')
     if (!validate()) return
     setLoading(true)
     try {
+      if (mode === 'forgot') {
+        await api.forgot({ email })
+        setSuccess(a.resetSent)
+        setLoading(false)
+        return
+      }
       const payload = mode === 'login'
         ? { email, password }
         : { name, company, email, phone, password, password_confirmation: passwordConfirmation }
@@ -96,7 +106,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin })
       onClose()
     } catch (err) {
       setError(err.message || a.errCreds)
-      setErrorKey(mode === 'login' ? 'email' : 'email')
+      setErrorKey('email')
     } finally {
       setLoading(false)
     }
@@ -135,113 +145,151 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin })
             </div>
 
             <h1 className="auth-h1">
-              {mode === 'login' ? a.signinT : a.signupT}
+              {mode === 'login' ? a.signinT : (mode === 'signup' ? a.signupT : a.resetT)}
             </h1>
             <p className="auth-sub">
-              {mode === 'login' ? a.signinSub : a.signupSub}
+              {mode === 'login' ? a.signinSub : (mode === 'signup' ? a.signupSub : a.resetSub)}
             </p>
 
-            <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {mode === 'signup' && (
+            {mode !== 'forgot' && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+                <button onClick={() => setMode('login')} style={{
+                  flex: 1, padding: 10, border: 'none', borderRadius: 8,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  background: mode === 'login' ? '#087CF0' : '#E3EBF7', color: mode === 'login' ? '#fff' : '#10233F',
+                }}>{a.signinBtn}</button>
+                <button onClick={() => setMode('signup')} style={{
+                  flex: 1, padding: 10, border: 'none', borderRadius: 8,
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  background: mode === 'signup' ? '#087CF0' : '#E3EBF7', color: mode === 'signup' ? '#fff' : '#10233F',
+                }}>{a.signupBtn}</button>
+              </div>
+            )}
+
+            {error && (
+              <div style={{ background: '#FDECEC', color: '#B91C1C', padding: '12px 16px', borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
+                {error}
+              </div>
+            )}
+
+            {success && (
+              <div style={{ background: '#F1FAF5', color: '#0F5F36', padding: '12px 16px', borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
+                {success}
+              </div>
+            )}
+
+            <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {mode === 'forgot' ? (
+                <div>
+                  <label className="auth-label">{a.email}</label>
+                  <input
+                    type="email" required
+                    value={email} onChange={(e) => setEmail(e.target.value)}
+                    placeholder={a.emailPh}
+                    className={inputBorder('email')}
+                  />
+                </div>
+              ) : (
                 <>
+                  {mode === 'signup' && (
+                    <>
+                      <div>
+                        <label className="auth-label">{a.name}</label>
+                        <input
+                          type="text" required
+                          value={name} onChange={(e) => setName(e.target.value)}
+                          placeholder={a.namePh}
+                          className={inputBorder('name')}
+                        />
+                      </div>
+                      <div>
+                        <label className="auth-label">{a.company}</label>
+                        <input
+                          type="text"
+                          value={company} onChange={(e) => setCompany(e.target.value)}
+                          placeholder={a.companyPh}
+                          className={inputBorder('company')}
+                        />
+                      </div>
+                    </>
+                  )}
                   <div>
-                    <label className="auth-label">{a.name}</label>
+                    <label className="auth-label">{a.email}</label>
                     <input
-                      type="text" required
-                      value={name} onChange={(e) => setName(e.target.value)}
-                      placeholder={a.namePh}
-                      className={inputBorder('name')}
+                      type="email" required
+                      value={email} onChange={(e) => setEmail(e.target.value)}
+                      placeholder={a.emailPh}
+                      className={inputBorder('email')}
                     />
                   </div>
+                  {mode === 'signup' && (
+                    <div>
+                      <label className="auth-label">{a.phone}</label>
+                      <input
+                        type="tel"
+                        value={phone} onChange={(e) => setPhone(e.target.value)}
+                        placeholder={a.phonePh}
+                        className={inputBorder('phone')}
+                      />
+                    </div>
+                  )}
                   <div>
-                    <label className="auth-label">{a.company}</label>
+                    <label className="auth-label">{a.password}</label>
                     <input
-                      type="text"
-                      value={company} onChange={(e) => setCompany(e.target.value)}
-                      placeholder={a.companyPh}
-                      className={inputBorder('company')}
+                      type="password" required
+                      value={password} onChange={(e) => setPassword(e.target.value)}
+                      placeholder={a.passwordPh}
+                      className={inputBorder('password')}
                     />
                   </div>
+                  {mode === 'signup' && (
+                    <div>
+                      <label className="auth-label">{a.confirm}</label>
+                      <input
+                        type="password" required
+                        value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)}
+                        placeholder={a.passwordPh}
+                        className={inputBorder('confirm')}
+                      />
+                    </div>
+                  )}
+
+                  {mode === 'signup' && (
+                    <button type="button" onClick={() => setTerms(!terms)} className="auth-check">
+                      <span className={`auth-check-box ${terms ? 'on' : ''}`}>{terms ? '✓' : ''}</span>
+                      <span className="auth-check-label">{a.terms}</span>
+                    </button>
+                  )}
+
+                  {mode === 'login' && (
+                    <div className="auth-check-row">
+                      <button type="button" onClick={() => setRemember(!remember)} className="auth-check">
+                        <span className={`auth-check-box ${remember ? 'on' : ''}`}>{remember ? '✓' : ''}</span>
+                        <span className="auth-check-label">{a.remember}</span>
+                      </button>
+                      <button type="button" onClick={() => setMode('forgot')} className="auth-forgot">{a.forgot}</button>
+                    </div>
+                  )}
                 </>
-              )}
-              <div>
-                <label className="auth-label">{a.email}</label>
-                <input
-                  type="email" required
-                  value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder={a.emailPh}
-                  className={inputBorder('email')}
-                />
-              </div>
-              {mode === 'signup' && (
-                <div>
-                  <label className="auth-label">{a.phone}</label>
-                  <input
-                    type="tel"
-                    value={phone} onChange={(e) => setPhone(e.target.value)}
-                    placeholder={a.phonePh}
-                    className={inputBorder('phone')}
-                  />
-                </div>
-              )}
-              <div>
-                <label className="auth-label">{a.password}</label>
-                <input
-                  type="password" required
-                  value={password} onChange={(e) => setPassword(e.target.value)}
-                  placeholder={a.passwordPh}
-                  className={inputBorder('password')}
-                />
-              </div>
-              {mode === 'signup' && (
-                <div>
-                  <label className="auth-label">{a.confirm}</label>
-                  <input
-                    type="password" required
-                    value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)}
-                    placeholder={a.passwordPh}
-                    className={inputBorder('confirm')}
-                  />
-                </div>
-              )}
-
-              {mode === 'signup' && (
-                <button type="button" onClick={() => setTerms(!terms)} className="auth-check">
-                  <span className={`auth-check-box ${terms ? 'on' : ''}`}>{terms ? '✓' : ''}</span>
-                  <span className="auth-check-label">{a.terms}</span>
-                </button>
-              )}
-
-              {mode === 'login' && (
-                <div className="auth-check-row">
-                  <button type="button" onClick={() => setRemember(!remember)} className="auth-check">
-                    <span className={`auth-check-box ${remember ? 'on' : ''}`}>{remember ? '✓' : ''}</span>
-                    <span className="auth-check-label">{a.remember}</span>
-                  </button>
-                  <button type="button" className="auth-forgot">{a.forgot}</button>
-                </div>
-              )}
-
-              {error && (
-                <div className="auth-error">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <circle cx="12" cy="12" r="9"></circle>
-                    <path d="M12 8v5M12 16.2v.1"></path>
-                  </svg>
-                  {error}
-                </div>
               )}
 
               <button type="submit" disabled={loading} className="auth-submit">
-                {loading ? 'Procesando…' : (mode === 'login' ? a.signinBtn : a.signupBtn)}
+                {loading ? 'Procesando…' : (mode === 'forgot' ? a.resetBtn : (mode === 'login' ? a.signinBtn : a.signupBtn))}
               </button>
 
-              <div className="auth-alt">
-                <span>{mode === 'login' ? a.noAccount : a.haveAccount}</span>
-                <button type="button" onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="auth-alt-link">
-                  {mode === 'login' ? a.createLink : a.signinLink}
-                </button>
-              </div>
+              {mode === 'forgot' ? (
+                <div className="auth-alt">
+                  <span>{a.back}</span>
+                  <button type="button" onClick={() => setMode('login')} className="auth-alt-link">{a.signinLink}</button>
+                </div>
+              ) : (
+                <div className="auth-alt">
+                  <span>{mode === 'login' ? a.noAccount : a.haveAccount}</span>
+                  <button type="button" onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="auth-alt-link">
+                    {mode === 'login' ? a.createLink : a.signinLink}
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         </div>

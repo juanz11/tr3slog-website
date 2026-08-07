@@ -3,6 +3,7 @@ export const es = {
   name: 'Español',
   common: {
     signin: 'Iniciar sesión',
+    dashboard: 'Dashboard',
     quote: 'Solicitar cotización',
     viewAll: 'Ver todos',
     explore: 'Explorar',
@@ -287,6 +288,7 @@ export const en = {
   name: 'English',
   common: {
     signin: 'Sign in',
+    dashboard: 'Dashboard',
     quote: 'Get a quote',
     viewAll: 'View all',
     explore: 'Explore',
@@ -571,6 +573,7 @@ export const zhCN = {
   name: '中文',
   common: {
     signin: '登录',
+    dashboard: '控制面板',
     quote: '获取报价',
     viewAll: '查看全部',
     explore: '探索',
