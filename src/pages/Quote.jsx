@@ -1,20 +1,50 @@
 import React from 'react'
 import { PageHero } from '../components/Shared'
+import CityAutocomplete from '../components/CityAutocomplete'
+import { api } from '../api'
 
-export default function Quote({ t, go, showToast }) {
+export default function Quote({ t, go, showToast, lang }) {
   const [quoteType, setQuoteType] = React.useState(0)
+  const [qOrigin, setQOrigin] = React.useState('')
+  const [qDest, setQDest] = React.useState('')
+  const [qWeight, setQWeight] = React.useState('')
+  const [qDims, setQDims] = React.useState('')
+  const [qPieces, setQPieces] = React.useState('')
   const [qName, setQName] = React.useState('')
   const [qEmail, setQEmail] = React.useState('')
+  const [qDetails, setQDetails] = React.useState('')
   const [quoteError, setQuoteError] = React.useState('')
   const [quoteSent, setQuoteSent] = React.useState(false)
+  const [submitting, setSubmitting] = React.useState(false)
 
   const err = '#E0A0A0'
 
-  const submit = () => {
+  const submit = async () => {
+    if (!qOrigin.trim()) { setQuoteError(t.common.required); return }
+    if (!qDest.trim()) { setQuoteError(t.common.required); return }
     if (!qName.trim()) { setQuoteError(t.common.required); return }
     if (!/\S+@\S+\.\S+/.test(qEmail)) { setQuoteError(t.common.invalidEmail); return }
-    setQuoteError(''); setQuoteSent(true)
-    showToast(t.quo.toast)
+    setQuoteError('')
+    setSubmitting(true)
+    try {
+      await api.createQuote({
+        origin: qOrigin.trim(),
+        destination: qDest.trim(),
+        service_type: t.quo.types[quoteType] || '',
+        weight: qWeight.trim(),
+        dimensions: qDims.trim(),
+        pieces: qPieces.trim(),
+        client_name: qName.trim(),
+        client_email: qEmail.trim(),
+        details: qDetails.trim(),
+      })
+      setQuoteSent(true)
+      showToast(t.quo.toast)
+    } catch (e) {
+      setQuoteError(e.message || t.common.required)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const inputStyle = (hasError, value) => ({
@@ -32,6 +62,18 @@ export default function Quote({ t, go, showToast }) {
     t: s.t, d: s.d, n: '0' + (i + 1),
   }))
 
+  const cityList = React.useMemo(() =>
+    t.cov.rows.flatMap(r => {
+      const cities = r.c ? r.c.split(' · ') : []
+      return cities.map(city => {
+        const parts = [city]
+        if (r.regions && r.regions[city]) parts.push(r.regions[city])
+        parts.push(r.n)
+        return parts.join(', ')
+      })
+    }),
+  [t.cov.rows])
+
   return (
     <div>
       <PageHero title={t.quo.title} sub={t.quo.sub} />
@@ -44,11 +86,27 @@ export default function Quote({ t, go, showToast }) {
             <div className="grid-c2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={labelStyle}>{t.quo.f.origin}</label>
-                <input placeholder={t.quo.f.originPh} style={inputStyle(false, true)} />
+                <CityAutocomplete
+                  value={qOrigin}
+                  onChange={setQOrigin}
+                  placeholder={t.quo.f.originPh}
+                  countryCodes="VE,DO,US"
+                  lang={lang}
+                  cities={cityList}
+                  hasError={!!quoteError && !qOrigin.trim()}
+                />
               </div>
               <div>
                 <label style={labelStyle}>{t.quo.f.dest}</label>
-                <input placeholder={t.quo.f.destPh} style={inputStyle(false, true)} />
+                <CityAutocomplete
+                  value={qDest}
+                  onChange={setQDest}
+                  placeholder={t.quo.f.destPh}
+                  countryCodes="VE,DO,US"
+                  lang={lang}
+                  cities={cityList}
+                  hasError={!!quoteError && !qDest.trim()}
+                />
               </div>
               <div>
                 <label style={labelStyle}>{t.quo.f.type}</label>
@@ -67,15 +125,15 @@ export default function Quote({ t, go, showToast }) {
               </div>
               <div>
                 <label style={labelStyle}>{t.quo.f.weight}</label>
-                <input placeholder={t.quo.f.weightPh} style={inputStyle(false, true)} />
+                <input value={qWeight} onChange={e => setQWeight(e.target.value)} placeholder={t.quo.f.weightPh} style={inputStyle(false, true)} />
               </div>
               <div>
                 <label style={labelStyle}>{t.quo.f.dims}</label>
-                <input placeholder={t.quo.f.dimsPh} style={inputStyle(false, true)} />
+                <input value={qDims} onChange={e => setQDims(e.target.value)} placeholder={t.quo.f.dimsPh} style={inputStyle(false, true)} />
               </div>
               <div>
                 <label style={labelStyle}>{t.quo.f.pieces}</label>
-                <input placeholder={t.quo.f.piecesPh} style={inputStyle(false, true)} />
+                <input value={qPieces} onChange={e => setQPieces(e.target.value)} placeholder={t.quo.f.piecesPh} style={inputStyle(false, true)} />
               </div>
               <div>
                 <label style={labelStyle}>{t.quo.f.name}</label>
@@ -87,7 +145,7 @@ export default function Quote({ t, go, showToast }) {
               </div>
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>{t.quo.f.details}</label>
-                <textarea rows={4} placeholder={t.quo.f.detailsPh} style={{ ...inputStyle(false, true), resize: 'vertical' }} />
+                <textarea value={qDetails} onChange={e => setQDetails(e.target.value)} rows={4} placeholder={t.quo.f.detailsPh} style={{ ...inputStyle(false, true), resize: 'vertical' }} />
               </div>
               {quoteError && (
                 <div style={{ gridColumn: 'span 2', display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, fontWeight: 500, color: '#C0392B' }}>
@@ -95,11 +153,11 @@ export default function Quote({ t, go, showToast }) {
                   {quoteError}
                 </div>
               )}
-              <button onClick={submit} style={{
+              <button onClick={submit} disabled={submitting} style={{
                 gridColumn: 'span 2', padding: 16,
                 background: quoteSent ? '#137A45' : '#087CF0', border: 'none',
-                borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              }}>{quoteSent ? t.quo.sent : t.quo.btn}</button>
+                borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1,
+              }}>{submitting ? t.common.loading : (quoteSent ? t.quo.sent : t.quo.btn)}</button>
             </div>
           </div>
           <div style={{ border: '1px solid #DCE6F5', borderRadius: 18, padding: 26, background: '#EEF4FC' }}>

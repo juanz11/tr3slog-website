@@ -6,6 +6,8 @@ import ShipmentsList from './ShipmentsList'
 import Payments from './Payments'
 import Addresses from './Addresses'
 import Support from './Support'
+import Quotes from './Quotes'
+import { api } from '../api'
 
 const STATUS_TONE = [
   { bg: '#EEF4FC', fg: '#10233F' },
@@ -23,6 +25,27 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
   const [activeKey, setActiveKey] = React.useState(navKeys[0])
   const [hquery, setHquery] = React.useState('')
   const [mobileOpen, setMobileOpen] = React.useState(false)
+  const [token, setToken] = React.useState(null)
+  const [pendingQuotes, setPendingQuotes] = React.useState(0)
+
+  React.useEffect(() => {
+    try {
+      setToken(localStorage.getItem('tr3slog-token'))
+    } catch (e) {}
+  }, [])
+
+  React.useEffect(() => {
+    if (!token || !isAdmin) return
+    const fetchCount = async () => {
+      try {
+        const data = await api.getPendingQuotesCount(token)
+        setPendingQuotes(data?.count ?? 0)
+      } catch (e) {}
+    }
+    fetchCount()
+    const interval = setInterval(fetchCount, 30000)
+    return () => clearInterval(interval)
+  }, [token, isAdmin])
 
   const accountInitials = (user?.name || 'US').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
   const accountName = user?.name || user?.email || 'Usuario'
@@ -42,6 +65,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
   const isPayments = activeKey === 'payments'
   const isAddresses = activeKey === 'addresses'
   const isSupport = activeKey === 'support'
+  const isQuotes = activeKey === 'quotes'
 
   const Nav = ({ compact = false }) => (
     <nav className="app-nav">
@@ -155,8 +179,10 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
             <Addresses app={app} />
           ) : isSupport ? (
             <Support app={app} />
+          ) : isQuotes ? (
+            <Quotes app={app} lang={lang} token={token} />
           ) : isDash ? (
-            <Dashboard app={app} dashRows={dashRows} />
+            <Dashboard app={app} dashRows={dashRows} pendingQuotes={pendingQuotes} />
           ) : (
             <div className="app-empty">{app.empty}</div>
           )}
@@ -166,8 +192,9 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
   )
 }
 
-function Dashboard({ app, dashRows }) {
+function Dashboard({ app, dashRows, pendingQuotes }) {
   const d = app.dash
+  const kpis = d.kpis.map((k, i) => i === 3 ? { ...k, v: String(pendingQuotes) } : k)
   return (
     <div>
       <div className="app-motif" aria-hidden="true">
@@ -178,7 +205,7 @@ function Dashboard({ app, dashRows }) {
       <h1 className="app-h1">{d.title}</h1>
 
       <div className="app-kpis">
-        {d.kpis.map((k, i) => (
+        {kpis.map((k, i) => (
           <div key={i} className="app-kpi">
             <div className="app-kpi-label">{k.l}</div>
             <div className="app-kpi-value">{k.v}</div>

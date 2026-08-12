@@ -174,8 +174,8 @@ export const es = {
     rows: [
       { n: 'Puerto Rico', d: 'Cobertura completa en la isla con hubs en San Juan, Ponce y Mayagüez.', c: 'San Juan · Ponce · Mayagüez · Caguas · Bayamón' },
       { n: 'República Dominicana', d: 'Operación en Santo Domingo y Santiago con expansión a zonas turísticas.', c: 'Santo Domingo · Santiago · Punta Cana' },
-      { n: 'Estados Unidos', d: 'Conexión con Florida y Nueva York para importación y exportación.', c: 'Miami · Orlando · Nueva York' },
-      { n: 'Venezuela', d: 'Próxima apertura de operaciones en Caracas y Valencia.', c: 'Caracas · Valencia' },
+      { n: 'Estados Unidos', d: 'Conexión con Florida y Nueva York para importación y exportación.', c: 'Miami · Orlando · Nueva York', regions: { 'Miami': 'Florida', 'Orlando': 'Florida', 'Nueva York': 'Nueva York' } },
+      { n: 'Venezuela', d: 'Próxima apertura de operaciones en Caracas y Valencia.', c: 'Caracas · Valencia', regions: { 'Caracas': 'Distrito Capital', 'Valencia': 'Carabobo' } },
     ],
     ctaT: '¿Tu zona no está en la lista?',
     ctaSub: 'Contáctanos para evaluar cobertura a medida.',
@@ -459,8 +459,8 @@ export const en = {
     rows: [
       { n: 'Puerto Rico', d: 'Full island coverage with hubs in San Juan, Ponce and Mayagüez.', c: 'San Juan · Ponce · Mayagüez · Caguas · Bayamón' },
       { n: 'Dominican Republic', d: 'Operations in Santo Domingo and Santiago expanding to tourist areas.', c: 'Santo Domingo · Santiago · Punta Cana' },
-      { n: 'United States', d: 'Connection with Florida and New York for import and export.', c: 'Miami · Orlando · New York' },
-      { n: 'Venezuela', d: 'Upcoming operations in Caracas and Valencia.', c: 'Caracas · Valencia' },
+      { n: 'United States', d: 'Connection with Florida and New York for import and export.', c: 'Miami · Orlando · New York', regions: { 'Miami': 'Florida', 'Orlando': 'Florida', 'New York': 'New York' } },
+      { n: 'Venezuela', d: 'Upcoming operations in Caracas and Valencia.', c: 'Caracas · Valencia', regions: { 'Caracas': 'Distrito Capital', 'Valencia': 'Carabobo' } },
     ],
     ctaT: 'Your area not listed?',
     ctaSub: 'Contact us to evaluate custom coverage.',
@@ -744,8 +744,8 @@ export const zhCN = {
     rows: [
       { n: '波多黎各', d: '全岛覆盖，枢纽设在圣胡安、蓬塞和马亚圭斯。', c: '圣胡安 · 蓬塞 · 马亚圭斯 · 卡瓜斯 · 巴亚蒙' },
       { n: '多米尼加共和国', d: '在圣多明各和圣地亚哥运营，扩展到旅游区。', c: '圣多明各 · 圣地亚哥 · 蓬塔卡纳' },
-      { n: '美国', d: '与佛罗里达和纽约连接，进出口服务。', c: '迈阿密 · 奥兰多 · 纽约' },
-      { n: '委内瑞拉', d: '即将在加拉加斯和巴伦西亚开通运营。', c: '加拉加斯 · 巴伦西亚' },
+      { n: '美国', d: '与佛罗里达和纽约连接，进出口服务。', c: '迈阿密 · 奥兰多 · 纽约', regions: { '迈阿密': 'Florida', '奥兰多': 'Florida', '纽约': 'New York' } },
+      { n: '委内瑞拉', d: '即将在加拉加斯和巴伦西亚开通运营。', c: '加拉加斯 · 巴伦西亚', regions: { '加拉加斯': 'Distrito Capital', '巴伦西亚': 'Carabobo' } },
     ],
     ctaT: '您的地区不在列表中？',
     ctaSub: '联系我们评估定制覆盖。',

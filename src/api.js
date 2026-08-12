@@ -52,4 +52,18 @@ export const api = {
     headers: headers(),
     body: JSON.stringify(data),
   }).then(handle),
+
+  createQuote: (data) => fetch(`${API_URL}/quotes`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  getQuotes: (token) => fetch(`${API_URL}/quotes`, {
+    headers: headers(token),
+  }).then(handle),
+
+  getPendingQuotesCount: (token) => fetch(`${API_URL}/quotes/pending-count`, {
+    headers: headers(token),
+  }).then(handle),
 }

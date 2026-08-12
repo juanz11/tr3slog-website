@@ -27,6 +27,7 @@ export const appI18n = {
       dispatch: 'Envíos y despacho',
       drivers: 'Conductores',
       incidents: 'Incidencias',
+      quotes: 'Cotizaciones',
     },
     dash: {
       greeting: 'Buenas tardes',
@@ -221,6 +222,16 @@ export const appI18n = {
         { id: 'CS-0231', t: 'Mercancía dañada', st: 'En revisión', when: '25 jul' },
       ],
     },
+    quotes: {
+      greeting: 'Cotizaciones',
+      title: 'Solicitudes de cotización',
+      listTitle: 'Cotizaciones recibidas',
+      loading: 'Actualizando…',
+      autoRefresh: 'Actualiza cada',
+      empty: 'No hay cotizaciones.',
+      error: 'No se pudieron cargar las cotizaciones.',
+      cols: { origin: 'Origen', destination: 'Destino', type: 'Servicio', client: 'Cliente', date: 'Fecha', status: 'Estado' },
+    },
     empty: 'Pantalla en construcción.'
   },
   en: {
@@ -251,6 +262,7 @@ export const appI18n = {
       dispatch: 'Shipments & dispatch',
       drivers: 'Drivers',
       incidents: 'Incidents',
+      quotes: 'Quotes',
     },
     dash: {
       greeting: 'Good afternoon',
@@ -445,6 +457,16 @@ export const appI18n = {
         { id: 'CS-0231', t: 'Damaged cargo', st: 'In review', when: 'Jul 25' },
       ],
     },
+    quotes: {
+      greeting: 'Quotes',
+      title: 'Quote requests',
+      listTitle: 'Received quotes',
+      loading: 'Updating…',
+      autoRefresh: 'Refreshes every',
+      empty: 'No quotes yet.',
+      error: 'Could not load quotes.',
+      cols: { origin: 'Origin', destination: 'Destination', type: 'Service', client: 'Client', date: 'Date', status: 'Status' },
+    },
     empty: 'Screen under construction.'
   },
   'zh-CN': {
@@ -475,6 +497,7 @@ export const appI18n = {
       dispatch: '运单与调度',
       drivers: '司机',
       incidents: '异常事件',
+      quotes: '报价',
     },
     dash: {
       greeting: '下午好',
@@ -668,6 +691,16 @@ export const appI18n = {
       open: [
         { id: 'CS-0231', t: '货物损坏', st: '审核中', when: '7月25日' },
       ],
+    },
+    quotes: {
+      greeting: '报价',
+      title: '报价请求',
+      listTitle: '收到的报价',
+      loading: '更新中…',
+      autoRefresh: '每',
+      empty: '暂无报价。',
+      error: '无法加载报价。',
+      cols: { origin: '出发地', destination: '目的地', type: '服务', client: '客户', date: '日期', status: '状态' },
     },
     empty: '页面建设中。'
   },
