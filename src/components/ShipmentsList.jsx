@@ -1,4 +1,5 @@
 import React from 'react'
+import { api } from '../api'
 
 const STATUS_TONE = [
   { bg: 'rgba(8,124,240,.1)', fg: '#0768C9' },
@@ -8,20 +9,46 @@ const STATUS_TONE = [
   { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
 ]
 
-const ROWS = [
-  { id: 'TR3-260729-PRSJ-08821', route: 'Miami → San Juan', service: 'Consolidado', status: 0, eta: '31 jul' },
-  { id: 'TR3-260729-RDPC-08790', route: 'San Juan → Ponce', service: 'Última milla', status: 1, eta: '27 jul' },
-  { id: 'TR3-260729-EUAL-08744', route: 'Miami → Santo Domingo', service: 'Marítimo', status: 2, eta: '22 jul' },
-  { id: 'TR3-260729-EUAL-08702', route: 'Bayamón → Caguas', service: 'Entrega local', status: 3, eta: '—' },
-  { id: 'TR3-260729-PRSJ-08698', route: 'Miami → Orlando', service: 'Carga terrestre', status: 4, eta: '26 jul' },
-]
+const statusIndex = (status, statuses) => {
+  if (typeof status === 'number') return status
+  const idx = statuses.findIndex((s) => s.toLowerCase() === String(status).toLowerCase())
+  return idx >= 0 ? idx : 0
+}
 
-export default function ShipmentsList({ app }) {
+const buildRow = (sh, statuses) => ({
+  id: sh.tracking_number || sh.id || sh.guide || '',
+  route: sh.route || `${sh.origin || ''} → ${sh.destination || ''}`,
+  service: sh.service || '',
+  status: statusIndex(sh.status, statuses),
+  eta: sh.eta || sh.estimated_delivery || '—',
+})
+
+export default function ShipmentsList({ app, token }) {
   const s = app.ship
   const [query, setQuery] = React.useState('')
   const [filter, setFilter] = React.useState(0)
+  const [shipments, setShipments] = React.useState([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState('')
 
-  const filtered = ROWS.filter((r) => {
+  React.useEffect(() => {
+    if (!token) {
+      setLoading(false)
+      setError('Inicie sesión para ver sus envíos.')
+      return
+    }
+    setLoading(true)
+    setError('')
+    api.getShipments(token)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data?.data || [])
+        setShipments(list.map((sh) => buildRow(sh, s.statuses)))
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [token, s.statuses])
+
+  const filtered = shipments.filter((r) => {
     const matchesFilter = filter === 0 || r.status === filter - 1
     const q = query.toLowerCase()
     const matchesQuery = !q || r.id.toLowerCase().includes(q) || r.route.toLowerCase().includes(q) || s.statuses[r.status].toLowerCase().includes(q)
@@ -88,8 +115,17 @@ export default function ShipmentsList({ app }) {
             }}>
               {s.cols.map((col, i) => <span key={i}>{col}</span>)}
             </div>
-            {filtered.map((r, i) => (
-              <div key={i} style={{
+            {loading && (
+              <div style={{ padding: 30, textAlign: 'center', color: '#6C82A6' }}>Cargando envíos…</div>
+            )}
+            {error && (
+              <div style={{ padding: 30, textAlign: 'center', color: '#A93226' }}>{error}</div>
+            )}
+            {!loading && !error && filtered.length === 0 && (
+              <div style={{ padding: 30, textAlign: 'center', color: '#6C82A6' }}>No hay envíos para mostrar.</div>
+            )}
+            {!loading && filtered.map((r, i) => (
+              <div key={r.id || i} style={{
                 display: 'grid', gridTemplateColumns: '1.2fr 1.3fr 1fr 1fr 0.7fr 0.5fr',
                 gap: 12, padding: '16px 22px', borderTop: '1px solid #E3EBF7', alignItems: 'center',
               }}>

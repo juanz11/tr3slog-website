@@ -1,4 +1,5 @@
 import React from 'react'
+import { api } from '../api'
 
 const ADDRESS_KEYS = ['name', 'company', 'address', 'city', 'zip', 'phone', 'email']
 const ADDRESS_REQUIRED = ['name', 'address', 'city', 'zip', 'phone']
@@ -20,7 +21,7 @@ const emptyPayment = () => ({
   paymentMethod: '', chargeToAccount: '',
 })
 
-function ShipmentForm({ c, step, section, config, data, submitted, onChange, onBack, onNext, onFinish }) {
+function ShipmentForm({ c, step, section, config, data, submitted, error, submitting, result, onChange, onBack, onNext, onFinish }) {
   const isLastStep = step === c.steps.length - 1
   const isComplete = section
     ? config.required.every((k) => data[section][k].trim() !== '')
@@ -41,23 +42,41 @@ function ShipmentForm({ c, step, section, config, data, submitted, onChange, onB
                 {config.required.includes(key) ? c.required : c.optional}
               </span>
             </span>
-            <input
-              type="text"
-              placeholder={config.placeholders[key]}
-              value={section ? data[section][key] : ''}
-              onChange={(e) => onChange(key, e.target.value)}
-              style={{
-                width: '100%', padding: '14px 15px',
-                border: '1.5px solid #DCE6F5', borderRadius: 11,
-                background: '#EEF4FC', font: 'inherit', color: '#001B45',
-                outline: 'none',
-              }}
-            />
+            {config.options && config.options[key] ? (
+              <select
+                value={section ? data[section][key] : ''}
+                onChange={(e) => onChange(key, e.target.value)}
+                style={{
+                  width: '100%', padding: '14px 15px',
+                  border: '1.5px solid #DCE6F5', borderRadius: 11,
+                  background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                  outline: 'none', cursor: 'pointer',
+                }}
+              >
+                <option value="">{config.placeholders[key]}</option>
+                {config.options[key].map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                placeholder={config.placeholders[key]}
+                value={section ? data[section][key] : ''}
+                onChange={(e) => onChange(key, e.target.value)}
+                style={{
+                  width: '100%', padding: '14px 15px',
+                  border: '1.5px solid #DCE6F5', borderRadius: 11,
+                  background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                  outline: 'none',
+                }}
+              />
+            )}
           </label>
         ))}
       </div>
 
-      {step === 4 && submitted && (
+      {step === 4 && submitted && result && (
         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{
             display: 'flex', gap: 10, alignItems: 'flex-start',
@@ -69,32 +88,30 @@ function ShipmentForm({ c, step, section, config, data, submitted, onChange, onB
               <circle cx="12" cy="12" r="9" />
               <path d="M8.5 12.5l2.5 2.5 4.5-5" />
             </svg>
-            {c.payment.success}
+            Envío creado. Se asignó la guía {result.tracking_number || result.id || result.guide || ''}.
           </div>
-          <div style={{
-            display: 'flex', gap: 12, alignItems: 'flex-start',
-            border: '1px dashed rgba(217,154,0,.55)', background: 'rgba(217,154,0,.07)',
-            borderRadius: 12, padding: '14px 16px',
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D99A00" strokeWidth="1.8" style={{ flex: '0 0 auto', marginTop: 1 }}>
-              <path d="M12 3l9 16H3z" />
-              <path d="M12 9v5M12 17v.1" />
-            </svg>
-            <span style={{ fontSize: 13, lineHeight: 1.6, color: '#6C5220' }}>{c.payment.warning}</span>
-          </div>
+        </div>
+      )}
+
+      {step === 4 && error && (
+        <div style={{
+          marginTop: 20, padding: 14, borderRadius: 12,
+          background: '#FDECEC', color: '#B91C1C', fontSize: 14,
+        }}>
+          {error}
         </div>
       )}
 
       <div style={{ display: 'flex', gap: 10, marginTop: 24, paddingTop: 20, borderTop: '1px solid #DCE6F5' }}>
         <button
           onClick={onBack}
-          disabled={step === 0}
+          disabled={step === 0 || submitting}
           style={{
             padding: '14px 20px', background: '#fff',
             border: '1.5px solid #DCE6F5', borderRadius: 11,
             color: '#001B45', fontSize: 14, fontWeight: 600,
-            cursor: step === 0 ? 'not-allowed' : 'pointer',
-            opacity: step === 0 ? .6 : 1,
+            cursor: step === 0 || submitting ? 'not-allowed' : 'pointer',
+            opacity: step === 0 || submitting ? .6 : 1,
           }}
         >{c.back}</button>
         <button
@@ -105,24 +122,27 @@ function ShipmentForm({ c, step, section, config, data, submitted, onChange, onB
               onNext()
             }
           }}
-          disabled={!isComplete}
+          disabled={!isComplete || submitting}
           style={{
             marginLeft: 'auto', padding: '14px 24px',
-            background: isComplete ? '#087CF0' : '#8FC6F7',
+            background: isComplete && !submitting ? '#087CF0' : '#8FC6F7',
             border: 'none', borderRadius: 11,
             color: '#fff', fontSize: 14, fontWeight: 600,
-            cursor: isComplete ? 'pointer' : 'not-allowed',
+            cursor: isComplete && !submitting ? 'pointer' : 'not-allowed',
           }}
-        >{isLastStep ? c.payment.submit : c.continue}</button>
+        >{isLastStep ? (submitting ? 'Procesando…' : c.payment.submit) : c.continue}</button>
       </div>
     </div>
   )
 }
 
-export default function ShipmentCreate({ app }) {
+export default function ShipmentCreate({ app, token }) {
   const c = app.create
   const [step, setStep] = React.useState(0)
-  const [submitted, setSubmitted] = React.useState(true)
+  const [submitted, setSubmitted] = React.useState(false)
+  const [submitting, setSubmitting] = React.useState(false)
+  const [error, setError] = React.useState('')
+  const [result, setResult] = React.useState(null)
   const [data, setData] = React.useState({
     sender: emptyAddress(),
     recipient: emptyAddress(),
@@ -151,6 +171,9 @@ export default function ShipmentCreate({ app }) {
         placeholders: c.service.placeholders,
         required: c.service.required,
         span2: c.service.span2,
+        options: {
+          service: ['Consolidado', 'Marítimo', 'Aéreo', 'Carga terrestre', 'Última milla'],
+        },
       }
     }
     if (step === 4) {
@@ -182,9 +205,44 @@ export default function ShipmentCreate({ app }) {
     setStep((s) => Math.min(s + 1, c.steps.length - 1))
   }, [c.steps.length])
 
-  const onFinish = React.useCallback(() => {
-    setSubmitted(true)
-  }, [])
+  const onFinish = React.useCallback(async () => {
+    if (!token) {
+      setError('Inicie sesión para crear un envío.')
+      return
+    }
+    setSubmitting(true)
+    setError('')
+    try {
+      const payload = {
+        sender: data.sender,
+        recipient: data.recipient,
+        package: {
+          pieces: data.package.pieces,
+          weight: data.package.weight,
+          dimensions: data.package.dimensions,
+          declared_value: data.package.declaredValue,
+          content: data.package.content,
+        },
+        service: {
+          service: data.service.service,
+          pickup_date: data.service.pickupDate,
+          time_window: data.service.timeWindow,
+          notes: data.service.notes,
+        },
+        payment: {
+          payment_method: data.payment.paymentMethod,
+          charge_to_account: data.payment.chargeToAccount,
+        },
+      }
+      const res = await api.createShipment(payload, token)
+      setResult(res)
+      setSubmitted(true)
+    } catch (err) {
+      setError(err.message || 'No se pudo crear el envío.')
+    } finally {
+      setSubmitting(false)
+    }
+  }, [data, token])
 
   const onChange = React.useCallback((key, value) => {
     if (!section) return
@@ -252,6 +310,9 @@ export default function ShipmentCreate({ app }) {
           config={config}
           data={data}
           submitted={submitted}
+          error={error}
+          submitting={submitting}
+          result={result}
           onChange={onChange}
           onBack={onBack}
           onNext={onNext}

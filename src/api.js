@@ -53,10 +53,14 @@ export const api = {
     body: JSON.stringify(data),
   }).then(handle),
 
-  createQuote: (data) => fetch(`${API_URL}/quotes`, {
+  createQuote: (data) => fetch(`${API_URL}/app/quotes`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify(data),
+  }).then(handle),
+
+  trackQuote: (code) => fetch(`${API_URL}/app/quotes/track/${encodeURIComponent(code)}`, {
+    headers: headers(),
   }).then(handle),
 
   getQuotes: (token) => fetch(`${API_URL}/quotes`, {
@@ -65,5 +69,15 @@ export const api = {
 
   getPendingQuotesCount: (token) => fetch(`${API_URL}/quotes/pending-count`, {
     headers: headers(token),
+  }).then(handle),
+
+  getShipments: (token) => fetch(`${API_URL}/shipments`, {
+    headers: headers(token),
+  }).then(handle),
+
+  createShipment: (data, token) => fetch(`${API_URL}/shipments`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
   }).then(handle),
 }

@@ -16,6 +16,7 @@ export default function Quote({ t, go, showToast, lang }) {
   const [quoteError, setQuoteError] = React.useState('')
   const [quoteSent, setQuoteSent] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
+  const [quoteCode, setQuoteCode] = React.useState('')
 
   const err = '#E0A0A0'
 
@@ -27,7 +28,7 @@ export default function Quote({ t, go, showToast, lang }) {
     setQuoteError('')
     setSubmitting(true)
     try {
-      await api.createQuote({
+      const result = await api.createQuote({
         origin: qOrigin.trim(),
         destination: qDest.trim(),
         service_type: t.quo.types[quoteType] || '',
@@ -39,12 +40,20 @@ export default function Quote({ t, go, showToast, lang }) {
         details: qDetails.trim(),
       })
       setQuoteSent(true)
+      setQuoteCode(result?.tracking_code || '')
       showToast(t.quo.toast)
     } catch (e) {
       setQuoteError(e.message || t.common.required)
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const copyToClipboard = () => {
+    if (!quoteCode) return
+    navigator.clipboard.writeText(quoteCode).then(() => {
+      showToast((t.quo && t.quo.trackCopyDone) ? t.quo.trackCopyDone : 'Código copiado')
+    })
   }
 
   const inputStyle = (hasError, value) => ({
@@ -158,6 +167,35 @@ export default function Quote({ t, go, showToast, lang }) {
                 background: quoteSent ? '#137A45' : '#087CF0', border: 'none',
                 borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1,
               }}>{submitting ? t.common.loading : (quoteSent ? t.quo.sent : t.quo.btn)}</button>
+              {quoteCode && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <div style={{
+                    border: '1.5px dashed #087CF0', borderRadius: 14, padding: 22,
+                    background: '#EEF4FC', display: 'flex', flexDirection: 'column', gap: 10,
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>
+                      {(t.quo && t.quo.trackTitle) ? t.quo.trackTitle : 'Código de seguimiento'}
+                    </div>
+                    <div style={{
+                      fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 22,
+                      color: '#001B45', letterSpacing: '.04em',
+                    }}>{quoteCode}</div>
+                    <div style={{ fontSize: 13, lineHeight: 1.5, color: '#6C82A6' }}>
+                      {((t.quo && t.quo.trackSub) ? t.quo.trackSub : 'Te hemos enviado el código a {{email}}.').replace('{{email}}', qEmail)}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
+                      <button onClick={copyToClipboard} style={{
+                        padding: '11px 18px', background: '#fff', border: '1.5px solid #DCE6F5',
+                        borderRadius: 10, color: '#001B45', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      }}>{(t.quo && t.quo.trackCopy) ? t.quo.trackCopy : 'Copiar'}</button>
+                      <button onClick={() => go('track')} style={{
+                        padding: '11px 18px', background: '#087CF0', border: 'none',
+                        borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      }}>{(t.quo && t.quo.trackTrack) ? t.quo.trackTrack : 'Rastrear'}</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div style={{ border: '1px solid #DCE6F5', borderRadius: 18, padding: 26, background: '#EEF4FC' }}>
