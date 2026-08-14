@@ -8,6 +8,8 @@ import Addresses from './Addresses'
 import Support from './Support'
 import Quotes from './Quotes'
 import Dispatch from './Dispatch'
+import Drivers from './Drivers'
+import Incidents from './Incidents'
 import { api } from '../api'
 
 const STATUS_TONE = [
@@ -68,6 +70,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
   const isSupport = activeKey === 'support'
   const isQuotes = activeKey === 'quotes'
   const isDispatch = activeKey === 'dispatch'
+  const isDrivers = activeKey === 'drivers'
+  const isIncidents = activeKey === 'incidents'
 
   const Nav = ({ compact = false }) => (
     <nav className="app-nav">
@@ -185,6 +189,10 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
             <Quotes app={app} lang={lang} token={token} />
           ) : isDispatch ? (
             <Dispatch app={app} lang={lang} token={token} />
+          ) : isDrivers ? (
+            <Drivers app={app} lang={lang} token={token} />
+          ) : isIncidents ? (
+            <Incidents app={app} lang={lang} token={token} />
           ) : isDash ? (
             <Dashboard app={app} dashRows={dashRows} pendingQuotes={pendingQuotes} />
           ) : (
