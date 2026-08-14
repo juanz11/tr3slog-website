@@ -105,7 +105,8 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin })
       onLogin(res.user, res.token)
       onClose()
     } catch (err) {
-      setError(err.message || a.errCreds)
+      const knownCodes = ['account_not_found', 'invalid_credentials']
+      setError(knownCodes.includes(err.message) ? a.errCreds : (err.message || a.errCreds))
       setErrorKey('email')
     } finally {
       setLoading(false)
