@@ -7,6 +7,7 @@ import Payments from './Payments'
 import Addresses from './Addresses'
 import Support from './Support'
 import Quotes from './Quotes'
+import Dispatch from './Dispatch'
 import { api } from '../api'
 
 const STATUS_TONE = [
@@ -66,6 +67,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
   const isAddresses = activeKey === 'addresses'
   const isSupport = activeKey === 'support'
   const isQuotes = activeKey === 'quotes'
+  const isDispatch = activeKey === 'dispatch'
 
   const Nav = ({ compact = false }) => (
     <nav className="app-nav">
@@ -181,6 +183,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
             <Support app={app} />
           ) : isQuotes ? (
             <Quotes app={app} lang={lang} token={token} />
+          ) : isDispatch ? (
+            <Dispatch app={app} lang={lang} token={token} />
           ) : isDash ? (
             <Dashboard app={app} dashRows={dashRows} pendingQuotes={pendingQuotes} />
           ) : (

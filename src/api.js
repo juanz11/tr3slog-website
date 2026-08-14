@@ -66,4 +66,14 @@ export const api = {
   getPendingQuotesCount: (token) => fetch(`${API_URL}/quotes/pending-count`, {
     headers: headers(token),
   }).then(handle),
+
+  getShipments: (token) => fetch(`${API_URL}/shipments`, {
+    headers: headers(token),
+  }).then(handle),
+
+  updateShipmentStatus: (id, status, token) => fetch(`${API_URL}/shipments/${id}`, {
+    method: 'PUT',
+    headers: headers(token),
+    body: JSON.stringify({ status }),
+  }).then(handle),
 }

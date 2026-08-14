@@ -3,9 +3,9 @@ import { PageHero, ImageSlot } from '../components/Shared'
 
 export default function Track({ t }) {
   const [code, setCode] = React.useState('')
-  const [trackState, setTrackState] = React.useState('ok')
+  const [trackState, setTrackState] = React.useState('empty')
   const [trackError, setTrackError] = React.useState('')
-  const [shownCode, setShownCode] = React.useState('TR3-260729-PRSJ-08821')
+  const [shownCode, setShownCode] = React.useState('')
 
   const onTrack = () => {
     const raw = (code || '').trim().toUpperCase()
