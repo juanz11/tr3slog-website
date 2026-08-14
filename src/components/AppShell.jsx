@@ -172,9 +172,9 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
 
         <main className="app-content">
           {isCreate ? (
-            <ShipmentCreate app={app} />
+            <ShipmentCreate app={app} token={token} />
           ) : isShipments ? (
-            <ShipmentsList app={app} />
+            <ShipmentsList app={app} token={token} />
           ) : isPayments ? (
             <Payments app={app} />
           ) : isAddresses ? (

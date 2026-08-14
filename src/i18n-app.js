@@ -230,7 +230,7 @@ export const appI18n = {
       autoRefresh: 'Actualiza cada',
       empty: 'No hay cotizaciones.',
       error: 'No se pudieron cargar las cotizaciones.',
-      cols: { origin: 'Origen', destination: 'Destino', type: 'Servicio', client: 'Cliente', date: 'Fecha', status: 'Estado' },
+      cols: { tracking: 'Código', origin: 'Origen', destination: 'Destino', type: 'Servicio', client: 'Cliente', date: 'Fecha', status: 'Estado' },
     },
     dispatch: {
       greeting: 'Envíos y despacho',

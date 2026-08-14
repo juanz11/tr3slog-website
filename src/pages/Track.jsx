@@ -1,28 +1,97 @@
 import React from 'react'
+import { api } from '../api'
 import { PageHero, ImageSlot } from '../components/Shared'
 
 export default function Track({ t }) {
   const [code, setCode] = React.useState('')
   const [trackState, setTrackState] = React.useState('empty')
   const [trackError, setTrackError] = React.useState('')
-  const [shownCode, setShownCode] = React.useState('')
+  const [shownCode, setShownCode] = React.useState('TR3-260729-PRSJ-08821')
+  const [quote, setQuote] = React.useState(null)
 
-  const onTrack = () => {
+  const onTrack = async () => {
     const raw = (code || '').trim().toUpperCase()
     if (!raw) { setTrackError(t.trk.errEmpty); setTrackState('empty'); return }
     if (!/^TR3-\d{6}-[A-Z]{4}-\d{5}$/.test(raw)) { setTrackError(t.trk.errFormat); setTrackState('empty'); return }
     setTrackError(''); setTrackState('loading')
-    setTimeout(() => { setTrackState('ok'); setShownCode(raw) }, 700)
+    try {
+      const data = await api.trackQuote(raw)
+      setQuote(data)
+      setShownCode(raw)
+      setTrackState('ok')
+    } catch (e) {
+      setTrackError((t.trk && t.trk.notFound) ? t.trk.notFound : 'No se encontró una cotización con ese código.')
+      setTrackState('empty')
+    }
   }
 
-  const current = 3
-  const trackFacts = [
+  const statusLabels = { pending: 'Pendiente', processing: 'En proceso', approved: 'Aprobada', rejected: 'Rechazada' }
+
+  const dateLocale = () => {
+    if (t.label === 'EN') return 'en-US'
+    if (t.label === '中文') return 'zh-CN'
+    return 'es-ES'
+  }
+
+  const fmtDate = (d) => {
+    if (!d) return ''
+    return d.toLocaleString(dateLocale(), { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
+  }
+
+  const dateAfter = (base, days, h, m) => {
+    const d = new Date(base)
+    d.setDate(d.getDate() + days)
+    d.setHours(h, m, 0, 0)
+    return d
+  }
+
+  const parseDateFromCode = (code) => {
+    const m = (code || '').match(/^TR3-(\d{6})-[A-Z]{4}-\d{5}$/)
+    if (!m) return null
+    const y = 2000 + parseInt(m[1].slice(0, 2), 10)
+    const mo = parseInt(m[1].slice(2, 4), 10) - 1
+    const d = parseInt(m[1].slice(4, 6), 10)
+    const out = new Date(y, mo, d, 8, 0, 0)
+    if (isNaN(out.getTime())) return null
+    return out
+  }
+
+  const serverCreated = quote?.created_at ? new Date(quote.created_at) : null
+  const creationDate = (serverCreated && !isNaN(serverCreated.getTime())) ? serverCreated : parseDateFromCode(shownCode)
+
+  const etaVal = creationDate
+    ? fmtDate(dateAfter(creationDate, 3, 16, 30))
+    : t.trk.etaVal
+
+  const trackFacts = quote ? [
+    { l: (t.quo && t.quo.f && t.quo.f.origin) ? t.quo.f.origin : 'Origen', v: quote.origin },
+    { l: (t.quo && t.quo.f && t.quo.f.dest) ? t.quo.f.dest : 'Destino', v: quote.destination },
+    { l: (t.quo && t.quo.f && t.quo.f.type) ? t.quo.f.type : 'Servicio', v: quote.service_type || '-' },
+    { l: t.trk.status, v: statusLabels[quote.status] || quote.status },
+  ] : [
     { l: t.trk.location, v: t.trk.locationVal },
-    { l: t.trk.eta, v: t.trk.etaVal },
+    { l: t.trk.eta, v: etaVal },
     { l: t.trk.service, v: t.trk.serviceVal },
     { l: t.trk.status, v: t.trk.statusVal },
   ]
-  const timeline = t.trk.timeline.map((s, i) => ({
+
+  if (creationDate) {
+    trackFacts.push({ l: t.trk.created || 'Creado', v: fmtDate(creationDate) })
+  }
+
+  const current = 3
+  const timelineOffsets = [
+    { d: 0, h: 8, m: 0 },
+    { d: 0, h: 9, m: 15 },
+    { d: 1, h: 6, m: 0 },
+    { d: 2, h: 14, m: 0 },
+    null,
+  ]
+  const timeline = (creationDate ? t.trk.timeline.map((s, i) => {
+    const o = timelineOffsets[i]
+    if (!o) return s
+    return { ...s, time: fmtDate(dateAfter(creationDate, o.d, o.h, o.m)) }
+  }) : t.trk.timeline).map((s, i) => ({
     ...s,
     dot: i < current ? '#087CF0' : (i === current ? '#D99A00' : '#fff'),
     ring: i <= current ? 'rgba(8,124,240,.18)' : '#DCE6F5',
@@ -91,7 +160,7 @@ export default function Track({ t }) {
                     padding: '9px 16px', borderRadius: 100,
                     background: 'rgba(8,124,240,.1)', color: '#0768C9',
                     fontSize: 12, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase',
-                  }}>{t.trk.statusVal}</span>
+                  }}>{statusLabels[quote?.status] || quote?.status || t.trk.statusVal}</span>
                 </div>
                 <div className="grid-c2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: '#DCE6F5' }}>
                   {trackFacts.map((f, i) => (
