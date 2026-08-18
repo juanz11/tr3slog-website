@@ -1,5 +1,15 @@
 import React from 'react'
+import { MEDIA_URL } from '../api'
 import { PageHero, ImageSlot } from '../components/Shared'
+
+const SVC_IMAGES = [
+  'descarga%20(3).webp',
+  'descarga.webp',
+  'descarga%20(1).webp',
+  'descarga%20(2).webp',
+  'descarga%20(4).webp',
+  'descarga%20(5).webp',
+]
 
 export default function Services({ t, go }) {
   return (
@@ -13,7 +23,12 @@ export default function Services({ t, go }) {
                 background: '#fff', border: '1px solid #DCE6F5', borderRadius: 18,
                 overflow: 'hidden', display: 'flex', flexDirection: 'column',
               }}>
-                <ImageSlot placeholder={s.t} height={200} />
+                <ImageSlot
+                  placeholder={s.t}
+                  src={SVC_IMAGES[i] ? `${MEDIA_URL}/${SVC_IMAGES[i]}` : undefined}
+                  alt={s.t}
+                  height={200}
+                />
                 <div style={{ padding: 26, display: 'flex', flexDirection: 'column', gap: 14 }}>
                   <h2 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 22, margin: 0 }}>{s.t}</h2>
                   <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: '#10233F' }}>{s.d}</p>

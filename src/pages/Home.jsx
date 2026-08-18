@@ -1,4 +1,5 @@
 import React from 'react'
+import { MEDIA_URL } from '../api'
 import { AccentStrip, ImageSlot } from '../components/Shared'
 
 const TECH_ICONS = [
@@ -8,6 +9,15 @@ const TECH_ICONS = [
   'M4 6h16v12H4z|circle:12,12,3',
   'M12 4v3M6 10a6 6 0 0112 0v5l2 3H4l2-3z',
   'M3 5h18v12H3zM8 21h8M12 17v4',
+]
+
+const SVC_IMAGES = [
+  'descarga%20(3).webp',
+  'descarga.webp',
+  'descarga%20(1).webp',
+  'descarga%20(2).webp',
+  'descarga%20(4).webp',
+  'descarga%20(5).webp',
 ]
 
 function TechIcon({ spec, color, size }) {
@@ -189,7 +199,12 @@ export default function Home({ t, go }) {
                 background: '#fff', border: '1px solid #DCE6F5', borderRadius: 18,
                 overflow: 'hidden', display: 'flex', flexDirection: 'column',
               }}>
-                <ImageSlot placeholder={s.t} height={180} />
+                <ImageSlot
+                  placeholder={s.t}
+                  src={SVC_IMAGES[i] ? `${MEDIA_URL}/${SVC_IMAGES[i]}` : undefined}
+                  alt={s.t}
+                  height={180}
+                />
                 <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
                   <h3 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 19, margin: 0 }}>{s.t}</h3>
                   <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: '#10233F' }}>{s.d}</p>

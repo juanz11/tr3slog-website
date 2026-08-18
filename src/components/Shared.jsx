@@ -32,7 +32,18 @@ export function AccentStrip() {
   )
 }
 
-export function ImageSlot({ placeholder, height = 180 }) {
+export function ImageSlot({ placeholder, src, alt, height = 180 }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={alt || placeholder}
+        style={{
+          width: '100%', height, objectFit: 'cover', display: 'block',
+        }}
+      />
+    )
+  }
   return (
     <div style={{
       height, background: '#EEF4FC',
