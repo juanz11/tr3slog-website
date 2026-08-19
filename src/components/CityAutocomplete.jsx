@@ -135,7 +135,7 @@ export default function CityAutocomplete({ value = '', onChange, placeholder, ci
     debounceRef.current = setTimeout(() => {
       setOpen(true)
       fetchSuggestions(value)
-    }, 500)
+    }, 300)
     return () => clearTimeout(debounceRef.current)
   }, [value, countryCodes, lang, fetchSuggestions])
 
@@ -183,12 +183,27 @@ export default function CityAutocomplete({ value = '', onChange, placeholder, ci
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         autoComplete="off"
-        style={inputStyle}
+        style={{ ...inputStyle, padding: loading ? '14px 40px 14px 15px' : '14px 15px' }}
       />
-      {open && (list.length > 0 || loading || error) && (
+      {loading && (
+        <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6C82A6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <g>
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeOpacity=".3" />
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83">
+                <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite" />
+              </path>
+            </g>
+          </svg>
+        </div>
+      )}
+      {open && (list.length > 0 || loading || error || value.trim() !== '') && (
         <div style={listStyle}>
           {loading && <div style={{ padding: '10px 15px', fontSize: 13, color: '#6C82A6' }}>Buscando…</div>}
           {error && <div style={{ padding: '10px 15px', fontSize: 13, color: '#C0392B' }}>{error}</div>}
+          {!loading && !error && list.length === 0 && value.trim() !== '' && (
+            <div style={{ padding: '10px 15px', fontSize: 13, color: '#6C82A6' }}>No se encontraron ciudades</div>
+          )}
           {list.map((city, i) => (
             <div
               key={city}
