@@ -1,6 +1,24 @@
 import React from 'react'
+import { api } from '../api'
 
 const FIELD_KEYS = ['name', 'address', 'city', 'zip', 'contact', 'phone', 'instructions']
+const TYPE_STRINGS = ['pickup', 'delivery', 'billing']
+
+function backendToRow(addr) {
+  const typeIdx = TYPE_STRINGS.indexOf(addr.type)
+  return {
+    id: addr.id,
+    n: addr.name || '',
+    a: addr.address || '',
+    city: addr.city || '',
+    zip: addr.zip_code || '',
+    c: addr.contact_name || '',
+    phone: addr.phone || '',
+    ins: addr.delivery_instructions || '',
+    type: typeIdx >= 0 ? typeIdx : 0,
+    primary: !!addr.is_default,
+  }
+}
 const SPAN2 = ['address', 'instructions']
 const REQUIRED = ['name', 'address', 'city', 'zip', 'contact']
 
@@ -9,17 +27,38 @@ function initialPrimary(rows) {
   return found ? found.id : null
 }
 
-export default function Addresses({ app }) {
+export default function Addresses({ app, token }) {
   const a = app.addr
-  const [rows, setRows] = React.useState(() =>
-    a.rows.map((r, i) => ({ ...r, id: `r${i}` }))
-  )
-  const [primaryId, setPrimaryId] = React.useState(() => initialPrimary(rows))
+  const [rows, setRows] = React.useState([])
+  const [primaryId, setPrimaryId] = React.useState(null)
   const [formMode, setFormMode] = React.useState(null)
   const [formVals, setFormVals] = React.useState({ type: 0 })
   const [err, setErr] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
   const [removeId, setRemoveId] = React.useState(null)
+  const [loading, setLoading] = React.useState(false)
+  const [loadError, setLoadError] = React.useState(null)
+
+  const loadAddresses = React.useCallback(async () => {
+    if (!token) return
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const data = await api.getAddresses(token)
+      const list = Array.isArray(data) ? data : (data.addresses || [])
+      const mapped = list.map(backendToRow)
+      setRows(mapped)
+      setPrimaryId(initialPrimary(mapped))
+    } catch (e) {
+      setLoadError(e.message || 'Error cargando direcciones')
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  React.useEffect(() => {
+    loadAddresses()
+  }, [loadAddresses])
 
   const formOpen = formMode !== null
   const formTitle = formMode === 'new' ? a.newT : a.editT
@@ -51,43 +90,72 @@ export default function Addresses({ app }) {
     setRemoveId(null)
   }
 
-  const save = () => {
+  const save = async () => {
     const missing = REQUIRED.some((k) => !(formVals[k] || '').trim())
     if (missing) return setErr(true)
 
-    const row = {
-      id: formMode === 'new' ? `x${Date.now()}` : formMode,
-      n: formVals.name,
-      a: formVals.address,
-      c: formVals.contact,
-      type: formVals.type || 0,
+    const payload = {
+      name: formVals.name,
+      address: formVals.address,
       city: formVals.city,
-      zip: formVals.zip,
+      zip_code: formVals.zip,
+      contact_name: formVals.contact,
       phone: formVals.phone,
-      ins: formVals.instructions,
-      primary: false,
+      delivery_instructions: formVals.instructions,
+      type: TYPE_STRINGS[formVals.type || 0],
+      is_default: rows.length === 0,
     }
 
-    if (formMode === 'new') {
-      if (rows.length === 0) row.primary = true
-      setRows((prev) => [...prev, row])
-      if (rows.length === 0) setPrimaryId(row.id)
-    } else {
-      setRows((prev) => prev.map((r) => (r.id === formMode ? { ...r, ...row, primary: r.primary } : r)))
+    setLoading(true)
+    setErr(false)
+    setLoadError(null)
+    try {
+      if (formMode === 'new') {
+        await api.createAddress(payload, token)
+      } else {
+        await api.updateAddress(formMode, payload, token)
+      }
+      await loadAddresses()
+      setFormMode(null)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (e) {
+      setLoadError(e.message || 'Error guardando dirección')
+    } finally {
+      setLoading(false)
     }
-
-    setFormMode(null)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
   }
 
-  const doRemove = (id) => {
-    setRows((prev) => prev.filter((r) => r.id !== id))
-    setRemoveId(null)
-    setSaved(false)
+  const doRemove = async (id) => {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      await api.deleteAddress(id, token)
+      await loadAddresses()
+    } catch (e) {
+      setLoadError(e.message || 'Error eliminando dirección')
+    } finally {
+      setLoading(false)
+      setRemoveId(null)
+      setSaved(false)
+    }
   }
 
-  const setPrimary = (row) => setPrimaryId(row.id)
+  const setPrimary = async (row) => {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      await api.updateAddress(row.id, {
+        type: TYPE_STRINGS[row.type],
+        is_default: true,
+      }, token)
+      await loadAddresses()
+    } catch (e) {
+      setLoadError(e.message || 'Error marcando dirección principal')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div style={{ width: '100%' }}>
@@ -102,6 +170,16 @@ export default function Addresses({ app }) {
           fontSize: 13, fontWeight: 600, cursor: 'pointer',
         }}>{a.add}</button>
       </div>
+
+      {loadError && (
+        <div style={{
+          display: 'flex', gap: 10, alignItems: 'flex-start', padding: 16,
+          border: '1px solid #F5C6CB', background: '#F8D7DA', borderRadius: 12,
+          fontSize: 14, color: '#721C24', marginBottom: 16,
+        }}>
+          {loadError}
+        </div>
+      )}
 
       {saved && (
         <div style={{

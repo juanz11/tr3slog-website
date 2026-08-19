@@ -89,4 +89,25 @@ export const api = {
     headers: headers(token),
     body: JSON.stringify(data),
   }).then(handle),
+
+  getAddresses: (token) => fetch(`${API_URL}/addresses`, {
+    headers: headers(token),
+  }).then(handle),
+
+  createAddress: (data, token) => fetch(`${API_URL}/addresses`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  updateAddress: (id, data, token) => fetch(`${API_URL}/addresses/${id}`, {
+    method: 'PUT',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  deleteAddress: (id, token) => fetch(`${API_URL}/addresses/${id}`, {
+    method: 'DELETE',
+    headers: headers(token),
+  }).then(handle),
 }

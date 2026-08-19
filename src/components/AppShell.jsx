@@ -182,7 +182,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
           ) : isPayments ? (
             <Payments app={app} />
           ) : isAddresses ? (
-            <Addresses app={app} />
+            <Addresses app={app} token={token} />
           ) : isSupport ? (
             <Support app={app} />
           ) : isQuotes ? (
