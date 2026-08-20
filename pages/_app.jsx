@@ -24,6 +24,7 @@ export default function App({ Component, pageProps }) {
   const [legal, setLegal] = useState(null)
   const [user, setUser] = useState(null)
   const [authOpen, setAuthOpen] = useState(false)
+  const [authReady, setAuthReady] = useState(false)
   const toastTimer = useRef(null)
 
   useEffect(() => {
@@ -41,22 +42,24 @@ export default function App({ Component, pageProps }) {
   }, [])
 
   useEffect(() => {
-    let token = null
-    try { token = localStorage.getItem('tr3slog-token') } catch (e) {}
-    if (token) {
-      api.me(token).then((data) => {
-        setUser(data)
-      }).catch(() => {
-        try { localStorage.removeItem('tr3slog-token') } catch (e) {}
-      })
+    let active = true
+    const verify = async () => {
+      let token = null
+      try { token = localStorage.getItem('tr3slog-token') } catch (e) {}
+      if (token) {
+        try {
+          const data = await api.me(token)
+          if (active) setUser(data)
+        } catch (e) {
+          try { localStorage.removeItem('tr3slog-token') } catch (e) {}
+        }
+      }
+      if (active) setAuthReady(true)
     }
+    verify()
+    return () => { active = false }
   }, [])
 
-  useEffect(() => {
-    if (router.pathname === '/dashboard' && !user) {
-      setAuthOpen(true)
-    }
-  }, [router.pathname, user])
 
   const t = i18n[lang] || i18n.es
   const page = router.pathname === '/' ? 'home' : router.pathname.replace(/^\//, '')
@@ -121,6 +124,16 @@ export default function App({ Component, pageProps }) {
   const isApp = router.pathname === '/dashboard'
 
   if (isApp) {
+    if (!authReady) {
+      return (
+        <div style={{ width: '100%', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, background: '#EEF4FC' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 22, color: '#001B45', letterSpacing: '-.02em' }}>TR3<span style={{ color: '#D99A00' }}>S</span>LOG</div>
+            <div style={{ marginTop: 16, fontSize: 15, color: '#6C82A6' }}>Cargando…</div>
+          </div>
+        </div>
+      )
+    }
     return (
       <div style={{ width: '100%', overflowX: 'hidden' }}>
         {user ? (
@@ -133,16 +146,14 @@ export default function App({ Component, pageProps }) {
             {...pageProps}
           />
         ) : (
-          authOpen && (
-            <AuthModal
-              t={t}
-              lang={lang}
-              langs={langs}
-              setLang={setLang}
-              onClose={() => router.push('/')}
-              onLogin={handleLogin}
-            />
-          )
+          <AuthModal
+            t={t}
+            lang={lang}
+            langs={langs}
+            setLang={setLang}
+            onClose={() => router.push('/')}
+            onLogin={handleLogin}
+          />
         )}
         {toast && <Toast text={toast} />}
       </div>
