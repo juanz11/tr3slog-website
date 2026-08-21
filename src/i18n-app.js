@@ -21,6 +21,7 @@ export const appI18n = {
       payments: 'Pagos y facturas',
       addresses: 'Direcciones',
       support: 'Soporte',
+      profile: 'Perfil',
     },
     navA: {
       ops: 'Panel de operaciones',
@@ -28,6 +29,7 @@ export const appI18n = {
       drivers: 'Conductores',
       incidents: 'Incidencias',
       quotes: 'Cotizaciones',
+      profile: 'Perfil',
     },
     dash: {
       greeting: 'Buenas tardes',
@@ -285,6 +287,16 @@ export const appI18n = {
       sev: { low: 'Baja', medium: 'Media', high: 'Alta', critical: 'Crítica' },
       statuses: { open: 'Abierta', investigating: 'En investigación', resolved: 'Resuelta', closed: 'Cerrada' },
     },
+    prof: {
+      title: 'Mi perfil',
+      name: 'Nombre',
+      company: 'Empresa',
+      phone: 'Teléfono',
+      email: 'Correo electrónico',
+      save: 'Guardar cambios',
+      saved: 'Perfil actualizado.',
+      error: 'No se pudo actualizar el perfil.',
+    },
     empty: 'Pantalla en construcción.'
   },
   en: {
@@ -309,6 +321,7 @@ export const appI18n = {
       payments: 'Payments & invoices',
       addresses: 'Addresses',
       support: 'Support',
+      profile: 'Profile',
     },
     navA: {
       ops: 'Operations dashboard',
@@ -316,6 +329,7 @@ export const appI18n = {
       drivers: 'Drivers',
       incidents: 'Incidents',
       quotes: 'Quotes',
+      profile: 'Profile',
     },
     dash: {
       greeting: 'Good afternoon',
@@ -573,6 +587,16 @@ export const appI18n = {
       sev: { low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' },
       statuses: { open: 'Open', investigating: 'Investigating', resolved: 'Resolved', closed: 'Closed' },
     },
+    prof: {
+      title: 'My profile',
+      name: 'Name',
+      company: 'Company',
+      phone: 'Phone',
+      email: 'Email',
+      save: 'Save changes',
+      saved: 'Profile updated.',
+      error: 'Could not update profile.',
+    },
     empty: 'Screen under construction.'
   },
   'zh-CN': {
@@ -597,6 +621,7 @@ export const appI18n = {
       payments: '付款与账单',
       addresses: '地址管理',
       support: '客户支持',
+      profile: '个人资料',
     },
     navA: {
       ops: '运营面板',
@@ -604,6 +629,7 @@ export const appI18n = {
       drivers: '司机',
       incidents: '异常事件',
       quotes: '报价',
+      profile: '个人资料',
     },
     dash: {
       greeting: '下午好',
@@ -860,6 +886,16 @@ export const appI18n = {
       cols: ['案件', '运单', '类型', '严重等级', '报告时间', '调查人', '状态', '操作'],
       sev: { low: '低', medium: '中', high: '高', critical: '严重' },
       statuses: { open: '待处理', investigating: '调查中', resolved: '已解决', closed: '已关闭' },
+    },
+    prof: {
+      title: '我的资料',
+      name: '姓名',
+      company: '公司',
+      phone: '电话',
+      email: '电子邮箱',
+      save: '保存更改',
+      saved: '资料已更新。',
+      error: '无法更新资料。',
     },
     empty: '页面建设中。'
   },

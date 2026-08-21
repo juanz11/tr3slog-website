@@ -39,6 +39,12 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  updateUser: (id, data, token) => fetch(`${API_URL}/users/${id}`, {
+    method: 'PUT',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
   logout: (token) => fetch(`${API_URL}/logout`, {
     method: 'POST',
     headers: headers(token),

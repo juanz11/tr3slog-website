@@ -11,6 +11,7 @@ const NAV_ICONS = {
   dispatch: 'M2 16V7h11v9M13 10h4l3 3v3|circle:6,17.5,1.8|circle:17,17.5,1.8',
   drivers: 'circle:12,8,3.6|M5 20a7 7 0 0114 0',
   incidents: 'M12 3l9 16H3zM12 9v5M12 17v.1',
+  profile: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2|M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
 }
 
 export default function NavIcon({ name, color = '#6C82A6' }) {

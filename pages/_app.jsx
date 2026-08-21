@@ -49,7 +49,8 @@ export default function App({ Component, pageProps }) {
       if (token) {
         try {
           const data = await api.me(token)
-          if (active) setUser(data)
+          const u = data?.user || data?.data || data
+          if (active) setUser(u)
         } catch (e) {
           try { localStorage.removeItem('tr3slog-token') } catch (e) {}
         }
@@ -143,6 +144,7 @@ export default function App({ Component, pageProps }) {
             lang={lang}
             langs={langs}
             setLang={setLang}
+            onUserUpdate={(u) => setUser(u)}
             {...pageProps}
           />
         ) : (

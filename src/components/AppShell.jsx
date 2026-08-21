@@ -10,6 +10,7 @@ import Quotes from './Quotes'
 import Dispatch from './Dispatch'
 import Drivers from './Drivers'
 import Incidents from './Incidents'
+import Profile from './Profile'
 import { api } from '../api'
 
 const STATUS_TONE = [
@@ -20,7 +21,7 @@ const STATUS_TONE = [
   { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
 ]
 
-export default function AppShell({ user, lang, langs, setLang, onLogout }) {
+export default function AppShell({ user, lang, langs, setLang, onLogout, onUserUpdate }) {
   const app = appI18n[lang] || appI18n.es
   const isAdmin = user?.role === 'admin' || user?.role === 'Operaciones'
   const nav = isAdmin ? app.navA : app.navC
@@ -72,6 +73,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
   const isDispatch = activeKey === 'dispatch'
   const isDrivers = activeKey === 'drivers'
   const isIncidents = activeKey === 'incidents'
+  const isProfile = activeKey === 'profile'
 
   const Nav = ({ compact = false }) => (
     <nav className="app-nav">
@@ -193,6 +195,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout }) {
             <Drivers app={app} lang={lang} token={token} />
           ) : isIncidents ? (
             <Incidents app={app} lang={lang} token={token} />
+          ) : isProfile ? (
+            <Profile app={app} user={user} token={token} onUserUpdate={onUserUpdate} />
           ) : isDash ? (
             <Dashboard app={app} dashRows={dashRows} pendingQuotes={pendingQuotes} />
           ) : (
