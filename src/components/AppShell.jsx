@@ -23,7 +23,7 @@ const STATUS_TONE = [
 
 export default function AppShell({ user, lang, langs, setLang, onLogout, onUserUpdate }) {
   const app = appI18n[lang] || appI18n.es
-  const isAdmin = user?.role === 'admin' || user?.role === 'Operaciones'
+  const isAdmin = user?.role === 'operations'
   const nav = isAdmin ? app.navA : app.navC
   const navKeys = Object.keys(nav)
   const [activeKey, setActiveKey] = React.useState(navKeys[0])
