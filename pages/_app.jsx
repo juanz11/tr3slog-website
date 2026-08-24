@@ -28,13 +28,41 @@ export default function App({ Component, pageProps }) {
   const toastTimer = useRef(null)
 
   useEffect(() => {
-    let saved = null
-    try { saved = localStorage.getItem(STORE) } catch (e) {}
-    const nl = (navigator.language || '').toLowerCase()
-    const guess = nl.indexOf('zh') === 0 ? 'zh-CN' : (nl.indexOf('en') === 0 ? 'en' : 'es')
-    const l = LANGS.indexOf(saved) >= 0 ? saved : guess
-    document.documentElement.lang = l
-    setLangState(l)
+    const detect = async () => {
+      let saved = null
+      try { saved = localStorage.getItem(STORE) } catch (e) {}
+      if (!saved) {
+        try {
+          const m = document.cookie.match(new RegExp('(^| )' + STORE + '=([^;]+)'))
+          if (m) saved = m[2]
+        } catch (e) {}
+      }
+      if (LANGS.indexOf(saved) >= 0) {
+        document.documentElement.lang = saved
+        setLangState(saved)
+        return
+      }
+
+      let geoLang = ''
+      try {
+        const res = await fetch('https://ipapi.co/json/')
+        if (res.ok) {
+          const data = await res.json()
+          const cc = data?.country_code?.toUpperCase() || ''
+          if (['CN', 'TW', 'HK', 'MO'].includes(cc)) geoLang = 'zh-CN'
+          else if (['ES', 'MX', 'AR', 'CO', 'CL', 'PE', 'VE', 'EC', 'BO', 'PY', 'UY', 'CR', 'PA', 'GT', 'HN', 'SV', 'NI', 'DO', 'PR', 'CU', 'GQ'].includes(cc)) geoLang = 'es'
+          else if (['US', 'GB', 'CA', 'AU', 'NZ', 'IE', 'ZA', 'IN', 'PH'].includes(cc)) geoLang = 'en'
+        }
+      } catch (e) {}
+
+      if (!geoLang) {
+        const nl = (navigator.language || '').toLowerCase()
+        geoLang = nl.indexOf('zh') === 0 ? 'zh-CN' : (nl.indexOf('en') === 0 ? 'en' : 'es')
+      }
+      document.documentElement.lang = geoLang
+      setLangState(geoLang)
+    }
+    detect()
   }, [])
 
   useEffect(() => () => {
@@ -76,6 +104,9 @@ export default function App({ Component, pageProps }) {
 
   const setLang = (code) => {
     try { localStorage.setItem(STORE, code) } catch (e) {}
+    try {
+      document.cookie = `${STORE}=${code}; path=/; max-age=${60 * 60 * 24 * 365}`
+    } catch (e) {}
     document.documentElement.lang = code
     setLangState(code)
     setMenuOpen(false)
