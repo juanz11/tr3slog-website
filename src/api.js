@@ -116,4 +116,10 @@ export const api = {
     method: 'DELETE',
     headers: headers(token),
   }).then(handle),
+
+  contact: (data) => fetch(`${API_URL}/contact`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(data),
+  }).then(handle),
 }

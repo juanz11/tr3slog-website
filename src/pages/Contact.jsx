@@ -1,19 +1,33 @@
 import React from 'react'
+import { api } from '../api'
 import { PageHero } from '../components/Shared'
 
 export default function Contact({ t, go, showToast }) {
   const [cName, setCName] = React.useState('')
   const [cEmail, setCEmail] = React.useState('')
+  const [cSubject, setCSubject] = React.useState('')
+  const [cMessage, setCMessage] = React.useState('')
   const [contError, setContError] = React.useState('')
   const [contSent, setContSent] = React.useState(false)
 
   const err = '#E0A0A0'
 
-  const submit = () => {
-    if (!cName.trim()) { setContError(t.common.required); return }
+  const submit = async () => {
+    if (!cName.trim() || !cEmail.trim() || !cSubject.trim() || !cMessage.trim()) { setContError(t.common.required); return }
     if (!/\S+@\S+\.\S+/.test(cEmail)) { setContError(t.common.invalidEmail); return }
-    setContError(''); setContSent(true)
-    showToast(t.cont.toast)
+    setContError('')
+    try {
+      await api.contact({
+        name: cName,
+        email: cEmail,
+        subject: cSubject,
+        message: cMessage,
+      })
+      setContSent(true)
+      showToast(t.cont.toast)
+    } catch (e) {
+      setContError(e.message || 'Error al enviar')
+    }
   }
 
   const inputStyle = (hasError, value) => ({
@@ -59,11 +73,11 @@ export default function Contact({ t, go, showToast }) {
               </div>
               <div>
                 <label style={labelStyle}>{t.cont.f.subject}</label>
-                <input placeholder={t.cont.f.subjectPh} style={inputStyle(false, true)} />
+                <input value={cSubject} onChange={e => setCSubject(e.target.value)} placeholder={t.cont.f.subjectPh} style={inputStyle(contError, cSubject.trim())} />
               </div>
               <div>
                 <label style={labelStyle}>{t.cont.f.msg}</label>
-                <textarea rows={5} placeholder={t.cont.f.msgPh} style={{ ...inputStyle(false, true), resize: 'vertical' }} />
+                <textarea value={cMessage} onChange={e => setCMessage(e.target.value)} rows={5} placeholder={t.cont.f.msgPh} style={{ ...inputStyle(contError, cMessage.trim()), resize: 'vertical' }} />
               </div>
               {contError && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, fontWeight: 500, color: '#C0392B' }}>
