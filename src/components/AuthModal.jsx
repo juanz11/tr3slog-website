@@ -152,21 +152,6 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin })
               {mode === 'login' ? a.signinSub : (mode === 'signup' ? a.signupSub : a.resetSub)}
             </p>
 
-            {mode !== 'forgot' && (
-              <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-                <button onClick={() => setMode('login')} style={{
-                  flex: 1, padding: 10, border: 'none', borderRadius: 8,
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  background: mode === 'login' ? '#087CF0' : '#E3EBF7', color: mode === 'login' ? '#fff' : '#10233F',
-                }}>{a.signinBtn}</button>
-                <button onClick={() => setMode('signup')} style={{
-                  flex: 1, padding: 10, border: 'none', borderRadius: 8,
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  background: mode === 'signup' ? '#087CF0' : '#E3EBF7', color: mode === 'signup' ? '#fff' : '#10233F',
-                }}>{a.signupBtn}</button>
-              </div>
-            )}
-
             {error && (
               <div style={{ background: '#FDECEC', color: '#B91C1C', padding: '12px 16px', borderRadius: 8, fontSize: 13, marginBottom: 16 }}>
                 {error}
