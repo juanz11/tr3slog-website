@@ -9,6 +9,7 @@ export default function Contact({ t, go, showToast }) {
   const [cMessage, setCMessage] = React.useState('')
   const [contError, setContError] = React.useState('')
   const [contSent, setContSent] = React.useState(false)
+  const [contRef, setContRef] = React.useState('')
 
   const err = '#E0A0A0'
 
@@ -17,13 +18,14 @@ export default function Contact({ t, go, showToast }) {
     if (!/\S+@\S+\.\S+/.test(cEmail)) { setContError(t.common.invalidEmail); return }
     setContError('')
     try {
-      await api.contact({
+      const res = await api.contact({
         name: cName,
         email: cEmail,
         subject: cSubject,
         message: cMessage,
       })
       setContSent(true)
+      setContRef(res.reference || '')
       showToast(t.cont.toast)
     } catch (e) {
       setContError(e.message || 'Error al enviar')
@@ -89,6 +91,12 @@ export default function Contact({ t, go, showToast }) {
                 padding: 16, background: contSent ? '#137A45' : '#087CF0', border: 'none',
                 borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
               }}>{contSent ? t.cont.sent : t.cont.btn}</button>
+              {contSent && contRef && (
+                <div style={{ background: '#EEF4FC', borderRadius: 11, padding: 16, fontSize: 14, color: '#001B45' }}>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>{t.cont.ref}: <span style={{ color: '#087CF0' }}>{contRef}</span></div>
+                  <div style={{ fontSize: 13, color: '#10233F' }}>{t.cont.successNote}</div>
+                </div>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
