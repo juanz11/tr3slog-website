@@ -139,6 +139,10 @@ export const es = {
       details: 'Detalles adicionales',
       detailsPh: 'Describe tu carga, requisitos especiales, etc.',
     },
+    err: {
+      pieces: 'Número de piezas: ingrese solo números.',
+      dims: 'Dimensiones: use el formato L × A × H (ej. 10x20x30 cm).',
+    },
   },
   pick: {
     title: 'Programar recogida',
@@ -427,6 +431,10 @@ export const en = {
       details: 'Additional details',
       detailsPh: 'Describe your cargo, special requirements, etc.',
     },
+    err: {
+      pieces: 'Number of pieces: enter numbers only.',
+      dims: 'Dimensions: use the format L × W × H (e.g. 10x20x30 cm).',
+    },
   },
   pick: {
     title: 'Schedule a pickup',
@@ -714,6 +722,10 @@ export const zhCN = {
       emailPh: 'your@company.com',
       details: '补充详情',
       detailsPh: '描述您的货物、特殊要求等。',
+    },
+    err: {
+      pieces: '件数：请输入数字。',
+      dims: '尺寸：请使用 长 × 宽 × 高 格式（例如 10x20x30 cm）。',
     },
   },
   pick: {

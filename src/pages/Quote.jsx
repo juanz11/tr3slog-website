@@ -25,6 +25,8 @@ export default function Quote({ t, go, showToast, lang }) {
     if (!qDest.trim()) { setQuoteError(t.common.required); return }
     if (!qName.trim()) { setQuoteError(t.common.required); return }
     if (!/\S+@\S+\.\S+/.test(qEmail)) { setQuoteError(t.common.invalidEmail); return }
+    if (qPieces.trim() && !/^\d+$/.test(qPieces.trim())) { setQuoteError(t.quo.err.pieces); return }
+    if (qDims.trim() && !/^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(\s*(cm|in|m))?$/i.test(qDims.trim())) { setQuoteError(t.quo.err.dims); return }
     setQuoteError('')
     setSubmitting(true)
     try {
@@ -138,11 +140,11 @@ export default function Quote({ t, go, showToast, lang }) {
               </div>
               <div>
                 <label style={labelStyle}>{t.quo.f.dims}</label>
-                <input value={qDims} onChange={e => setQDims(e.target.value)} placeholder={t.quo.f.dimsPh} style={inputStyle(false, true)} />
+                <input value={qDims} onChange={e => setQDims(e.target.value)} placeholder={t.quo.f.dimsPh} pattern="\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?" style={inputStyle(false, true)} />
               </div>
               <div>
                 <label style={labelStyle}>{t.quo.f.pieces}</label>
-                <input value={qPieces} onChange={e => setQPieces(e.target.value)} placeholder={t.quo.f.piecesPh} style={inputStyle(false, true)} />
+                <input value={qPieces} onChange={e => setQPieces(e.target.value.replace(/\\D/g, ''))} placeholder={t.quo.f.piecesPh} inputMode="numeric" pattern="\\d*" style={inputStyle(false, true)} />
               </div>
               <div>
                 <label style={labelStyle}>{t.quo.f.name}</label>
@@ -157,7 +159,7 @@ export default function Quote({ t, go, showToast, lang }) {
                 <textarea value={qDetails} onChange={e => setQDetails(e.target.value)} rows={4} placeholder={t.quo.f.detailsPh} style={{ ...inputStyle(false, true), resize: 'vertical' }} />
               </div>
               {quoteError && (
-                <div style={{ gridColumn: 'span 2', display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, fontWeight: 500, color: '#C0392B' }}>
+                <div style={{ gridColumn: 'span 2', display: 'flex', gap: 8, alignItems: 'center', fontSize: 15, fontWeight: 600, color: '#C0392B' }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.2v.1" /></svg>
                   {quoteError}
                 </div>
