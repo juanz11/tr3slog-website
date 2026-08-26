@@ -3,7 +3,7 @@ import { PageHero } from '../components/Shared'
 import CityAutocomplete from '../components/CityAutocomplete'
 import { api } from '../api'
 
-export default function Quote({ t, go, showToast, lang }) {
+export default function Quote({ t, go, showToast, lang, user, onSignIn }) {
   const [quoteType, setQuoteType] = React.useState(0)
   const [qOrigin, setQOrigin] = React.useState('')
   const [qDest, setQDest] = React.useState('')
@@ -23,8 +23,7 @@ export default function Quote({ t, go, showToast, lang }) {
   const submit = async () => {
     if (!qOrigin.trim()) { setQuoteError(t.common.required); return }
     if (!qDest.trim()) { setQuoteError(t.common.required); return }
-    if (!qName.trim()) { setQuoteError(t.common.required); return }
-    if (!/\S+@\S+\.\S+/.test(qEmail)) { setQuoteError(t.common.invalidEmail); return }
+    if (!user) { setQuoteError(t.quo.signIn); return }
     if (qPieces.trim() && !/^\d+$/.test(qPieces.trim())) { setQuoteError(t.quo.err.pieces); return }
     if (qDims.trim() && !/^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(\s*(cm|in|m))?$/i.test(qDims.trim())) { setQuoteError(t.quo.err.dims); return }
     setQuoteError('')
@@ -37,8 +36,8 @@ export default function Quote({ t, go, showToast, lang }) {
         weight: qWeight.trim(),
         dimensions: qDims.trim(),
         pieces: qPieces.trim(),
-        client_name: qName.trim(),
-        client_email: qEmail.trim(),
+        client_name: user ? user.name : qName.trim(),
+        client_email: user ? user.email : qEmail.trim(),
         details: qDetails.trim(),
       })
       setQuoteSent(true)
@@ -146,14 +145,18 @@ export default function Quote({ t, go, showToast, lang }) {
                 <label style={labelStyle}>{t.quo.f.pieces}</label>
                 <input value={qPieces} onChange={e => setQPieces(e.target.value.replace(/\\D/g, ''))} placeholder={t.quo.f.piecesPh} inputMode="numeric" pattern="\\d*" style={inputStyle(false, true)} />
               </div>
-              <div>
-                <label style={labelStyle}>{t.quo.f.name}</label>
-                <input value={qName} onChange={e => setQName(e.target.value)} placeholder={t.quo.f.namePh} style={inputStyle(quoteError, qName.trim())} />
-              </div>
-              <div>
-                <label style={labelStyle}>{t.quo.f.email}</label>
-                <input value={qEmail} onChange={e => setQEmail(e.target.value)} placeholder={t.quo.f.emailPh} style={inputStyle(quoteError, /\S+@\S+\.\S+/.test(qEmail))} />
-              </div>
+              {!user && (
+                <div>
+                  <label style={labelStyle}>{t.quo.f.name}</label>
+                  <input value={qName} onChange={e => setQName(e.target.value)} placeholder={t.quo.f.namePh} style={inputStyle(quoteError, qName.trim())} />
+                </div>
+              )}
+              {!user && (
+                <div>
+                  <label style={labelStyle}>{t.quo.f.email}</label>
+                  <input value={qEmail} onChange={e => setQEmail(e.target.value)} placeholder={t.quo.f.emailPh} style={inputStyle(quoteError, /\S+@\S+\.\S+/.test(qEmail))} />
+                </div>
+              )}
               <div style={{ gridColumn: 'span 2' }}>
                 <label style={labelStyle}>{t.quo.f.details}</label>
                 <textarea value={qDetails} onChange={e => setQDetails(e.target.value)} rows={4} placeholder={t.quo.f.detailsPh} style={{ ...inputStyle(false, true), resize: 'vertical' }} />
@@ -164,11 +167,16 @@ export default function Quote({ t, go, showToast, lang }) {
                   {quoteError}
                 </div>
               )}
-              <button onClick={submit} disabled={submitting} style={{
+              {!user && (
+                <div style={{ gridColumn: 'span 2', fontSize: 14, lineHeight: 1.5, color: '#6C82A6' }}>
+                  {t.quo.signInSub}
+                </div>
+              )}
+              <button onClick={user ? submit : onSignIn} disabled={user && submitting} style={{
                 gridColumn: 'span 2', padding: 16,
                 background: quoteSent ? '#137A45' : '#087CF0', border: 'none',
-                borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1,
-              }}>{submitting ? t.common.loading : (quoteSent ? t.quo.sent : t.quo.btn)}</button>
+                borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: (user && submitting) ? 'not-allowed' : 'pointer', opacity: (user && submitting) ? 0.7 : 1,
+              }}>{user ? (submitting ? t.common.loading : (quoteSent ? t.quo.sent : t.quo.btn)) : t.quo.signInBtn}</button>
               {quoteCode && (
                 <div style={{ gridColumn: 'span 2' }}>
                   <div style={{
@@ -183,7 +191,7 @@ export default function Quote({ t, go, showToast, lang }) {
                       color: '#001B45', letterSpacing: '.04em',
                     }}>{quoteCode}</div>
                     <div style={{ fontSize: 13, lineHeight: 1.5, color: '#6C82A6' }}>
-                      {((t.quo && t.quo.trackSub) ? t.quo.trackSub : 'Te hemos enviado el código a {{email}}.').replace('{{email}}', qEmail)}
+                      {((t.quo && t.quo.trackSub) ? t.quo.trackSub : 'Te hemos enviado el código a {{email}}.').replace('{{email}}', user ? user.email : qEmail)}
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 4 }}>
                       <button onClick={copyToClipboard} style={{

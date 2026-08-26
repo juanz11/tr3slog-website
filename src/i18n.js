@@ -119,6 +119,9 @@ export const es = {
     toast: '¡Cotización enviada! Te contactaremos pronto.',
     sent: '✓ Enviado',
     btn: 'Enviar solicitud',
+    signIn: 'Inicia sesión para cotizar',
+    signInSub: 'Regístrate o inicia sesión para enviar tu solicitud y guardar el historial.',
+    signInBtn: 'Iniciar sesión / Registrarse',
     types: ['Terrestre', 'Marítimo', 'Aéreo', 'Última milla', 'Almacenamiento'],
     f: {
       origin: 'Origen',
@@ -411,6 +414,9 @@ export const en = {
     toast: 'Quote sent! We will contact you soon.',
     sent: '✓ Sent',
     btn: 'Send request',
+    signIn: 'Sign in to request a quote',
+    signInSub: 'Register or sign in to send your request and keep track of your history.',
+    signInBtn: 'Sign in / Register',
     types: ['Ground', 'Sea', 'Air', 'Last mile', 'Warehousing'],
     f: {
       origin: 'Origin',
@@ -703,6 +709,9 @@ export const zhCN = {
     toast: '报价已发送！我们将尽快联系您。',
     sent: '✓ 已发送',
     btn: '发送请求',
+    signIn: '登录后请求报价',
+    signInSub: '注册或登录以发送您的请求并保存记录。',
+    signInBtn: '登录 / 注册',
     types: ['陆运', '海运', '空运', '最后一英里', '仓储'],
     f: {
       origin: '出发地',
