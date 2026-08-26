@@ -1,18 +1,21 @@
 import React from 'react'
+import { useRouter } from 'next/router'
 import { api } from '../api'
 import { PageHero, ImageSlot } from '../components/Shared'
 
 export default function Track({ t }) {
+  const router = useRouter()
   const [code, setCode] = React.useState('')
   const [trackState, setTrackState] = React.useState('empty')
   const [trackError, setTrackError] = React.useState('')
   const [shownCode, setShownCode] = React.useState('TR3-260729-PRSJ-08821')
   const [quote, setQuote] = React.useState(null)
 
-  const onTrack = async () => {
-    const raw = (code || '').trim().toUpperCase()
+  const onTrack = async (forcedCode = '') => {
+    const raw = (forcedCode || code || '').trim().toUpperCase()
     if (!raw) { setTrackError(t.trk.errEmpty); setTrackState('empty'); return }
     if (!/^TR3-\d{6}-[A-Z]{4}-\d{5}$/.test(raw)) { setTrackError(t.trk.errFormat); setTrackState('empty'); return }
+    setCode(raw)
     setTrackError(''); setTrackState('loading')
     try {
       const data = await api.trackQuote(raw)
@@ -24,6 +27,12 @@ export default function Track({ t }) {
       setTrackState('empty')
     }
   }
+
+  React.useEffect(() => {
+    if (router.isReady && router.query.code) {
+      onTrack(String(router.query.code))
+    }
+  }, [router.isReady])
 
   const statusLabels = { pending: 'Pendiente', processing: 'En proceso', approved: 'Aprobada', rejected: 'Rechazada' }
 
