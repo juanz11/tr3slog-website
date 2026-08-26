@@ -1,4 +1,5 @@
 import React from 'react'
+import { MEDIA_URL } from '../api'
 
 export default function Header({ t, langs, setLang, page, go, menuOpen, setMenuOpen, user, onSignIn, onLogout }) {
   const navKeys = ['home', 'services', 'track', 'coverage', 'about', 'contact']
@@ -20,22 +21,17 @@ export default function Header({ t, langs, setLang, page, go, menuOpen, setMenuO
       <div className="section-pad" style={{
         maxWidth: 1240, margin: '0 auto',
         padding: '14px 32px',
-        display: 'flex', alignItems: 'center', gap: 22,
+        display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <button onClick={() => go('home')} style={{
           background: 'none', border: 'none', padding: 0, cursor: 'pointer',
           display: 'flex', alignItems: 'center', flex: '0 0 auto',
         }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 3,
-            fontFamily: 'Montserrat, sans-serif',
-            fontWeight: 800, fontSize: 22, color: '#001B45',
-            letterSpacing: '-.02em',
-          }}>
-            <span>TR3</span>
-            <span style={{ color: '#D99A00' }}>S</span>
-            <span>LOG</span>
-          </div>
+          <img
+            src={`${MEDIA_URL}/tr3slog-01.webp`}
+            alt="TR3SLOG"
+            style={{ height: 50, width: 'auto', objectFit: 'contain' }}
+          />
         </button>
 
         <nav className="desk-only" style={{
