@@ -64,6 +64,14 @@ export default function Dispatch({ app, lang, token }) {
     return matchesFilter && matchesQuery
   })
 
+  const formatTracking = (s) => {
+    if (s.parsed_tracking) {
+      const pt = s.parsed_tracking
+      return `${pt.location_name} · ${pt.package_type_name}`
+    }
+    return s.tracking_number || `#${s.id}`
+  }
+
   const advanceStatus = async (shipment) => {
     const next = NEXT_STATUS[shipment.status]
     if (!next) return
@@ -162,7 +170,14 @@ export default function Dispatch({ app, lang, token }) {
               const next = NEXT_STATUS[s.status]
               return (
                 <div key={s.id} className="app-table-row" style={{ gridTemplateColumns: '1fr 1.4fr 1fr .9fr .9fr .9fr 1.2fr', alignItems: 'center' }}>
-                  <span className="app-table-id">{s.tracking_number || `#${s.id}`}</span>
+                  <span className="app-table-id" title={s.tracking_number}>
+                    {s.tracking_number || `#${s.id}`}
+                    {s.parsed_tracking && (
+                      <span style={{ display: 'block', fontSize: 11, color: '#6C82A6', fontWeight: 400 }}>
+                        {formatTracking(s)}
+                      </span>
+                    )}
+                  </span>
                   <span className="app-table-text" title={`${s.origin || ''} → ${s.destination || ''}`}>
                     {s.origin || '—'} → {s.destination || '—'}
                   </span>

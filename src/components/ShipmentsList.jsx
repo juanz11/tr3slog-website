@@ -18,9 +18,11 @@ const statusIndex = (status, statuses) => {
 const buildRow = (sh, statuses) => ({
   id: sh.tracking_number || sh.id || sh.guide || '',
   route: sh.route || `${sh.origin || ''} → ${sh.destination || ''}`,
-  service: sh.service || '',
+  service: sh.service || sh.service_type || '',
   status: statusIndex(sh.status, statuses),
   eta: sh.eta || sh.estimated_delivery || '—',
+  parsed_tracking: sh.parsed_tracking || null,
+  tracking_url: sh.tracking_url || null,
 })
 
 export default function ShipmentsList({ app, token }) {
