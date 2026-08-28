@@ -111,7 +111,7 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
         </div>
       )}
 
-      {step === 4 && error && (
+      {error && (
         <div style={{
           marginTop: 20, padding: 14, borderRadius: 12,
           background: '#FDECEC', color: '#B91C1C', fontSize: 14,
