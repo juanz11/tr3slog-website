@@ -287,8 +287,64 @@ export const es = {
       b: 'TR3SLOG recopila datos de envío, contacto y ubicación exclusivamente para prestar servicios logísticos. No compartimos información con terceros sin consentimiento. Puedes solicitar acceso, rectificación o eliminación de tus datos en cualquier momento.',
     },
     terms: {
-      t: 'Términos de servicio',
-      b: 'Al utilizar TR3SLOG aceptas nuestras condiciones de transporte, responsabilidad limitada sobre la carga y tiempos de entrega estimados. Las reclamaciones deben presentarse dentro de los 30 días posteriores a la entrega.',
+      t: 'Términos y Condiciones de Servicio',
+      b: `TR3SLOG · República Dominicana, Puerto Rico, Estados Unidos y Venezuela
+
+Última actualización: 27 de agosto de 2026
+
+Estos Términos y Condiciones ("Términos") rigen el uso de los servicios de logística, transporte, almacenaje y plataforma digital de TR3SLOG ("la Compañía", "nosotros") por parte de cualquier persona o empresa ("el Cliente", "usted") que cree una cuenta, solicite un envío o utilice nuestras aplicaciones web y móviles. Al registrarse o usar nuestros servicios, usted acepta estos Términos en su totalidad.
+
+1. Territorio y cobertura
+TR3SLOG opera actualmente en República Dominicana, Puerto Rico y Estados Unidos. La operación en Venezuela se encuentra en fase de preparación y no está disponible al público hasta su activación, la cual requiere aprobación ejecutiva expresa de la Compañía.
+
+La disponibilidad de servicios, tarifas, monedas (USD, DOP, VES, EUR, CNY según corresponda) y tiempos de tránsito varía según el país de origen y destino, y está sujeta a las regulaciones aduaneras y de transporte de cada jurisdicción.
+
+2. Cuentas y acceso
+Existen distintos tipos de cuenta: cliente individual, cuenta empresarial, conductor y personal de operaciones. Cada cuenta se verifica por correo electrónico y teléfono antes de activarse. Las cuentas empresariales y de conductor requieren, además, revisión y aprobación por parte del equipo de Operaciones de TR3SLOG antes de obtener acceso completo.
+
+Usted es responsable de mantener la confidencialidad de sus credenciales de acceso y de toda actividad realizada bajo su cuenta. Las cuentas empresariales pueden invitar colegas con roles específicos; cada invitado acepta y opera únicamente dentro del rol asignado.
+
+3. Envíos permitidos y prohibidos
+El Cliente declara que el contenido de cada envío es lícito y cumple con las leyes aduaneras y de transporte de los países de origen, tránsito y destino. Están prohibidos, entre otros: materiales peligrosos, armas, sustancias controladas, mercancía falsificada y cualquier artículo cuya importación o exportación esté restringida por ley.
+
+TR3SLOG se reserva el derecho de inspeccionar, retener o rechazar cualquier envío que incumpla esta sección, sin responsabilidad por los costos derivados de dicho rechazo.
+
+4. Tarifas, pagos y facturación
+Las tarifas se calculan según peso, dimensiones, ruta y modalidad de servicio, y se muestran en la moneda seleccionada al momento de la cotización. El cobro se procesa según el método de pago registrado por el Cliente.
+
+Los reembolsos y créditos por servicio no prestado o incidencias comprobadas requieren aprobación previa del equipo correspondiente; no se emiten de forma automática.
+
+5. Responsabilidad y reclamaciones
+TR3SLOG actúa con el cuidado razonable de un operador logístico profesional. Nuestra responsabilidad por pérdida, daño o retraso de un envío se limita al valor declarado por el Cliente al momento de la creación del envío, salvo que la ley aplicable disponga lo contrario.
+
+Toda reclamación debe presentarse a través de los canales de soporte de la plataforma dentro de los plazos indicados en la confirmación de entrega. Las diferencias de inventario o contenido detectadas en almacén bloquean el despacho hasta su resolución.
+
+6. Rastreo y privacidad
+El rastreo de envíos y vehículos ocurre únicamente cuando existe una ruta y un turno activos; el Cliente puede ver el estado de su envío, pero en ningún caso puede ver la ubicación de la flota. El uso de datos de ubicación se rige por nuestras políticas de privacidad, retención de datos y control de acceso.
+
+La geocerca de un punto de entrega es un dato de apoyo operativo y no constituye, por sí sola, el cierre de una entrega.
+
+7. Servicios de terceros no implementados
+Ciertas integraciones mostradas en la plataforma (marketplaces como Amazon, eBay, Etsy o Walmart, ciertas etiquetas de transportista, autenticación multifactor y servicios de flota en tiempo real de terceros) se encuentran en estado de planificación y no están activas. Ningún dato o función no implementada se presenta como disponible en producción.
+
+8. Ley aplicable por jurisdicción
+República Dominicana: estos Términos se interpretan conforme a las leyes de la República Dominicana para envíos originados o entregados en su territorio.
+
+Puerto Rico: para envíos dentro de Puerto Rico se aplican, además, las leyes federales de los Estados Unidos que correspondan a servicios de transporte y comercio interestatal.
+
+Estados Unidos: para envíos originados o entregados en territorio continental de EE. UU., rigen las leyes federales aplicables y las del estado de Florida, sede de nuestras oficinas principales.
+
+Venezuela: mientras la operación permanezca en preparación, ninguna disposición de estos Términos habilita la prestación de servicios en dicho territorio; su activación futura estará sujeta a un anexo específico aprobado por la Compañía.
+
+9. Resolución de disputas
+Cualquier controversia se intentará resolver primero por vía directa con nuestro equipo de soporte. De no llegar a un acuerdo, la disputa se someterá a los tribunales competentes de la jurisdicción que corresponda al país donde se originó el envío o se prestó el servicio, según la sección 8.
+
+10. Modificaciones a estos Términos
+TR3SLOG puede actualizar estos Términos periódicamente. Notificaremos cambios sustanciales a través de la plataforma o por correo electrónico con antelación razonable. El uso continuado del servicio después de una actualización implica su aceptación.
+
+11. Contacto
+TR3SLOG · 1234 Logistics Way, Miami, FL 33101, USA
+info@tr3slog.com · +1 786 123 4567 · WhatsApp Business`,
     },
   },
 }
@@ -582,8 +638,64 @@ export const en = {
       b: 'TR3SLOG collects shipping, contact and location data solely to provide logistics services. We do not share information with third parties without consent. You can request access, correction or deletion of your data at any time.',
     },
     terms: {
-      t: 'Terms of service',
-      b: 'By using TR3SLOG you accept our transportation conditions, limited liability for cargo and estimated delivery times. Claims must be filed within 30 days after delivery.',
+      t: 'Terms and Conditions of Service',
+      b: `TR3SLOG · Dominican Republic, Puerto Rico, United States and Venezuela
+
+Last updated: August 27, 2026
+
+These Terms and Conditions ("Terms") govern the use of logistics, transportation, warehousing and digital platform services of TR3SLOG ("the Company", "we") by any person or company ("the Client", "you") who creates an account, requests a shipment or uses our web and mobile applications. By registering or using our services, you accept these Terms in their entirety.
+
+1. Territory and coverage
+TR3SLOG currently operates in the Dominican Republic, Puerto Rico and the United States. Operations in Venezuela are in preparation phase and are not available to the public until activation, which requires express executive approval from the Company.
+
+The availability of services, rates, currencies (USD, DOP, VES, EUR, CNY as applicable) and transit times varies according to the country of origin and destination, and is subject to customs and transportation regulations of each jurisdiction.
+
+2. Accounts and access
+There are different types of accounts: individual client, business account, driver and operations personnel. Each account is verified by email and phone before activation. Business and driver accounts also require review and approval by TR3SLOG Operations team before obtaining full access.
+
+You are responsible for maintaining the confidentiality of your access credentials and for all activity performed under your account. Business accounts may invite colleagues with specific roles; each invitee accepts and operates only within the assigned role.
+
+3. Permitted and prohibited shipments
+The Client declares that the content of each shipment is lawful and complies with customs and transportation laws of the countries of origin, transit and destination. Prohibited items include, among others: hazardous materials, weapons, controlled substances, counterfeit goods and any article whose import or export is restricted by law.
+
+TR3SLOG reserves the right to inspect, retain or reject any shipment that does not comply with this section, without liability for costs derived from such rejection.
+
+4. Rates, payments and billing
+Rates are calculated based on weight, dimensions, route and service modality, and are displayed in the currency selected at the time of quotation. Charges are processed according to the payment method registered by the Client.
+
+Refunds and credits for services not provided or proven incidents require prior approval from the corresponding team; they are not issued automatically.
+
+5. Liability and claims
+TR3SLOG acts with the reasonable care of a professional logistics operator. Our liability for loss, damage or delay of a shipment is limited to the declared value by the Client at the time of shipment creation, unless applicable law provides otherwise.
+
+All claims must be submitted through the platform support channels within the deadlines indicated in the delivery confirmation. Inventory or content differences detected in the warehouse block dispatch until resolution.
+
+6. Tracking and privacy
+Tracking of shipments and vehicles occurs only when there is an active route and shift; the Client can see the status of their shipment, but in no case can see the location of the fleet. The use of location data is governed by our privacy policies, data retention and access control.
+
+The geofence of a delivery point is operational support data and does not, by itself, constitute the closure of a delivery.
+
+7. Unimplemented third-party services
+Certain integrations shown on the platform (marketplaces such as Amazon, eBay, Etsy or Walmart, certain carrier labels, multi-factor authentication and third-party real-time fleet services) are in planning state and are not active. No unimplemented data or function is presented as available in production.
+
+8. Applicable law by jurisdiction
+Dominican Republic: these Terms are interpreted in accordance with the laws of the Dominican Republic for shipments originated or delivered in its territory.
+
+Puerto Rico: for shipments within Puerto Rico, federal laws of the United States applicable to transportation and interstate commerce services also apply.
+
+United States: for shipments originated or delivered in the continental US, applicable federal laws and those of the state of Florida, seat of our main offices, govern.
+
+Venezuela: while operations remain in preparation, no provision of these Terms enables the provision of services in said territory; its future activation will be subject to a specific addendum approved by the Company.
+
+9. Dispute resolution
+Any dispute will first be attempted to be resolved directly with our support team. If no agreement is reached, the dispute will be submitted to the competent courts of the jurisdiction corresponding to the country where the shipment originated or the service was provided, according to section 8.
+
+10. Modifications to these Terms
+TR3SLOG may update these Terms periodically. We will notify substantial changes through the platform or by email with reasonable notice. Continued use of the service after an update implies acceptance.
+
+11. Contact
+TR3SLOG · 1234 Logistics Way, Miami, FL 33101, USA
+info@tr3slog.com · +1 786 123 4567 · WhatsApp Business`,
     },
   },
 }
@@ -877,8 +989,64 @@ export const zhCN = {
       b: 'TR3SLOG仅出于提供物流服务目的收集运输、联系和位置数据。未经同意，我们不与第三方共享信息。您可随时请求访问、更正或删除您的数据。',
     },
     terms: {
-      t: '服务条款',
-      b: '使用TR3SLOG即表示您接受我们的运输条件、货物有限责任和预计送达时间。索赔须在送达后30天内提出。',
+      t: '服务条款与条件',
+      b: `TR3SLOG · 多米尼加共和国、波多黎各、美国和委内瑞拉
+
+最后更新：2026年8月27日
+
+本条款与条件（"条款"）管辖TR3SLOG（"公司"、"我们"）的物流、运输、仓储和数字平台服务，适用于任何创建账户、请求运输或使用我们网页及移动应用程序的个人或公司（"客户"、"您"）。通过注册或使用我们的服务，您完全接受这些条款。
+
+1. 领土和覆盖范围
+TR3SLOG目前在多米尼加共和国、波多黎各和美国运营。委内瑞拉的运营处于筹备阶段，在公司高管明确批准激活之前，不对公众开放。
+
+服务可用性、费率、货币（根据情况为USD、DOP、VES、EUR、CNY）和运输时间根据始发地和目的地国家而异，并受每个司法管辖区的海关和运输法规约束。
+
+2. 账户和访问
+存在不同类型的账户：个人客户、企业账户、司机和运营人员。每个账户在激活前需通过电子邮件和电话验证。企业和司机账户还需要TR3SLOG运营团队的审查和批准才能获得完全访问权限。
+
+您有责任维护访问凭证的机密性，并对您账户下执行的所有活动负责。企业账户可以邀请具有特定角色的同事；每位受邀者仅接受并在指定角色内操作。
+
+3. 允许和禁止的运输
+客户声明每批货物的内容合法，并符合始发地、过境地和目的地国家的海关和运输法律。禁止物品包括但不限于：危险材料、武器、受控物质、假冒商品以及任何法律限制进出口的物品。
+
+TR3SLOG保留检查、扣留或拒绝任何不符合本节运输的权利，不对由此类拒绝产生的费用承担责任。
+
+4. 费率、付款和账单
+费率根据重量、尺寸、路线和服务模式计算，并在报价时以所选货币显示。费用根据客户注册的付款方式处理。
+
+对于未提供服务或已证实的事件，退款和信用需要相应团队的事先批准；不会自动发放。
+
+5. 责任和索赔
+TR3SLOG以专业物流运营商的合理谨慎行事。我们对货物丢失、损坏或延误的责任仅限于客户在创建运输时声明的价值，除非适用法律另有规定。
+
+所有索赔必须通过平台支持渠道在送达确认中指明的期限内提交。仓库中检测到的库存或内容差异会在解决前阻止发货。
+
+6. 追踪和隐私
+仅在存在有效路线和班次时才进行货物和车辆的追踪；客户可以查看其货物的状态，但绝不能查看车队的位置。位置数据的使用受我们的隐私政策、数据保留和访问控制管辖。
+
+配送点的地理围栏是运营支持数据，本身不构成配送的完成。
+
+7. 未实施的第三方服务
+平台上显示的某些集成（如Amazon、eBay、Etsy或Walmart等市场、某些承运商标签、多因素认证和第三方实时车队服务）处于规划状态，尚未激活。任何未实施的数据或功能都不会在生产环境中呈现为可用。
+
+8. 各司法管辖区适用法律
+多米尼加共和国：这些条款根据多米尼加共和国法律解释，适用于在其境内始发或送达的运输。
+
+波多黎各：对于波多黎各境内的运输，还适用于美国运输和州际商业服务的联邦法律。
+
+美国：对于在美国大陆始发或送达的运输，适用联邦法律和佛罗里达州法律（我们主要办事处的所在地）。
+
+委内瑞拉：在运营仍处于筹备期间，本条款的任何规定均不授权在该领土提供服务；其未来激活将受公司批准的特定附录约束。
+
+9. 争议解决
+任何争议将首先尝试通过我们的支持团队直接解决。如果未达成协议，争议将提交至根据第8节运输始发或提供服务国家相应司法管辖区的主管法院。
+
+10. 对这些条款的修改
+TR3SLOG可以定期更新这些条款。我们将通过平台或电子邮件提前通知重大变更。更新后继续使用服务即表示接受。
+
+11. 联系方式
+TR3SLOG · 1234 Logistics Way, Miami, FL 33101, USA
+info@tr3slog.com · +1 786 123 4567 · WhatsApp Business`,
     },
   },
 }

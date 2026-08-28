@@ -2,7 +2,7 @@ import React from 'react'
 import { api, MEDIA_URL } from '../api'
 import { authI18n } from '../i18n-auth'
 
-export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin }) {
+export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, setLegal }) {
   const a = authI18n[lang] || authI18n.es
   const [mode, setMode] = React.useState('login')
   const [name, setName] = React.useState('')
@@ -243,7 +243,24 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin })
                   {mode === 'signup' && (
                     <button type="button" onClick={() => setTerms(!terms)} className="auth-check">
                       <span className={`auth-check-box ${terms ? 'on' : ''}`}>{terms ? '✓' : ''}</span>
-                      <span className="auth-check-label">{a.terms}</span>
+                      <span className="auth-check-label">
+                        Acepto los{' '}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setLegal('terms'); }}
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#087CF0', fontSize: 14, fontWeight: 600 }}
+                        >
+                          {a.termsLink}
+                        </button>
+                        {' '}y la{' '}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setLegal('privacy'); }}
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#087CF0', fontSize: 14, fontWeight: 600 }}
+                        >
+                          {a.privacyLink}
+                        </button>
+                      </span>
                     </button>
                   )}
 
