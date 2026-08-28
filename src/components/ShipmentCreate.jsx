@@ -1,8 +1,8 @@
 import React from 'react'
 import { api } from '../api'
 
-const ADDRESS_KEYS = ['name', 'company', 'address', 'city', 'zip', 'phone', 'email']
-const ADDRESS_REQUIRED = ['name', 'address', 'city', 'zip', 'phone']
+const ADDRESS_KEYS = ['name', 'company', 'address', 'city', 'country', 'zip', 'phone', 'email']
+const ADDRESS_REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'phone', 'email']
 const ADDRESS_SPAN2 = ['address']
 
 const CITIES = [
@@ -11,8 +11,53 @@ const CITIES = [
   'Maracaibo', 'Montevideo', 'Punta del Este', 'Paysandú', 'Salto', 'Colonia',
 ]
 
+const COUNTRY_NAMES = {
+  PR: 'Puerto Rico',
+  DO: 'República Dominicana',
+  US: 'Estados Unidos',
+  JM: 'Jamaica',
+  KR: 'Corea del Sur',
+  JP: 'Japón',
+  CN: 'China',
+  VE: 'Venezuela',
+  UY: 'Uruguay',
+}
+
+const CITY_COUNTRY = {
+  'San Juan': 'PR',
+  'Santo Domingo': 'DO',
+  'Punta Cana': 'DO',
+  'Miami': 'US',
+  'New York': 'US',
+  'Atlanta': 'US',
+  'Montego Bay': 'JM',
+  'Seoul': 'KR',
+  'Tokyo': 'JP',
+  'Shanghai': 'CN',
+  'Caracas': 'VE',
+  'Valencia': 'VE',
+  'Maracaibo': 'VE',
+  'Montevideo': 'UY',
+  'Punta del Este': 'UY',
+  'Paysandú': 'UY',
+  'Salto': 'UY',
+  'Colonia': 'UY',
+}
+
+const PHONE_FORMATS = {
+  PR: { code: '+1', example: '+1 787 555 1234', pattern: /^\+?1\s?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
+  DO: { code: '+1', example: '+1 809 555 1234', pattern: /^\+?1\s?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
+  US: { code: '+1', example: '+1 305 555 1234', pattern: /^\+?1\s?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
+  JM: { code: '+1', example: '+1 876 555 1234', pattern: /^\+?1\s?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
+  KR: { code: '+82', example: '+82 10-1234-5678', pattern: /^\+82\s?\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{4}$/ },
+  JP: { code: '+81', example: '+81 90-1234-5678', pattern: /^\+81\s?\d{1,2}[-.\s]?\d{4}[-.\s]?\d{4}$/ },
+  CN: { code: '+86', example: '+86 138 0013 8000', pattern: /^\+86\s?\d{11}$/ },
+  VE: { code: '+58', example: '+58 412 123 4567', pattern: /^\+58\s?\d{3}\s?\d{7}$/ },
+  UY: { code: '+598', example: '+598 91 234 567', pattern: /^\+598\s?\d{2,3}\s?\d{3}\s?\d{3}$/ },
+}
+
 const emptyAddress = () => ({
-  name: '', company: '', address: '', city: '', zip: '', phone: '', email: '',
+  name: '', company: '', address: '', city: '', country: '', zip: '', phone: '', email: '',
 })
 
 const emptyPackage = () => ({
@@ -48,7 +93,45 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
                 {config.required.includes(key) ? c.required : c.optional}
               </span>
             </span>
-            {config.options && config.options[key] ? (
+            {key === 'phone' && config.countryOptions ? (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+                <select
+                  value={section ? data[section].country : ''}
+                  onChange={(e) => onChange('country', e.target.value)}
+                  style={{
+                    flex: '0 0 90px', padding: '14px 12px',
+                    border: '1.5px solid #DCE6F5', borderRadius: 11,
+                    background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                    outline: 'none', cursor: 'pointer', fontSize: 13,
+                  }}
+                >
+                  <option value="">{c.fields.country}</option>
+                  {config.countryOptions.map((opt) => (
+                    <option key={opt.code} value={opt.code}>
+                      {opt.flag} {opt.short}
+                    </option>
+                  ))}
+                </select>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <input
+                    type="text"
+                    inputMode="tel"
+                    placeholder={config.phoneExample}
+                    value={section ? data[section].phone : ''}
+                    onChange={(e) => onChange('phone', e.target.value)}
+                    style={{
+                      flex: 1, padding: '14px 15px',
+                      border: '1.5px solid #DCE6F5', borderRadius: 11,
+                      background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                      outline: 'none',
+                    }}
+                  />
+                  <span style={{ fontSize: 12, color: '#8B9DBA', whiteSpace: 'nowrap' }}>
+                    Ej: {config.phoneExample}
+                  </span>
+                </div>
+              </div>
+            ) : config.options && config.options[key] ? (
               <select
                 value={section ? data[section][key] : ''}
                 onChange={(e) => onChange(key, e.target.value)}
@@ -67,20 +150,20 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
             ) : (
               <>
                 <input
-                  type="text"
-                  list={config.datalist && config.datalist[key] ? `${key}-suggestions` : undefined}
-                  inputMode={key === 'pieces' ? 'numeric' : 'text'}
-                  pattern={key === 'pieces' ? '\\d*' : key === 'dimensions' ? '\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?' : undefined}
-                  placeholder={config.placeholders[key]}
-                  value={section ? data[section][key] : ''}
-                  onChange={(e) => onChange(key, key === 'pieces' ? e.target.value.replace(/\\D/g, '') : e.target.value)}
-                  style={{
-                    width: '100%', padding: '14px 15px',
-                    border: '1.5px solid #DCE6F5', borderRadius: 11,
-                    background: '#EEF4FC', font: 'inherit', color: '#001B45',
-                    outline: 'none',
-                  }}
-                />
+                    type="text"
+                    list={config.datalist && config.datalist[key] ? `${key}-suggestions` : undefined}
+                    inputMode={key === 'pieces' ? 'numeric' : 'text'}
+                    pattern={key === 'pieces' ? '\\d*' : key === 'dimensions' ? '\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?' : undefined}
+                    placeholder={config.placeholders[key]}
+                    value={section ? data[section][key] : ''}
+                    onChange={(e) => onChange(key, key === 'pieces' ? e.target.value.replace(/\\D/g, '') : e.target.value)}
+                    style={{
+                      width: '100%', padding: '14px 15px',
+                      border: '1.5px solid #DCE6F5', borderRadius: 11,
+                      background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                      outline: 'none',
+                    }}
+                  />
                 {config.datalist && config.datalist[key] && (
                   <datalist id={`${key}-suggestions`}>
                     {config.datalist[key].map((opt) => (
@@ -172,7 +255,13 @@ export default function ShipmentCreate({ app, token }) {
   const sectionMap = { 0: 'sender', 1: 'recipient', 2: 'package', 3: 'service', 4: 'payment' }
   const section = sectionMap[step]
 
+  const getPhoneExample = (section) => {
+    const country = section ? data[section].country : ''
+    return country && PHONE_FORMATS[country] ? PHONE_FORMATS[country].example : '+1 000 000 0000'
+  }
+
   const getConfig = () => {
+    const phoneExample = getPhoneExample(section)
     if (step === 2) {
       return {
         keys: Object.keys(c.package.fields),
@@ -205,7 +294,7 @@ export default function ShipmentCreate({ app, token }) {
       }
     }
     return {
-      keys: ADDRESS_KEYS,
+      keys: ADDRESS_KEYS.filter((k) => k !== 'country'),
       fields: c.fields,
       placeholders: c.placeholders,
       required: ADDRESS_REQUIRED,
@@ -214,6 +303,10 @@ export default function ShipmentCreate({ app, token }) {
         city: CITIES,
         address: CITIES,
       },
+      countryOptions: Object.keys(PHONE_FORMATS).map((k) => ({
+        code: k, short: k, flag: PHONE_FORMATS[k].code,
+      })),
+      phoneExample,
     }
   }
 
@@ -223,31 +316,59 @@ export default function ShipmentCreate({ app, token }) {
     setStep((s) => Math.max(0, s - 1))
   }, [])
 
+  const validateAddress = (section) => {
+    const addr = data[section]
+    const country = addr.country
+    if (!addr.email.trim() || !/^\S+@\S+\.\S+$/.test(addr.email.trim())) {
+      return c.errEmail
+    }
+    if (!addr.phone.trim()) {
+      return c.errPhone
+    }
+    if (country && PHONE_FORMATS[country] && !PHONE_FORMATS[country].pattern.test(addr.phone.trim())) {
+      return c.errPhoneFmt.replace('{country}', COUNTRY_NAMES[country]).replace('{example}', PHONE_FORMATS[country].example)
+    }
+    return ''
+  }
+
   const validatePackage = () => {
     const { pieces, dimensions } = data.package
-    if (!/^\\d+$/.test(String(pieces).trim())) {
-      return 'El número de piezas debe ser un número entero.'
+    if (!/^\d+$/.test(String(pieces).trim())) {
+      return c.errPieces
     }
-    if (String(dimensions).trim() && !/^\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?$/i.test(String(dimensions).trim())) {
-      return 'Las dimensiones deben tener el formato L x A x H (ej. 10x20x30 cm).'
+    if (String(dimensions).trim() && !/^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(\s*(cm|in|m))?$/i.test(String(dimensions).trim())) {
+      return c.errDimensions
     }
     return ''
   }
 
   const onNext = React.useCallback(() => {
+    if (section === 'sender' || section === 'recipient') {
+      const err = validateAddress(section)
+      if (err) { setError(err); return }
+    }
     if (section === 'package') {
       const err = validatePackage()
       if (err) { setError(err); return }
     }
     setStep((s) => Math.min(s + 1, c.steps.length - 1))
-  }, [c.steps.length, data.package, section])
+  }, [c, data, section])
+
+  const validateAll = () => {
+    const sections = ['sender', 'recipient']
+    for (const sec of sections) {
+      const err = validateAddress(sec)
+      if (err) return err
+    }
+    return validatePackage()
+  }
 
   const onFinish = React.useCallback(async () => {
     if (!token) {
       setError('Inicie sesión para crear un envío.')
       return
     }
-    const err = validatePackage()
+    const err = validateAll()
     if (err) {
       setError(err)
       return
