@@ -21,6 +21,13 @@ const STATUS_TONE = [
   { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
 ]
 
+const STATUS_COLORS = {
+  pending: { bg: 'rgba(217,154,0,.12)', fg: '#8A6300' },
+  processing: { bg: 'rgba(8,124,240,.1)', fg: '#0768C9' },
+  approved: { bg: 'rgba(19,122,69,.12)', fg: '#0F5F36' },
+  rejected: { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
+}
+
 export default function AppShell({ user, lang, langs, setLang, onLogout, onUserUpdate }) {
   const app = appI18n[lang] || appI18n.es
   const isAdmin = user?.role === 'operations' || user?.roles?.some((r) => r.name === 'operations')
@@ -55,13 +62,14 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const accountName = user?.name || user?.email || 'Usuario'
   const accountRole = isAdmin ? app.shell.admin : app.shell.portal
 
-  const dashRows = [
-    { id: 'TR3-260729-PRSJ-08821', route: 'San Juan → Miami', statusIdx: 1, eta: '12 Ago' },
-    { id: 'TR3-260729-EUAL-08744', route: 'Miami → Madrid', statusIdx: 2, eta: '13 Ago' },
-    { id: 'TR3-260729-RDPC-08790', route: 'Santo Domingo → San Juan', statusIdx: 3, eta: '14 Ago' },
-    { id: 'TR3-260729-VZLM-08803', route: 'Miami → Valencia', statusIdx: 4, eta: '16 Ago' },
-    { id: 'TR3-260729-COCO-08912', route: 'Miami → Bogotá', statusIdx: 0, eta: 'Pendiente' },
-  ]
+  const [shipments, setShipments] = React.useState([])
+
+  React.useEffect(() => {
+    if (!token) return
+    api.getShipments(token)
+      .then((data) => setShipments(Array.isArray(data) ? data : data.data || []))
+      .catch(() => setShipments([]))
+  }, [token])
 
   const isDash = activeKey === navKeys[0]
   const isCreate = activeKey === 'create'
@@ -154,11 +162,11 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             <input
               value={hquery}
               onChange={(e) => setHquery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { /* placeholder */ } }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { setActiveKey('shipments') } }}
               placeholder={app.shell.searchPh}
               aria-label={app.shell.searchHint}
             />
-            <button onClick={() => {}} className="app-search-btn">{app.shell.searchHint}</button>
+            <button onClick={() => { setActiveKey('shipments') }} className="app-search-btn">{app.shell.searchHint}</button>
           </div>
           <button onClick={() => setActiveKey('create')} className="app-primary">{app.dash.newShipment}</button>
           <button onClick={() => setMobileOpen(true)} className="app-mobnav" aria-label="Menu">
@@ -180,13 +188,13 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           {isCreate ? (
             <ShipmentCreate app={app} token={token} />
           ) : isShipments ? (
-            <ShipmentsList app={app} token={token} />
+            <ShipmentsList app={app} token={token} query={hquery} onQueryChange={setHquery} />
           ) : isPayments ? (
             <Payments app={app} />
           ) : isAddresses ? (
             <Addresses app={app} token={token} />
           ) : isSupport ? (
-            <Support app={app} />
+            <Support app={app} token={token} />
           ) : isQuotes ? (
             <Quotes app={app} lang={lang} token={token} />
           ) : isDispatch ? (
@@ -198,7 +206,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isProfile ? (
             <Profile app={app} user={user} token={token} onUserUpdate={onUserUpdate} />
           ) : isDash ? (
-            <Dashboard app={app} dashRows={dashRows} pendingQuotes={pendingQuotes} />
+            <Dashboard app={app} lang={lang} token={token} shipments={shipments} onGo={setActiveKey} pendingQuotes={pendingQuotes} hquery={hquery} />
           ) : (
             <div className="app-empty">{app.empty}</div>
           )}
@@ -208,9 +216,65 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   )
 }
 
-function Dashboard({ app, dashRows, pendingQuotes }) {
+function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery }) {
   const d = app.dash
-  const kpis = d.kpis.map((k, i) => i === 3 ? { ...k, v: String(pendingQuotes) } : k)
+  const q = app.quotes
+  const [quotes, setQuotes] = React.useState([])
+
+  React.useEffect(() => {
+    if (!token) return
+    api.getQuotes(token)
+      .then((data) => setQuotes(Array.isArray(data) ? data : data.data || []))
+      .catch(() => setQuotes([]))
+  }, [token])
+
+  const statusToIdx = (status) => {
+    const s = String(status || '').toLowerCase()
+    if (s === 'in_transit' || s === 'en tránsito' || s === 'en transito') return 1
+    if (s === 'in_route' || s === 'en ruta de entrega') return 2
+    if (s === 'delivered' || s === 'entregado' || s === 'entregada') return 3
+    if (s === 'pending' || s === 'pendiente') return 4
+    return 0
+  }
+
+  const formatDate = (date) => {
+    if (!date) return '—'
+    const d = new Date(date)
+    if (isNaN(d.getTime())) return '—'
+    return d.toLocaleDateString(lang === 'es' ? 'es-ES' : lang === 'zh' ? 'zh-CN' : 'en-US', { day: 'numeric', month: 'short' })
+  }
+
+  const filteredRows = React.useMemo(() => {
+    const qry = (hquery || '').trim().toLowerCase()
+    const rows = shipments.map((sh) => ({
+      id: sh.tracking_number || `#${sh.id}`,
+      route: `${sh.origin || '—'} → ${sh.destination || '—'}`,
+      statusIdx: statusToIdx(sh.status),
+      eta: sh.eta || sh.estimated_delivery || formatDate(sh.updated_at || sh.created_at),
+      raw: sh,
+    }))
+    if (!qry) return rows
+    return rows.filter((r) =>
+      (r.id || '').toLowerCase().includes(qry) ||
+      (r.route || '').toLowerCase().includes(qry)
+    )
+  }, [hquery, shipments, lang])
+
+  const statusColor = (status) => STATUS_COLORS[status] || STATUS_COLORS.pending
+  const statusLabel = (status) => (q.statuses?.[status] || status)
+
+  const inTransit = shipments.filter((sh) => statusToIdx(sh.status) === 1).length
+  const deliveredThisMonth = shipments.filter((sh) => {
+    const date = sh.updated_at ? new Date(sh.updated_at) : null
+    return statusToIdx(sh.status) === 3 && date && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear()
+  }).length
+  const activeNote = d.kpis[0].n.replace(/\d+/, String(inTransit))
+  const kpis = [
+    { ...d.kpis[0], v: String(shipments.length), n: activeNote },
+    { ...d.kpis[1], v: String(deliveredThisMonth) },
+    d.kpis[2],
+    { ...d.kpis[3], v: String(pendingQuotes) },
+  ]
   return (
     <div>
       <div className="app-motif" aria-hidden="true">
@@ -244,7 +308,7 @@ function Dashboard({ app, dashRows, pendingQuotes }) {
                 <span>{app.ship.cols[3]}</span>
                 <span>{app.ship.cols[4]}</span>
               </div>
-              {dashRows.map((r, i) => (
+              {filteredRows.map((r, i) => (
                 <button key={i} onClick={() => {}} className="app-table-row">
                   <span className="app-table-id">{r.id}</span>
                   <span className="app-table-text">{r.route}</span>
@@ -262,21 +326,36 @@ function Dashboard({ app, dashRows, pendingQuotes }) {
           <div className="app-card" style={{ padding: 20 }}>
             <div className="app-card-title" style={{ marginBottom: 14 }}>{d.quickT}</div>
             <div className="app-quick-grid">
-              {d.quick.map((q, i) => (
-                <button key={i} onClick={() => {}} className="app-quick-btn">{q}</button>
-              ))}
+              {d.quick.map((q, i) => {
+                const targets = ['create', 'create', 'shipments', 'support']
+                return (
+                  <button key={i} onClick={() => onGo?.(targets[i])} className="app-quick-btn">{q}</button>
+                )
+              })}
             </div>
           </div>
 
           <div className="app-card" style={{ padding: 20 }}>
-            <div className="app-card-title" style={{ marginBottom: 14 }}>{d.alertsT}</div>
+            <div className="app-card-title" style={{ marginBottom: 14 }}>{q.title || 'Cotizaciones'}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {d.alerts.map((a, i) => (
-                <div key={i} className="app-alert">
-                  <div className="app-alert-title">{a.t}</div>
-                  <div className="app-alert-text">{a.d}</div>
-                </div>
-              ))}
+              {quotes.length === 0 && (
+                <div style={{ color: '#6C82A6', fontSize: 14 }}>{q.empty}</div>
+              )}
+              {quotes.slice(0, 5).map((quote) => {
+                const style = statusColor(quote.status)
+                return (
+                  <div key={quote.id} className="app-activity-item">
+                    <span className="app-dot"></span>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="app-activity-title">{quote.tracking_code || `#${quote.id}`}</div>
+                      <div className="app-activity-meta">{quote.origin} → {quote.destination}</div>
+                    </div>
+                    <span className="app-status" style={{ marginLeft: 'auto', background: style.bg, color: style.fg }}>
+                      {statusLabel(quote.status)}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </div>
 

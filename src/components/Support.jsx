@@ -1,28 +1,29 @@
 import React from 'react'
+import { api } from '../api'
 
-const SHIP_RE = /^TR3-\d{6}-[A-Z]{4}-\d{5}$/
-
-export default function Support({ app }) {
+export default function Support({ app, token }) {
   const s = app.support
   const [subject, setSubject] = React.useState('')
   const [ship, setShip] = React.useState('')
   const [msg, setMsg] = React.useState('')
-  const [shipError, setShipError] = React.useState(false)
   const [formError, setFormError] = React.useState(false)
   const [sent, setSent] = React.useState(false)
+  const [shipments, setShipments] = React.useState([])
 
-  const onShip = (v) => {
-    setShip(v)
-    if (v && !SHIP_RE.test(v)) setShipError(true)
-    else setShipError(false)
-  }
+  React.useEffect(() => {
+    if (!token) return
+    api.getShipments(token)
+      .then((data) => {
+        const rows = Array.isArray(data) ? data : data.data || []
+        setShipments(rows)
+      })
+      .catch(() => setShipments([]))
+  }, [token])
 
   const submit = () => {
-    const shipInvalid = ship && !SHIP_RE.test(ship)
     const missing = !subject.trim() || !msg.trim()
-    setShipError(shipInvalid)
     setFormError(missing)
-    if (shipInvalid || missing) return
+    if (missing) return
     setSent(true)
   }
 
@@ -56,21 +57,22 @@ export default function Support({ app }) {
 
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }}>{s.f.ship}</label>
-            <input
+            <select
               value={ship}
-              onChange={(e) => onShip(e.target.value)}
-              placeholder={s.f.shipPh}
+              onChange={(e) => { setShip(e.target.value); setFormError(false) }}
               style={{
-                width: '100%', padding: '14px 15px', border: `1.5px solid ${shipError ? '#C0392B' : '#DCE6F5'}`,
+                width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5',
                 borderRadius: 11, background: '#EEF4FC', fontSize: 15, color: '#001B45', outline: 'none',
+                appearance: 'none',
               }}
-            />
-            {shipError && (
-              <div role="alert" style={{ marginTop: 10, display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, fontWeight: 500, color: '#C0392B' }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.2v.1" /></svg>
-                {s.shipInvalid}
-              </div>
-            )}
+            >
+              <option value="">{s.f.shipPh}</option>
+              {shipments.map((sh) => (
+                <option key={sh.id} value={sh.tracking_number || sh.id}>
+                  {sh.tracking_number || `#${sh.id}`} — {sh.origin || ''} → {sh.destination || ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

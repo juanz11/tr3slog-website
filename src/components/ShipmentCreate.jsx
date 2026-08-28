@@ -5,6 +5,12 @@ const ADDRESS_KEYS = ['name', 'company', 'address', 'city', 'zip', 'phone', 'ema
 const ADDRESS_REQUIRED = ['name', 'address', 'city', 'zip', 'phone']
 const ADDRESS_SPAN2 = ['address']
 
+const CITIES = [
+  'San Juan', 'Santo Domingo', 'Punta Cana', 'Miami', 'New York', 'Atlanta',
+  'Montego Bay', 'Seoul', 'Tokyo', 'Shanghai', 'Caracas', 'Valencia',
+  'Maracaibo', 'Montevideo', 'Punta del Este', 'Paysandú', 'Salto', 'Colonia',
+]
+
 const emptyAddress = () => ({
   name: '', company: '', address: '', city: '', zip: '', phone: '', email: '',
 })
@@ -24,7 +30,7 @@ const emptyPayment = () => ({
 function ShipmentForm({ c, step, section, config, data, submitted, error, submitting, result, onChange, onBack, onNext, onFinish }) {
   const isLastStep = step === c.steps.length - 1
   const isComplete = section
-    ? config.required.every((k) => data[section][k].trim() !== '')
+    ? config.required.every((k) => String(data[section][k] || '').trim() !== '')
     : true
 
   return (
@@ -59,18 +65,28 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
                 ))}
               </select>
             ) : (
-              <input
-                type="text"
-                placeholder={config.placeholders[key]}
-                value={section ? data[section][key] : ''}
-                onChange={(e) => onChange(key, e.target.value)}
-                style={{
-                  width: '100%', padding: '14px 15px',
-                  border: '1.5px solid #DCE6F5', borderRadius: 11,
-                  background: '#EEF4FC', font: 'inherit', color: '#001B45',
-                  outline: 'none',
-                }}
-              />
+              <>
+                <input
+                  type="text"
+                  list={config.datalist && config.datalist[key] ? `${key}-suggestions` : undefined}
+                  placeholder={config.placeholders[key]}
+                  value={section ? data[section][key] : ''}
+                  onChange={(e) => onChange(key, e.target.value)}
+                  style={{
+                    width: '100%', padding: '14px 15px',
+                    border: '1.5px solid #DCE6F5', borderRadius: 11,
+                    background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                    outline: 'none',
+                  }}
+                />
+                {config.datalist && config.datalist[key] && (
+                  <datalist id={`${key}-suggestions`}>
+                    {config.datalist[key].map((opt) => (
+                      <option key={opt} value={opt} />
+                    ))}
+                  </datalist>
+                )}
+              </>
             )}
           </label>
         ))}
@@ -192,6 +208,10 @@ export default function ShipmentCreate({ app, token }) {
       placeholders: c.placeholders,
       required: ADDRESS_REQUIRED,
       span2: ADDRESS_SPAN2,
+      datalist: {
+        city: CITIES,
+        address: CITIES,
+      },
     }
   }
 
@@ -214,25 +234,16 @@ export default function ShipmentCreate({ app, token }) {
     setError('')
     try {
       const payload = {
-        sender: data.sender,
-        recipient: data.recipient,
-        package: {
-          pieces: data.package.pieces,
-          weight: data.package.weight,
-          dimensions: data.package.dimensions,
-          declared_value: data.package.declaredValue,
-          content: data.package.content,
-        },
-        service: {
-          service: data.service.service,
-          pickup_date: data.service.pickupDate,
-          time_window: data.service.timeWindow,
-          notes: data.service.notes,
-        },
-        payment: {
-          payment_method: data.payment.paymentMethod,
-          charge_to_account: data.payment.chargeToAccount,
-        },
+        origin: data.sender.city,
+        destination: data.recipient.city,
+        recipient_name: data.recipient.name,
+        recipient_email: data.recipient.email,
+        recipient_phone: data.recipient.phone,
+        service_type: data.service.service,
+        weight: data.package.weight,
+        dimensions: data.package.dimensions,
+        pieces: data.package.pieces,
+        notes: data.service.notes,
       }
       const res = await api.createShipment(payload, token)
       setResult(res)
