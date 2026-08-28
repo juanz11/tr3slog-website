@@ -1,5 +1,5 @@
 import React from 'react'
-import { api } from '../api'
+import { api, MEDIA_URL } from '../api'
 import { authI18n } from '../i18n-auth'
 
 export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin }) {
@@ -119,12 +119,12 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin })
     <div className="auth-screen">
       <div className="auth-split">
         <div className="auth-art">
-          <div className="auth-logo-text">
-            <span>TR3</span>
-            <span style={{ color: '#D99A00' }}>S</span>
-            <span>LOG</span>
-          </div>
-          <div style={{ marginTop: 'auto', position: 'relative' }}>
+          <img
+            src={`${MEDIA_URL}/tr3slog-10.webp`}
+            alt="TR3SLOG"
+            className="auth-logo-art"
+          />
+          <div style={{ position: 'relative' }}>
             <h2 className="auth-title-art">{t.home.title}</h2>
             <p className="auth-sub-art">{t.foot.tagline}</p>
           </div>
