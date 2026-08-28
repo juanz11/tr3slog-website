@@ -69,9 +69,11 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
                 <input
                   type="text"
                   list={config.datalist && config.datalist[key] ? `${key}-suggestions` : undefined}
+                  inputMode={key === 'pieces' ? 'numeric' : 'text'}
+                  pattern={key === 'pieces' ? '\\d*' : key === 'dimensions' ? '\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?' : undefined}
                   placeholder={config.placeholders[key]}
                   value={section ? data[section][key] : ''}
-                  onChange={(e) => onChange(key, e.target.value)}
+                  onChange={(e) => onChange(key, key === 'pieces' ? e.target.value.replace(/\\D/g, '') : e.target.value)}
                   style={{
                     width: '100%', padding: '14px 15px',
                     border: '1.5px solid #DCE6F5', borderRadius: 11,
@@ -221,13 +223,33 @@ export default function ShipmentCreate({ app, token }) {
     setStep((s) => Math.max(0, s - 1))
   }, [])
 
+  const validatePackage = () => {
+    const { pieces, dimensions } = data.package
+    if (!/^\\d+$/.test(String(pieces).trim())) {
+      return 'El número de piezas debe ser un número entero.'
+    }
+    if (String(dimensions).trim() && !/^\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?$/i.test(String(dimensions).trim())) {
+      return 'Las dimensiones deben tener el formato L x A x H (ej. 10x20x30 cm).'
+    }
+    return ''
+  }
+
   const onNext = React.useCallback(() => {
+    if (section === 'package') {
+      const err = validatePackage()
+      if (err) { setError(err); return }
+    }
     setStep((s) => Math.min(s + 1, c.steps.length - 1))
-  }, [c.steps.length])
+  }, [c.steps.length, data.package, section])
 
   const onFinish = React.useCallback(async () => {
     if (!token) {
       setError('Inicie sesión para crear un envío.')
+      return
+    }
+    const err = validatePackage()
+    if (err) {
+      setError(err)
       return
     }
     setSubmitting(true)

@@ -244,6 +244,54 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery })
     return d.toLocaleDateString(lang === 'es' ? 'es-ES' : lang === 'zh' ? 'zh-CN' : 'en-US', { day: 'numeric', month: 'short' })
   }
 
+  const timeAgo = (date) => {
+    if (!date) return ''
+    const d = new Date(date)
+    if (isNaN(d.getTime())) return ''
+    const diff = Math.floor((new Date() - d) / 1000)
+    const locale = lang === 'es' ? 'es' : lang === 'zh' ? 'zh-Hans' : 'en'
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+    if (diff < 60) return rtf.format(-diff, 'second')
+    const min = Math.floor(diff / 60)
+    if (min < 60) return rtf.format(-min, 'minute')
+    const h = Math.floor(min / 60)
+    if (h < 24) return rtf.format(-h, 'hour')
+    const days = Math.floor(h / 24)
+    if (days < 30) return rtf.format(-days, 'day')
+    const months = Math.floor(days / 30)
+    if (months < 12) return rtf.format(-months, 'month')
+    const years = Math.floor(months / 12)
+    return rtf.format(-years, 'year')
+  }
+
+  const ACTIVITY_TITLES = {
+    es: {
+      delivered: (sh) => `Entregado a ${sh.recipient_name || '—'}`,
+      in_transit: () => 'Envío en tránsito',
+      in_route: () => 'Conductor recogió la carga',
+      pending: () => 'Nuevo envío creado',
+      incident: () => 'Incidencia registrada',
+      quote: () => 'Solicitud de cotización recibida',
+    },
+    en: {
+      delivered: (sh) => `Delivered to ${sh.recipient_name || '—'}`,
+      in_transit: () => 'Shipment in transit',
+      in_route: () => 'Driver picked up the cargo',
+      pending: () => 'New shipment created',
+      incident: () => 'Incident reported',
+      quote: () => 'Quote request received',
+    },
+    zh: {
+      delivered: (sh) => `已送达给 ${sh.recipient_name || '—'}`,
+      in_transit: () => '运单运输中',
+      in_route: () => '司机已取货',
+      pending: () => '已创建新运单',
+      incident: () => '已报告异常',
+      quote: () => '已收到报价请求',
+    },
+  }
+  const labels = ACTIVITY_TITLES[lang] || ACTIVITY_TITLES.es
+
   const filteredRows = React.useMemo(() => {
     const qry = (hquery || '').trim().toLowerCase()
     const rows = shipments.map((sh) => ({
@@ -275,6 +323,27 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery })
     d.kpis[2],
     { ...d.kpis[3], v: String(pendingQuotes) },
   ]
+
+  const activityItems = shipments.map((sh) => {
+    const status = String(sh.status || '').toLowerCase()
+    const date = sh.updated_at || sh.created_at
+    let title = labels.pending()
+    if (status === 'delivered' || status === 'entregado' || status === 'entregada') title = labels.delivered(sh)
+    if (status === 'in_transit' || status === 'en tránsito' || status === 'en transito') title = labels.in_transit(sh)
+    if (status === 'in_route' || status === 'en ruta de entrega') title = labels.in_route(sh)
+    if (status === 'incident' || status === 'incidencia') title = labels.incident(sh)
+    return { t: title, m: `${sh.tracking_number || `#${sh.id}`} · ${timeAgo(date)}`, date }
+  })
+  const quoteItems = quotes.map((quote) => ({
+    t: labels.quote(),
+    m: `${quote.tracking_code || `#${quote.id}`} · ${timeAgo(quote.created_at)}`,
+    date: quote.created_at,
+  }))
+  const recent = [...activityItems, ...quoteItems]
+    .filter((a) => a.date)
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 5)
+    .map(({ t, m }) => ({ t, m }))
   return (
     <div>
       <div className="app-motif" aria-hidden="true">
@@ -362,7 +431,7 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery })
           <div className="app-card" style={{ padding: 20 }}>
             <div className="app-card-title" style={{ marginBottom: 14 }}>{d.activityT}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {d.activity.map((a, i) => (
+              {(recent.length ? recent : d.activity).map((a, i) => (
                 <div key={i} className="app-activity-item">
                   <span className="app-dot"></span>
                   <div>
