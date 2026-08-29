@@ -347,6 +347,16 @@ TR3SLOG · 1234 Logistics Way, Miami, FL 33101, USA
 info@tr3slog.com · +1 786 123 4567 · WhatsApp Business`,
     },
   },
+  notFound: {
+    title: 'Página no encontrada',
+    sub: 'La página que busca no existe o fue movida.',
+    back: 'Volver al inicio',
+  },
+  maintenance: {
+    title: 'En mantenimiento',
+    sub: 'Estamos realizando mejoras. Volveremos en breve.',
+    contact: 'Si necesitas ayuda, escríbenos a info@tr3slog.com.',
+  },
 }
 
 export const en = {
@@ -698,6 +708,16 @@ TR3SLOG · 1234 Logistics Way, Miami, FL 33101, USA
 info@tr3slog.com · +1 786 123 4567 · WhatsApp Business`,
     },
   },
+  notFound: {
+    title: 'Page not found',
+    sub: 'The page you are looking for does not exist or has been moved.',
+    back: 'Back to home',
+  },
+  maintenance: {
+    title: 'Under maintenance',
+    sub: 'We are making improvements. We will be back soon.',
+    contact: 'If you need help, write to us at info@tr3slog.com.',
+  },
 }
 
 export const zhCN = {
@@ -1048,6 +1068,16 @@ TR3SLOG可以定期更新这些条款。我们将通过平台或电子邮件提�
 TR3SLOG · 1234 Logistics Way, Miami, FL 33101, USA
 info@tr3slog.com · +1 786 123 4567 · WhatsApp Business`,
     },
+  },
+  notFound: {
+    title: '页面未找到',
+    sub: '您访问的页面不存在或已移动。',
+    back: '返回首页',
+  },
+  maintenance: {
+    title: '维护中',
+    sub: '我们正在进行改进。很快回来。',
+    contact: '如需帮助，请发送邮件至 info@tr3slog.com。',
   },
 }
 

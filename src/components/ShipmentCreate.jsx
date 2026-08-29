@@ -45,15 +45,15 @@ const CITY_COUNTRY = {
 }
 
 const PHONE_FORMATS = {
-  PR: { code: '+1', example: '+1 787 555 1234', pattern: /^\+?1\s?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  DO: { code: '+1', example: '+1 809 555 1234', pattern: /^\+?1\s?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  US: { code: '+1', example: '+1 305 555 1234', pattern: /^\+?1\s?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  JM: { code: '+1', example: '+1 876 555 1234', pattern: /^\+?1\s?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  KR: { code: '+82', example: '+82 10-1234-5678', pattern: /^\+82\s?\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{4}$/ },
-  JP: { code: '+81', example: '+81 90-1234-5678', pattern: /^\+81\s?\d{1,2}[-.\s]?\d{4}[-.\s]?\d{4}$/ },
-  CN: { code: '+86', example: '+86 138 0013 8000', pattern: /^\+86\s?\d{11}$/ },
-  VE: { code: '+58', example: '+58 412 123 4567', pattern: /^\+58\s?\d{3}\s?\d{7}$/ },
-  UY: { code: '+598', example: '+598 91 234 567', pattern: /^\+598\s?\d{2,3}\s?\d{3}\s?\d{3}$/ },
+  PR: { code: '+1', example: '+1 787 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
+  DO: { code: '+1', example: '+1 809 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
+  US: { code: '+1', example: '+1 305 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
+  JM: { code: '+1', example: '+1 876 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
+  KR: { code: '+82', example: '+82 10-1234-5678', pattern: /^(\+82\s?)?\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{4}$/ },
+  JP: { code: '+81', example: '+81 90-1234-5678', pattern: /^(\+81\s?)?\d{1,2}[-.\s]?\d{4}[-.\s]?\d{4}$/ },
+  CN: { code: '+86', example: '+86 138 0013 8000', pattern: /^(\+86\s?)?\d{11}$/ },
+  VE: { code: '+58', example: '+58 412 123 4567', pattern: /^(\+58\s?)?\d{3}\s?\d{7}$/ },
+  UY: { code: '+598', example: '+598 91 234 567', pattern: /^(\+598\s?)?\d{2,3}\s?\d{3}\s?\d{3}$/ },
 }
 
 const emptyAddress = () => ({
@@ -230,6 +230,7 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
             border: 'none', borderRadius: 11,
             color: '#fff', fontSize: 14, fontWeight: 600,
             cursor: isComplete && !submitting ? 'pointer' : 'not-allowed',
+            display: step === 0 ? 'none' : 'flex',
           }}
         >{isLastStep ? (submitting ? 'Procesando…' : c.payment.submit) : c.continue}</button>
       </div>
