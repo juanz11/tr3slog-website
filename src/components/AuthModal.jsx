@@ -1,30 +1,7 @@
 import React from 'react'
 import { api, MEDIA_URL } from '../api'
 import { authI18n } from '../i18n-auth'
-
-const COUNTRY_NAMES = {
-  PR: 'Puerto Rico',
-  DO: 'República Dominicana',
-  US: 'Estados Unidos',
-  JM: 'Jamaica',
-  KR: 'Corea del Sur',
-  JP: 'Japón',
-  CN: 'China',
-  VE: 'Venezuela',
-  UY: 'Uruguay',
-}
-
-const PHONE_FORMATS = {
-  PR: { code: '+1', example: '+1 787 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  DO: { code: '+1', example: '+1 809 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  US: { code: '+1', example: '+1 305 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  JM: { code: '+1', example: '+1 876 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  KR: { code: '+82', example: '+82 10-1234-5678', pattern: /^(\+82\s?)?\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{4}$/ },
-  JP: { code: '+81', example: '+81 90-1234-5678', pattern: /^(\+81\s?)?\d{1,2}[-.\s]?\d{4}[-.\s]?\d{4}$/ },
-  CN: { code: '+86', example: '+86 138 0013 8000', pattern: /^(\+86\s?)?\d{11}$/ },
-  VE: { code: '+58', example: '+58 412 123 4567', pattern: /^(\+58\s?)?\d{3}\s?\d{7}$/ },
-  UY: { code: '+598', example: '+598 91 234 567', pattern: /^(\+598\s?)?\d{2,3}\s?\d{3}\s?\d{3}$/ },
-}
+import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 
 export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, setLegal }) {
   const a = authI18n[lang] || authI18n.es
@@ -249,6 +226,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                       <label className="auth-label">{a.phone}</label>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
                         <select
+                          required
                           value={country} onChange={(e) => setCountry(e.target.value)}
                           className={inputBorder('country')}
                           style={{ flex: '0 0 90px', padding: '14px 12px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', color: '#001B45', font: 'inherit', fontSize: 13, cursor: 'pointer' }}
@@ -264,6 +242,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                           <input
                             type="tel"
                             inputMode="tel"
+                            required
                             value={phone} onChange={(e) => setPhone(e.target.value)}
                             placeholder={country && PHONE_FORMATS[country] ? PHONE_FORMATS[country].example : a.phonePh}
                             className={inputBorder('phone')}
@@ -300,7 +279,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                   )}
 
                   {mode === 'signup' && (
-                    <button type="button" onClick={() => setTerms(!terms)} className="auth-check">
+                    <div onClick={() => setTerms(!terms)} className="auth-check" role="button" tabIndex={0}>
                       <span className={`auth-check-box ${terms ? 'on' : ''}`}>{terms ? '✓' : ''}</span>
                       <span className="auth-check-label">
                         Acepto los{' '}
@@ -320,7 +299,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                           {a.privacyLink}
                         </button>
                       </span>
-                    </button>
+                    </div>
                   )}
 
                   {mode === 'login' && (

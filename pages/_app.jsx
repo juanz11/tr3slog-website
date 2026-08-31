@@ -186,6 +186,7 @@ export default function App({ Component, pageProps }) {
             setLang={setLang}
             onClose={() => router.push('/')}
             onLogin={handleLogin}
+            setLegal={setLegal}
           />
         )}
         {toast && <Toast text={toast} />}
@@ -212,7 +213,7 @@ export default function App({ Component, pageProps }) {
       <Footer t={t} langs={langs} setLang={setLang} go={go} setLegal={setLegal} />
       {legal && <LegalModal t={t} legal={legal} onClose={() => setLegal(null)} />}
       {toast && <Toast text={toast} />}
-      {authOpen && <AuthModal t={t} lang={lang} langs={langs} setLang={setLang} onClose={() => setAuthOpen(false)} onLogin={handleLogin} />}
+      {authOpen && <AuthModal t={t} lang={lang} langs={langs} setLang={setLang} onClose={() => setAuthOpen(false)} onLogin={handleLogin} setLegal={setLegal} />}
     </div>
   )
 }

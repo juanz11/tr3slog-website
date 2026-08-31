@@ -6,7 +6,7 @@ export default function LegalModal({ t, legal, onClose }) {
 
   return (
     <div onClick={onClose} style={{
-      position: 'fixed', inset: 0, zIndex: 80,
+      position: 'fixed', inset: 0, zIndex: 220,
       background: 'rgba(0,27,69,.6)', backdropFilter: 'blur(4px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
     }}>

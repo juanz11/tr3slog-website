@@ -1,5 +1,7 @@
 DirectoryIndex index.html
 
+ErrorDocument 404 /404.html
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
@@ -13,6 +15,5 @@ DirectoryIndex index.html
   RewriteCond %{REQUEST_FILENAME}.html -f
   RewriteRule ^ %{REQUEST_URI}.html [L]
 
-  # Fallback to index.html for client-side routes
-  RewriteRule ^ index.html [L]
+  # Las rutas inexistentes caen en el ErrorDocument 404
 </IfModule>

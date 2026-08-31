@@ -1,10 +1,13 @@
 import React from 'react'
 import { api } from '../api'
+import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 import { PageHero } from '../components/Shared'
 
 export default function Contact({ t, go, showToast }) {
   const [cName, setCName] = React.useState('')
   const [cEmail, setCEmail] = React.useState('')
+  const [cCountry, setCCountry] = React.useState('')
+  const [cPhone, setCPhone] = React.useState('')
   const [cSubject, setCSubject] = React.useState('')
   const [cMessage, setCMessage] = React.useState('')
   const [contError, setContError] = React.useState('')
@@ -14,13 +17,16 @@ export default function Contact({ t, go, showToast }) {
   const err = '#E0A0A0'
 
   const submit = async () => {
-    if (!cName.trim() || !cEmail.trim() || !cSubject.trim() || !cMessage.trim()) { setContError(t.common.required); return }
+    if (!cName.trim() || !cEmail.trim() || !cCountry || !cPhone.trim() || !cSubject.trim() || !cMessage.trim()) { setContError(t.common.required); return }
     if (!/\S+@\S+\.\S+/.test(cEmail)) { setContError(t.common.invalidEmail); return }
+    if (PHONE_FORMATS[cCountry] && !PHONE_FORMATS[cCountry].pattern.test(cPhone.trim())) { setContError(t.cont.phoneError); return }
     setContError('')
     try {
       const res = await api.contact({
         name: cName,
         email: cEmail,
+        phone: cPhone,
+        country: COUNTRY_NAMES[cCountry],
         subject: cSubject,
         message: cMessage,
       })
@@ -71,6 +77,30 @@ export default function Contact({ t, go, showToast }) {
                 <div>
                   <label style={labelStyle}>{t.cont.f.email}</label>
                   <input value={cEmail} onChange={e => setCEmail(e.target.value)} placeholder={t.cont.f.emailPh} style={inputStyle(contError, /\S+@\S+\.\S+/.test(cEmail))} />
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>{t.cont.f.phone}</label>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+                  <select
+                    value={cCountry} onChange={e => setCCountry(e.target.value)}
+                    style={{ flex: '0 0 90px', padding: '14px 12px', border: `1.5px solid ${contError && !cCountry ? err : '#DCE6F5'}`, borderRadius: 11, background: '#EEF4FC', color: '#001B45', font: 'inherit', fontSize: 13, cursor: 'pointer' }}
+                  >
+                    <option value="">{t.cont.f.countryPh}</option>
+                    {Object.keys(PHONE_FORMATS).map((k) => (
+                      <option key={k} value={k}>
+                        {PHONE_FORMATS[k].code} {k}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    value={cPhone} onChange={e => setCPhone(e.target.value)}
+                    placeholder={cCountry && PHONE_FORMATS[cCountry] ? PHONE_FORMATS[cCountry].example : t.cont.f.phonePh}
+                    style={{ ...inputStyle(contError, cPhone.trim()), flex: 1 }}
+                  />
                 </div>
               </div>
               <div>
