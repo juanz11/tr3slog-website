@@ -150,9 +150,9 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
             ) : (
               <>
                 <input
-                    type="text"
+                    type={key === 'pickupDate' ? 'date' : 'text'}
                     list={config.datalist && config.datalist[key] ? `${key}-suggestions` : undefined}
-                    inputMode={key === 'pieces' ? 'numeric' : 'text'}
+                    inputMode={key === 'pieces' ? 'numeric' : key === 'pickupDate' ? undefined : 'text'}
                     pattern={key === 'pieces' ? '\\d*' : key === 'dimensions' ? '\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?' : undefined}
                     placeholder={config.placeholders[key]}
                     value={section ? data[section][key] : ''}
@@ -204,17 +204,19 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
       )}
 
       <div style={{ display: 'flex', gap: 10, marginTop: 24, paddingTop: 20, borderTop: '1px solid #DCE6F5' }}>
-        <button
-          onClick={onBack}
-          disabled={step === 0 || submitting}
-          style={{
-            padding: '14px 20px', background: '#fff',
-            border: '1.5px solid #DCE6F5', borderRadius: 11,
-            color: '#001B45', fontSize: 14, fontWeight: 600,
-            cursor: step === 0 || submitting ? 'not-allowed' : 'pointer',
-            opacity: step === 0 || submitting ? .6 : 1,
-          }}
-        >{c.back}</button>
+        {step > 0 && (
+          <button
+            onClick={onBack}
+            disabled={submitting}
+            style={{
+              padding: '14px 20px', background: '#fff',
+              border: '1.5px solid #DCE6F5', borderRadius: 11,
+              color: '#001B45', fontSize: 14, fontWeight: 600,
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              opacity: submitting ? .6 : 1,
+            }}
+          >{c.back}</button>
+        )}
         <button
           onClick={() => {
             if (isLastStep) {
@@ -230,7 +232,6 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
             border: 'none', borderRadius: 11,
             color: '#fff', fontSize: 14, fontWeight: 600,
             cursor: isComplete && !submitting ? 'pointer' : 'not-allowed',
-            display: step === 0 ? 'none' : 'flex',
           }}
         >{isLastStep ? (submitting ? 'Procesando…' : c.payment.submit) : c.continue}</button>
       </div>
@@ -281,6 +282,7 @@ export default function ShipmentCreate({ app, token }) {
         span2: c.service.span2,
         options: {
           service: ['Consolidado', 'Marítimo', 'Aéreo', 'Carga terrestre', 'Última milla'],
+          timeWindow: c.service.windows,
         },
       }
     }
