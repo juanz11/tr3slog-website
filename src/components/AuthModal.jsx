@@ -143,7 +143,26 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
           </div>
         </div>
 
-        <div className="auth-form-wrap">
+        <div className="auth-form-wrap" style={{ position: 'relative' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t.common.close}
+            style={{
+              position: 'absolute',
+              top: 24,
+              right: 24,
+              background: 'none',
+              border: 'none',
+              fontSize: 24,
+              lineHeight: 1,
+              cursor: 'pointer',
+              color: '#6C82A6',
+              padding: 4,
+            }}
+          >
+            ✕
+          </button>
           <div className="auth-form-inner">
             <div className="auth-langs">
               {langs.map((l) => (
