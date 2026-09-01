@@ -13,6 +13,8 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
   const [country, setCountry] = React.useState('')
   const [password, setPassword] = React.useState('')
   const [passwordConfirmation, setPasswordConfirmation] = React.useState('')
+  const [showPass, setShowPass] = React.useState(false)
+  const [showConfirm, setShowConfirm] = React.useState(false)
   const [remember, setRemember] = React.useState(false)
   const [terms, setTerms] = React.useState(false)
   const [error, setError] = React.useState('')
@@ -28,6 +30,8 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
     setCountry('')
     setPassword('')
     setPasswordConfirmation('')
+    setShowPass(false)
+    setShowConfirm(false)
     setRemember(false)
     setTerms(false)
     setError('')
@@ -278,22 +282,50 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                   )}
                   <div>
                     <label className="auth-label">{a.password}</label>
-                    <input
-                      type="password" required
-                      value={password} onChange={(e) => setPassword(e.target.value)}
-                      placeholder={a.passwordPh}
-                      className={inputBorder('password')}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showPass ? 'text' : 'password'} required
+                        value={password} onChange={(e) => setPassword(e.target.value)}
+                        placeholder={a.passwordPh}
+                        className={inputBorder('password')}
+                        style={{ paddingRight: 40 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPass(!showPass)}
+                        style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#6C82A6' }}
+                      >
+                        {showPass ? (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><path d="M3.5 3.5l17 17"/></svg>
+                        ) : (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                   {mode === 'signup' && (
                     <div>
                       <label className="auth-label">{a.confirm}</label>
-                      <input
-                        type="password" required
-                        value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)}
-                        placeholder={a.passwordPh}
-                        className={inputBorder('confirm')}
-                      />
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type={showConfirm ? 'text' : 'password'} required
+                          value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)}
+                          placeholder={a.passwordPh}
+                          className={inputBorder('confirm')}
+                          style={{ paddingRight: 40 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirm(!showConfirm)}
+                          style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#6C82A6' }}
+                        >
+                          {showConfirm ? (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/><path d="M3.5 3.5l17 17"/></svg>
+                          ) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   )}
 
