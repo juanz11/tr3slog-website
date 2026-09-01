@@ -20,11 +20,19 @@ export default function Support({ app, token }) {
       .catch(() => setShipments([]))
   }, [token])
 
-  const submit = () => {
+  const submit = async () => {
     const missing = !subject.trim() || !msg.trim()
-    setFormError(missing)
-    if (missing) return
-    setSent(true)
+    if (missing) {
+      setFormError('Complete los campos obligatorios.')
+      return
+    }
+    setFormError(false)
+    try {
+      await api.createSupport({ subject, message: msg, ship }, token)
+      setSent(true)
+    } catch (err) {
+      setFormError(err.message || 'No se pudo enviar el caso.')
+    }
   }
 
   return (
@@ -92,7 +100,7 @@ export default function Support({ app, token }) {
           {formError && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, fontWeight: 500, color: '#C0392B' }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16.2v.1" /></svg>
-              {(app.create && app.create.errStep) ? app.create.errStep : 'Complete los campos obligatorios.'}
+              {formError}
             </div>
           )}
 

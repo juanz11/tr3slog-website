@@ -122,4 +122,10 @@ export const api = {
     headers: headers(),
     body: JSON.stringify(data),
   }).then(handle),
+
+  createSupport: (data, token) => fetch(`${API_URL}/support`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
 }
