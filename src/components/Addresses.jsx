@@ -1,7 +1,75 @@
 import React from 'react'
 import { api } from '../api'
 
-const FIELD_KEYS = ['name', 'address', 'city', 'zip', 'contact', 'phone', 'instructions']
+const COUNTRY_OPTIONS = [
+  { code: 'AF', name: 'Afganistán' },
+  { code: 'AL', name: 'Albania' },
+  { code: 'AR', name: 'Argentina' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'BE', name: 'Bélgica' },
+  { code: 'BO', name: 'Bolivia' },
+  { code: 'BR', name: 'Brasil' },
+  { code: 'CA', name: 'Canadá' },
+  { code: 'CH', name: 'Suiza' },
+  { code: 'CL', name: 'Chile' },
+  { code: 'CO', name: 'Colombia' },
+  { code: 'CR', name: 'Costa Rica' },
+  { code: 'CU', name: 'Cuba' },
+  { code: 'DE', name: 'Alemania' },
+  { code: 'DO', name: 'República Dominicana' },
+  { code: 'EC', name: 'Ecuador' },
+  { code: 'EG', name: 'Egipto' },
+  { code: 'ES', name: 'España' },
+  { code: 'FR', name: 'Francia' },
+  { code: 'GB', name: 'Reino Unido' },
+  { code: 'GT', name: 'Guatemala' },
+  { code: 'HN', name: 'Honduras' },
+  { code: 'IT', name: 'Italia' },
+  { code: 'JM', name: 'Jamaica' },
+  { code: 'JP', name: 'Japón' },
+  { code: 'KR', name: 'Corea del Sur' },
+  { code: 'MX', name: 'México' },
+  { code: 'NI', name: 'Nicaragua' },
+  { code: 'NL', name: 'Países Bajos' },
+  { code: 'PA', name: 'Panamá' },
+  { code: 'PE', name: 'Perú' },
+  { code: 'PR', name: 'Puerto Rico' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'PY', name: 'Paraguay' },
+  { code: 'CN', name: 'China' },
+  { code: 'RU', name: 'Rusia' },
+  { code: 'SV', name: 'El Salvador' },
+  { code: 'US', name: 'Estados Unidos' },
+  { code: 'UY', name: 'Uruguay' },
+  { code: 'VE', name: 'Venezuela' },
+  { code: 'ZA', name: 'Sudáfrica' },
+]
+
+const ZIP_PATTERNS = {
+  PR: /^\d{5}(-\d{4})?$/,
+  US: /^\d{5}(-\d{4})?$/,
+  DO: /^\d{5}$/,
+  JM: /^[A-Z0-9\s-]{3,10}$/i,
+  KR: /^\d{5}$/,
+  JP: /^\d{3}[- ]?\d{4}$/,
+  CN: /^\d{6}$/,
+  VE: /^\d{4,5}$/,
+  UY: /^\d{5}$/,
+}
+
+const PHONE_PATTERNS = {
+  PR: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/,
+  DO: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/,
+  US: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/,
+  JM: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/,
+  KR: /^(\+82\s?)?\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{4}$/,
+  JP: /^(\+81\s?)?\d{1,2}[-.\s]?\d{4}[-.\s]?\d{4}$/,
+  CN: /^(\+86\s?)?\d{11}$/,
+  VE: /^(\+58\s?)?\d{3}\s?\d{7}$/,
+  UY: /^(\+598\s?)?\d{2,3}\s?\d{3}\s?\d{3}$/,
+}
+
+const FIELD_KEYS = ['name', 'address', 'country', 'city', 'zip', 'contact', 'phone', 'instructions']
 const TYPE_STRINGS = ['pickup', 'delivery', 'billing']
 
 function backendToRow(addr) {
@@ -11,6 +79,7 @@ function backendToRow(addr) {
     n: addr.name || '',
     a: addr.address || '',
     city: addr.city || '',
+    country: addr.country || '',
     zip: addr.zip_code || '',
     c: addr.contact_name || '',
     phone: addr.phone || '',
@@ -20,7 +89,7 @@ function backendToRow(addr) {
   }
 }
 const SPAN2 = ['address', 'instructions']
-const REQUIRED = ['name', 'address', 'city', 'zip', 'contact']
+const REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'contact']
 
 function initialPrimary(rows) {
   const found = rows.find((r) => r.primary)
@@ -67,9 +136,10 @@ export default function Addresses({ app, token }) {
 
   const openNew = () => {
     setFormMode('new')
-    setFormVals({ name: '', address: '', city: '', zip: '', contact: '', phone: '', instructions: '', type: 0 })
+    setFormVals({ name: '', address: '', city: '', country: '', zip: '', contact: '', phone: '', instructions: '', type: 0 })
     setErr(false)
     setSaved(false)
+    setLoadError(null)
     setRemoveId(null)
   }
 
@@ -79,6 +149,7 @@ export default function Addresses({ app, token }) {
       name: row.n,
       address: row.a,
       city: row.city || '',
+      country: row.country || '',
       zip: row.zip || '',
       contact: row.c,
       phone: row.phone || '',
@@ -87,6 +158,7 @@ export default function Addresses({ app, token }) {
     })
     setErr(false)
     setSaved(false)
+    setLoadError(null)
     setRemoveId(null)
   }
 
@@ -94,10 +166,26 @@ export default function Addresses({ app, token }) {
     const missing = REQUIRED.some((k) => !(formVals[k] || '').trim())
     if (missing) return setErr(true)
 
+    const country = formVals.country
+    if (country) {
+      const zipPattern = ZIP_PATTERNS[country] || /^[A-Z0-9\s-]{3,15}$/i
+      if (!zipPattern.test(String(formVals.zip || '').trim())) {
+        setLoadError(a.errZip.replace('{country}', COUNTRY_OPTIONS.find((c) => c.code === country)?.name || country))
+        return
+      }
+      const phonePattern = PHONE_PATTERNS[country] || /^[+\d\s\-()]{7,20}$/
+      const phoneVal = String(formVals.phone || '').trim()
+      if (phoneVal && !phonePattern.test(phoneVal)) {
+        setLoadError(a.errPhone.replace('{country}', COUNTRY_OPTIONS.find((c) => c.code === country)?.name || country))
+        return
+      }
+    }
+
     const payload = {
       name: formVals.name,
       address: formVals.address,
       city: formVals.city,
+      country: formVals.country,
       zip_code: formVals.zip,
       contact_name: formVals.contact,
       phone: formVals.phone,
@@ -261,16 +349,34 @@ export default function Addresses({ app, token }) {
                 <span style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }}>
                   {a.f[k]}
                 </span>
-                <input
-                  value={formVals[k] || ''}
-                  onChange={(e) => { setFormVals((v) => ({ ...v, [k]: e.target.value })); setErr(false) }}
-                  placeholder={a.f[k]}
-                  style={{
-                    width: '100%', padding: '14px 15px',
-                    border: `1.5px solid ${err && REQUIRED.includes(k) && !(formVals[k] || '').trim() ? '#C0392B' : '#DCE6F5'}`,
-                    borderRadius: 11, background: '#EEF4FC', fontSize: 15, color: '#001B45', outline: 'none',
-                  }}
-                />
+                {k === 'country' ? (
+                  <select
+                    value={formVals[k] || ''}
+                    onChange={(e) => { setFormVals((v) => ({ ...v, [k]: e.target.value })); setErr(false); setLoadError(null) }}
+                    style={{
+                      width: '100%', padding: '14px 15px',
+                      border: `1.5px solid ${err && REQUIRED.includes(k) && !(formVals[k] || '').trim() ? '#C0392B' : '#DCE6F5'}`,
+                      borderRadius: 11, background: '#EEF4FC', fontSize: 15, color: '#001B45', outline: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">{a.f[k]}</option>
+                    {COUNTRY_OPTIONS.map((c) => (
+                      <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    value={formVals[k] || ''}
+                    onChange={(e) => { setFormVals((v) => ({ ...v, [k]: e.target.value })); setErr(false); setLoadError(null) }}
+                    placeholder={a.f[k]}
+                    inputMode={k === 'phone' ? 'tel' : undefined}
+                    style={{
+                      width: '100%', padding: '14px 15px',
+                      border: `1.5px solid ${err && REQUIRED.includes(k) && !(formVals[k] || '').trim() ? '#C0392B' : '#DCE6F5'}`,
+                      borderRadius: 11, background: '#EEF4FC', fontSize: 15, color: '#001B45', outline: 'none',
+                    }}
+                  />
+                )}
               </label>
             ))}
           </div>

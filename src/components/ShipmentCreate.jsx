@@ -61,7 +61,7 @@ const emptyAddress = () => ({
 })
 
 const emptyPackage = () => ({
-  pieces: '', weight: '', dimensions: '', declaredValue: '', content: '',
+  pieces: '', weight: '', weightUnit: 'kg', dimensions: '', declaredValue: '', content: '',
 })
 
 const emptyService = () => ({
@@ -77,6 +77,8 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
   const isComplete = section
     ? config.required.every((k) => String(data[section][k] || '').trim() !== '')
     : true
+  const today = new Date()
+  const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
   return (
     <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 26 }}>
@@ -151,12 +153,13 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
               <>
                 <input
                     type={key === 'pickupDate' ? 'date' : 'text'}
+                    min={key === 'pickupDate' ? minDate : undefined}
                     list={config.datalist && config.datalist[key] ? `${key}-suggestions` : undefined}
-                    inputMode={key === 'pieces' ? 'numeric' : key === 'pickupDate' ? undefined : 'text'}
-                    pattern={key === 'pieces' ? '\\d*' : key === 'dimensions' ? '\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?' : undefined}
+                    inputMode={key === 'pieces' ? 'numeric' : key === 'weight' ? 'decimal' : key === 'pickupDate' ? undefined : 'text'}
+                    pattern={key === 'pieces' ? '\\d*' : key === 'weight' ? '\\d+(\\.\\d+)?' : key === 'dimensions' ? '\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?' : undefined}
                     placeholder={config.placeholders[key]}
                     value={section ? data[section][key] : ''}
-                    onChange={(e) => onChange(key, key === 'pieces' ? e.target.value.replace(/\\D/g, '') : e.target.value)}
+                    onChange={(e) => onChange(key, key === 'pieces' ? e.target.value.replace(/\\D/g, '') : key === 'weight' ? e.target.value.replace(/[^0-9.]/g, '').replace(/(\\..*?)\\./g, '$1') : e.target.value)}
                     style={{
                       width: '100%', padding: '14px 15px',
                       border: '1.5px solid #DCE6F5', borderRadius: 11,
@@ -254,6 +257,10 @@ export default function ShipmentCreate({ app, token }) {
     payment: emptyPayment(),
   })
 
+  React.useEffect(() => {
+    setError('')
+  }, [step])
+
   const sectionMap = { 0: 'sender', 1: 'recipient', 2: 'package', 3: 'service', 4: 'payment' }
   const section = sectionMap[step]
 
@@ -271,6 +278,9 @@ export default function ShipmentCreate({ app, token }) {
         placeholders: c.package.placeholders,
         required: c.package.required,
         span2: c.package.span2,
+        options: {
+          weightUnit: ['kg', 'lb'],
+        },
       }
     }
     if (step === 3) {
@@ -335,13 +345,25 @@ export default function ShipmentCreate({ app, token }) {
   }
 
   const validatePackage = () => {
-    const { pieces, dimensions } = data.package
+    const { pieces, weight, dimensions } = data.package
     if (!/^\d+$/.test(String(pieces).trim())) {
       return c.errPieces
+    }
+    if (!/^\d+(\.\d+)?$/.test(String(weight).trim()) || Number(weight) <= 0) {
+      return c.errWeight
     }
     if (String(dimensions).trim() && !/^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(\s*(cm|in|m))?$/i.test(String(dimensions).trim())) {
       return c.errDimensions
     }
+    return ''
+  }
+
+  const validateService = () => {
+    const { pickupDate } = data.service
+    if (!pickupDate) return ''
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    if (pickupDate < todayStr) return c.errPickupDate
     return ''
   }
 
@@ -354,6 +376,10 @@ export default function ShipmentCreate({ app, token }) {
       const err = validatePackage()
       if (err) { setError(err); return }
     }
+    if (section === 'service') {
+      const err = validateService()
+      if (err) { setError(err); return }
+    }
     setStep((s) => Math.min(s + 1, c.steps.length - 1))
   }, [c, data, section])
 
@@ -363,7 +389,9 @@ export default function ShipmentCreate({ app, token }) {
       const err = validateAddress(sec)
       if (err) return err
     }
-    return validatePackage()
+    const pkgErr = validatePackage()
+    if (pkgErr) return pkgErr
+    return validateService()
   }
 
   const onFinish = React.useCallback(async () => {
@@ -387,6 +415,7 @@ export default function ShipmentCreate({ app, token }) {
         recipient_phone: data.recipient.phone,
         service_type: data.service.service,
         weight: data.package.weight,
+        weight_unit: data.package.weightUnit,
         dimensions: data.package.dimensions,
         pieces: data.package.pieces,
         notes: data.service.notes,
@@ -403,6 +432,7 @@ export default function ShipmentCreate({ app, token }) {
 
   const onChange = React.useCallback((key, value) => {
     if (!section) return
+    setError('')
     setData((prev) => ({
       ...prev,
       [section]: { ...prev[section], [key]: value },
