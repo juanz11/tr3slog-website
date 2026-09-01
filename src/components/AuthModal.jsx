@@ -70,7 +70,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
         setErrorKey('phone')
         return false
       }
-      if (password.length < 8) {
+      if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password)) {
         setError(a.errPass)
         setErrorKey('password')
         return false
