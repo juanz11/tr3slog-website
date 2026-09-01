@@ -1,5 +1,10 @@
 import React from 'react'
 import { api } from '../api'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
+
+const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  || 'pk_test_51U9oCHLy571aG6WWmqNdtAiM9E7ZVDjTeB2Qs62VvLjOhv0Y253OGaFztaJseVBUhhkiZ3Q3CxaY8Fy9S2VHOg8L00mmeKsQQK'
 
 const ADDRESS_KEYS = ['name', 'company', 'address', 'city', 'country', 'zip', 'phone', 'email']
 const ADDRESS_REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'phone', 'email']
@@ -69,7 +74,7 @@ const emptyService = () => ({
 })
 
 const emptyPayment = () => ({
-  paymentMethod: '', chargeToAccount: '',
+  paymentMethod: '', chargeToAccount: '', cardholderName: '', billingZip: '',
 })
 
 function ShipmentForm({ c, step, section, config, data, submitted, error, submitting, result, onChange, onBack, onNext, onFinish }) {
@@ -149,6 +154,15 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
                   <option key={opt} value={opt}>{opt}</option>
                 ))}
               </select>
+            ) : key === 'paymentMethod' && section === 'payment' ? (
+              <div style={{ width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC' }}>
+                <CardElement
+                  onChange={(e) => {
+                    onChange('paymentMethod', e.complete ? 'card' : '')
+                  }}
+                  options={{ style: { base: { fontSize: '14px', color: '#001B45', '::placeholder': { color: '#8B9DBA' } } } }}
+                />
+              </div>
             ) : (
               <>
                 <input
@@ -242,7 +256,7 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
   )
 }
 
-export default function ShipmentCreate({ app, token }) {
+function ShipmentCreateInner({ app, token }) {
   const c = app.create
   const [step, setStep] = React.useState(0)
   const [submitted, setSubmitted] = React.useState(false)
@@ -304,6 +318,9 @@ export default function ShipmentCreate({ app, token }) {
         required: c.payment.required,
         span2: c.payment.span2,
         payment: c.payment,
+        options: {
+          chargeToAccount: ['No', 'Sí'],
+        },
       }
     }
     return {
@@ -324,6 +341,9 @@ export default function ShipmentCreate({ app, token }) {
   }
 
   const config = getConfig()
+
+  const stripe = useStripe()
+  const elements = useElements()
 
   const onBack = React.useCallback(() => {
     setStep((s) => Math.max(0, s - 1))
@@ -383,6 +403,14 @@ export default function ShipmentCreate({ app, token }) {
     setStep((s) => Math.min(s + 1, c.steps.length - 1))
   }, [c, data, section])
 
+  const validatePayment = () => {
+    const p = data.payment
+    if (!p.paymentMethod || !p.cardholderName.trim() || !p.billingZip.trim() || !p.chargeToAccount) {
+      return c.errStep
+    }
+    return ''
+  }
+
   const validateAll = () => {
     const sections = ['sender', 'recipient']
     for (const sec of sections) {
@@ -391,6 +419,8 @@ export default function ShipmentCreate({ app, token }) {
     }
     const pkgErr = validatePackage()
     if (pkgErr) return pkgErr
+    const payErr = validatePayment()
+    if (payErr) return payErr
     return validateService()
   }
 
@@ -404,8 +434,26 @@ export default function ShipmentCreate({ app, token }) {
       setError(err)
       return
     }
+    if (!stripe || !elements) {
+      setError('La pasarela de pago aún no está lista.')
+      return
+    }
     setSubmitting(true)
     setError('')
+    const cardElement = elements.getElement(CardElement)
+    const { error: stripeError, paymentMethod } = await stripe.createPaymentMethod({
+      type: 'card',
+      card: cardElement,
+      billing_details: {
+        name: data.payment.cardholderName,
+        address: { postal_code: data.payment.billingZip },
+      },
+    })
+    if (stripeError) {
+      setError(stripeError.message)
+      setSubmitting(false)
+      return
+    }
     try {
       const payload = {
         origin: data.sender.city,
@@ -419,6 +467,8 @@ export default function ShipmentCreate({ app, token }) {
         dimensions: data.package.dimensions,
         pieces: data.package.pieces,
         notes: data.service.notes,
+        payment_method_id: paymentMethod.id,
+        charge_to_account: data.payment.chargeToAccount,
       }
       const res = await api.createShipment(payload, token)
       setResult(res)
@@ -428,7 +478,7 @@ export default function ShipmentCreate({ app, token }) {
     } finally {
       setSubmitting(false)
     }
-  }, [data, token])
+  }, [data, token, stripe, elements, c])
 
   const onChange = React.useCallback((key, value) => {
     if (!section) return
@@ -517,5 +567,22 @@ export default function ShipmentCreate({ app, token }) {
         </div>
       )}
     </div>
+  )
+}
+
+export default function ShipmentCreate(props) {
+  const [stripe, setStripe] = React.useState(null)
+  React.useEffect(() => {
+    let mounted = true
+    loadStripe(PUBLISHABLE_KEY).then((s) => { if (mounted) setStripe(s) })
+    return () => { mounted = false }
+  }, [])
+  if (!stripe) {
+    return <div style={{ padding: 40, textAlign: 'center', color: '#6C82A6' }}>Cargando pasarela de pago…</div>
+  }
+  return (
+    <Elements stripe={stripe}>
+      <ShipmentCreateInner {...props} />
+    </Elements>
   )
 }
