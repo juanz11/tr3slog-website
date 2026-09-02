@@ -168,6 +168,11 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             />
             <button onClick={() => { setActiveKey('shipments') }} className="app-search-btn">{app.shell.searchHint}</button>
           </div>
+          {!isCreate && (
+            <button onClick={() => setActiveKey('create')} style={{ marginLeft: 'auto', padding: '12px 18px', background: '#087CF0', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {app.dash.newShipment}
+            </button>
+          )}
           <button onClick={() => setMobileOpen(true)} className="app-mobnav" aria-label="Menu">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M4 7h16M4 12h16M4 17h16"></path>
