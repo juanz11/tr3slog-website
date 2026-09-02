@@ -26,6 +26,7 @@ const statusIndex = (status, statuses) => {
   if (typeof status === 'number') return status
   const list = statuses || []
   const normalized = String(status || '').toLowerCase()
+  if (normalized === 'pending') return 3
   const idx = list.findIndex((s) => s && s.toLowerCase() === normalized)
   return idx >= 0 ? idx : 0
 }
@@ -49,60 +50,145 @@ const buildRow = (sh, statuses) => ({
 })
 
 function DetailView({ app, shipment, onClose }) {
+  const s = app.ship || {}
   const pt = shipment.parsed_tracking || {}
-  const statusLabel = (app.ship?.statuses || ['En tránsito', 'En ruta de entrega', 'Entregada', 'Solicitud recibida', 'Incidencia'])[statusIndex(shipment.status, app.ship?.statuses || [])] || shipment.status
+  const idx = statusIndex(shipment.status, s.statuses)
+  const statusLabel = (s.statuses || [])[idx] || shipment.status
+  const tone = STATUS_TONE[idx] || STATUS_TONE[0]
+
+  const tracking = shipment.tracking_number || `#${shipment.id}`
+  const route = `${shipment.origin || '—'} → ${shipment.destination || '—'}`
+  const service = shipment.service_type || pt.package_type_name || '—'
+
+  const created = shipment.created_at ? new Date(shipment.created_at) : null
+
+  const TIMELINE = [
+    { label: 'Solicitud recibida', loc: 'Portal del cliente' },
+    { label: 'Mercancía recibida', loc: shipment.origin || '—' },
+    { label: 'En procesamiento', loc: 'Centro de consolidación' },
+    { label: 'En tránsito', loc: `En ruta a ${shipment.destination || '—'}` },
+    { label: 'En ruta de entrega', loc: shipment.destination || '—' },
+    { label: 'Entregada', loc: '—' },
+  ]
+  const STATUS_TO_TIMELINE = { 3: 0, 0: 3, 1: 4, 2: 5, 4: 3 }
+  const currentIdx = STATUS_TO_TIMELINE[idx] ?? 0
+
+  const fmt = (d) => {
+    if (!d || isNaN(d.getTime())) return '—'
+    return `${d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} · ${d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false })}`
+  }
+
+  const stepDate = (i) => {
+    if (i > currentIdx || !created) return null
+    return new Date(created.getTime() + i * 86400000)
+  }
+
+  const charges = shipment.charges || []
+  const documents = shipment.documents || []
+  const showProof = idx === 2 && shipment.delivery_proof
+
+  const cardBase = { background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 24 }
+  const sectionTitle = { fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 20, color: '#001B45' }
+  const label = { fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 10 }
+  const value = { fontSize: 14, lineHeight: 1.7, color: '#10233F' }
+
   return (
     <div style={{ width: '100%' }}>
-      <button onClick={onClose} style={{ marginBottom: 16, padding: '10px 16px', borderRadius: 11, border: '1.5px solid #DCE6F5', background: '#fff', color: '#087CF0', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>← Volver</button>
-      <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 28 }}>
-        <h1 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 800, fontSize: 26, letterSpacing: '-.02em', margin: '0 0 8px', color: '#001B45' }}>Detalle del envío</h1>
-        <div style={{ fontSize: 22, fontFamily: 'Montserrat, sans-serif', fontWeight: 700, color: '#001B45', marginBottom: 24 }}>{shipment.tracking_number || `#${shipment.id}`}</div>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', padding: 0, marginBottom: 14, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>← Volver a mis envíos</button>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20, marginBottom: 24 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 6 }}>Ruta</div>
-            <div style={{ fontSize: 15, color: '#001B45' }}>{shipment.origin || '—'} → {shipment.destination || '—'}</div>
-            <div style={{ fontSize: 13, color: '#6C82A6', marginTop: 4 }}>{getCityCode(shipment.origin)} → {getCityCode(shipment.destination)}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', marginBottom: 22 }}>
+        <h1 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 800, fontSize: 30, letterSpacing: '-.02em', margin: 0, color: '#001B45' }}>{tracking}</h1>
+        <span style={{ display: 'inline-flex', padding: '8px 15px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: tone.bg, color: tone.fg }}>{statusLabel}</span>
+        <span style={{ fontSize: 14, color: '#10233F' }}>{route} · {service}</span>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.35fr .65fr', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={cardBase}>
+            <div style={sectionTitle}>Línea de tiempo completa</div>
+            {TIMELINE.map((step, i) => {
+              const completed = i < currentIdx
+              const current = i === currentIdx
+              const dotBg = current ? '#D99A00' : (completed ? '#087CF0' : '#fff')
+              const dotBorder = current || completed ? '3px solid rgba(8,124,240,.18)' : '3px solid #DCE6F5'
+              const titleColor = i > currentIdx ? '#8B9DBA' : '#001B45'
+              const date = stepDate(i)
+              return (
+                <div key={step.label} style={{ display: 'grid', gridTemplateColumns: '24px 1fr', gap: 16 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span style={{ width: 14, height: 14, borderRadius: '50%', background: dotBg, border: dotBorder, flex: '0 0 auto' }}></span>
+                    <span style={{ flex: '1 1 0%', width: 2, background: i < currentIdx ? '#087CF0' : '#DCE6F5', minHeight: 30 }}></span>
+                  </div>
+                  <div style={{ paddingBottom: 16 }}>
+                    <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 600, fontSize: 14, color: titleColor }}>{step.label}</div>
+                    <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 3 }}>{date ? fmt(date) : 'Pendiente'} · {step.loc}</div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 6 }}>Servicio</div>
-            <div style={{ fontSize: 15, color: '#001B45' }}>{shipment.service_type || '—'}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 6 }}>Estado</div>
-            <div style={{ fontSize: 15, color: '#001B45' }}>{statusLabel}</div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 6 }}>Fecha de creación</div>
-            <div style={{ fontSize: 15, color: '#001B45' }}>{shipment.created_at ? new Date(shipment.created_at).toLocaleDateString() : '—'}</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={cardBase}>
+              <div style={label}>Remitente</div>
+              <div style={value}>{shipment.sender_name || '—'}</div>
+              <div style={value}>{shipment.origin || '—'}</div>
+            </div>
+            <div style={cardBase}>
+              <div style={label}>Destinatario</div>
+              <div style={value}>{shipment.recipient_name || '—'}</div>
+              <div style={value}>{shipment.destination || '—'}</div>
+            </div>
           </div>
         </div>
 
-        <div style={{ borderTop: '1px solid #E3EBF7', paddingTop: 20, marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 12 }}>Paquete</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, fontSize: 14, color: '#10233F' }}>
-            <div><strong style={{ color: '#6C82A6' }}>Piezas:</strong> {shipment.pieces || '—'}</div>
-            <div><strong style={{ color: '#6C82A6' }}>Peso:</strong> {shipment.weight || '—'}</div>
-            <div><strong style={{ color: '#6C82A6' }}>Dimensiones:</strong> {shipment.dimensions || '—'}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={cardBase}>
+            <div style={sectionTitle}>Cargos</div>
+            {charges.length ? charges.map((c, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '8px 0', color: '#10233F' }}>
+                <span>{c.label}</span><span style={{ fontWeight: 600, color: '#001B45' }}>{c.amount}</span>
+              </div>
+            )) : <div style={{ fontSize: 14, color: '#6C82A6', padding: '8px 0' }}>Cargos aún no disponibles.</div>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, paddingTop: 14, borderTop: '1px solid #DCE6F5' }}>
+              <span style={{ fontWeight: 600 }}>Total</span>
+              <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 18 }}>{shipment.total || '—'}</span>
+            </div>
           </div>
+
+          <div style={cardBase}>
+            <div style={sectionTitle}>Documentos</div>
+            {documents.length ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {documents.map((doc, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', border: '1px solid #DCE6F5', borderRadius: 11 }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#087CF0" strokeWidth="1.7"><path d="M6 3h8l4 4v14H6zM14 3v4h4"></path></svg>
+                    <span style={{ flex: '1 1 0%', fontSize: 13, fontWeight: 600 }}>{doc.name}</span>
+                    {doc.url ? (
+                      <button onClick={() => window.open(doc.url, '_blank')} style={{ border: 'none', background: 'none', padding: '6px 2px', cursor: 'pointer', font: 'inherit', color: '#087CF0' }}>Descargar</button>
+                    ) : (
+                      <span style={{ fontSize: 12, color: '#6C82A6' }}>Pendiente</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : <div style={{ fontSize: 14, color: '#6C82A6', padding: '8px 0' }}>Documentos aún no disponibles.</div>}
+          </div>
+
+          {showProof && (
+            <div style={cardBase}>
+              <div style={sectionTitle}>Evidencia de entrega</div>
+              <div style={{ height: 180, borderRadius: 12, overflow: 'hidden', background: '#EEF4FC' }}>
+                {shipment.delivery_proof ? (
+                  <img src={shipment.delivery_proof} alt="Fotografía de entrega" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8B9DBA', fontSize: 13 }}>Fotografía de entrega</div>
+                )}
+              </div>
+              <button style={{ width: '100%', marginTop: 14, padding: 14, background: '#087CF0', border: 'none', borderRadius: 11, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Ver expediente completo →</button>
+            </div>
+          )}
         </div>
-
-        <div style={{ borderTop: '1px solid #E3EBF7', paddingTop: 20, marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 12 }}>Destinatario</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, fontSize: 14, color: '#10233F' }}>
-            <div><strong style={{ color: '#6C82A6' }}>Nombre:</strong> {shipment.recipient_name || '—'}</div>
-            <div><strong style={{ color: '#6C82A6' }}>Correo:</strong> {shipment.recipient_email || '—'}</div>
-            <div><strong style={{ color: '#6C82A6' }}>Teléfono:</strong> {shipment.recipient_phone || '—'}</div>
-          </div>
-        </div>
-
-        {shipment.notes && (
-          <div style={{ borderTop: '1px solid #E3EBF7', paddingTop: 20, marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 12 }}>Notas</div>
-            <div style={{ fontSize: 14, color: '#10233F' }}>{shipment.notes}</div>
-          </div>
-        )}
-
       </div>
     </div>
   )
@@ -174,6 +260,12 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
             <input
               value={query || ''}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && filtered.length) {
+                  const exact = filtered.find((r) => r.id.toLowerCase() === (query || '').toLowerCase())
+                  setSelected((exact || filtered[0]).raw)
+                }
+              }}
               placeholder={s.searchPh}
               style={{ flex: 1, border: 'none', background: 'none', outline: 'none', fontSize: 14, color: '#001B45' }}
             />

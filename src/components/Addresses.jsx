@@ -1,5 +1,6 @@
 import React from 'react'
 import { api } from '../api'
+import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 
 const COUNTRY_OPTIONS = [
   { code: 'AF', name: 'Afganistán' },
@@ -46,28 +47,49 @@ const COUNTRY_OPTIONS = [
 ]
 
 const ZIP_PATTERNS = {
-  PR: /^\d{5}(-\d{4})?$/,
-  US: /^\d{5}(-\d{4})?$/,
+  AF: /^\d{4}$/,
+  AL: /^\d{4}$/,
+  AR: /^\d{4}$/,
+  AU: /^\d{4}$/,
+  BE: /^\d{4}$/,
+  BO: /^\d{4}$/,
+  BR: /^\d{5}-?\d{3}$/,
+  CA: /^[A-Z]\d[A-Z]\s?\d[A-Z]\d$/i,
+  CH: /^\d{4}$/,
+  CL: /^\d{7}$/,
+  CO: /^\d{6}$/,
+  CR: /^\d{5}$/,
+  CU: /^\d{5}$/,
+  DE: /^\d{5}$/,
   DO: /^\d{5}$/,
-  JM: /^[A-Z0-9\s-]{3,10}$/i,
-  KR: /^\d{5}$/,
+  EC: /^\d{6}$/,
+  EG: /^\d{5}$/,
+  ES: /^\d{5}$/,
+  FR: /^\d{5}$/,
+  GB: /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i,
+  GT: /^\d{5}$/,
+  HN: /^\d{5}$/,
+  IT: /^\d{5}$/,
+  JM: /^(?=.*[A-Z])[A-Z0-9\s-]{3,10}$/i,
   JP: /^\d{3}[- ]?\d{4}$/,
+  KR: /^\d{5}$/,
+  MX: /^\d{5}$/,
+  NI: /^\d{5}$/,
+  NL: /^\d{4}\s?[A-Z]{2}$/i,
+  PA: /^\d{4}$/,
+  PE: /^\d{5}$/,
+  PR: /^\d{5}(-\d{4})?$/,
+  PT: /^\d{4}-?\d{3}$/,
+  PY: /^\d{4}$/,
   CN: /^\d{6}$/,
-  VE: /^\d{4,5}$/,
+  RU: /^\d{6}$/,
+  SV: /^\d{4}$/,
+  US: /^\d{5}(-\d{4})?$/,
   UY: /^\d{5}$/,
+  VE: /^\d{4,5}$/,
+  ZA: /^\d{4}$/,
 }
 
-const PHONE_PATTERNS = {
-  PR: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/,
-  DO: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/,
-  US: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/,
-  JM: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/,
-  KR: /^(\+82\s?)?\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{4}$/,
-  JP: /^(\+81\s?)?\d{1,2}[-.\s]?\d{4}[-.\s]?\d{4}$/,
-  CN: /^(\+86\s?)?\d{11}$/,
-  VE: /^(\+58\s?)?\d{3}\s?\d{7}$/,
-  UY: /^(\+598\s?)?\d{2,3}\s?\d{3}\s?\d{3}$/,
-}
 
 const FIELD_KEYS = ['name', 'address', 'country', 'city', 'zip', 'contact', 'phone', 'instructions']
 const TYPE_STRINGS = ['pickup', 'delivery', 'billing']
@@ -136,7 +158,7 @@ export default function Addresses({ app, token }) {
 
   const openNew = () => {
     setFormMode('new')
-    setFormVals({ name: '', address: '', city: '', country: '', zip: '', contact: '', phone: '', instructions: '', type: 0 })
+    setFormVals({ name: '', address: '', city: '', country: '', zip: '', contact: '', phone: '', phoneCountry: '', instructions: '', type: 0 })
     setErr(false)
     setSaved(false)
     setLoadError(null)
@@ -153,6 +175,7 @@ export default function Addresses({ app, token }) {
       zip: row.zip || '',
       contact: row.c,
       phone: row.phone || '',
+      phoneCountry: row.country || '',
       instructions: row.ins || '',
       type: row.type || 0,
     })
@@ -168,15 +191,19 @@ export default function Addresses({ app, token }) {
 
     const country = formVals.country
     if (country) {
-      const zipPattern = ZIP_PATTERNS[country] || /^[A-Z0-9\s-]{3,15}$/i
+      const zipPattern = ZIP_PATTERNS[country] || /^$/
       if (!zipPattern.test(String(formVals.zip || '').trim())) {
         setLoadError(a.errZip.replace('{country}', COUNTRY_OPTIONS.find((c) => c.code === country)?.name || country))
         return
       }
-      const phonePattern = PHONE_PATTERNS[country] || /^[+\d\s\-()]{7,20}$/
-      const phoneVal = String(formVals.phone || '').trim()
-      if (phoneVal && !phonePattern.test(phoneVal)) {
-        setLoadError(a.errPhone.replace('{country}', COUNTRY_OPTIONS.find((c) => c.code === country)?.name || country))
+    }
+    const phoneVal = String(formVals.phone || '').trim()
+    if (phoneVal) {
+      const phoneCountry = formVals.phoneCountry || formVals.country || ''
+      const phonePattern = phoneCountry && PHONE_FORMATS[phoneCountry] ? PHONE_FORMATS[phoneCountry].pattern : /^[+\d\s\-\(\)\.\/]{7,25}$/
+      if (!phonePattern.test(phoneVal)) {
+        const name = phoneCountry && COUNTRY_NAMES[phoneCountry] ? COUNTRY_NAMES[phoneCountry] : (COUNTRY_OPTIONS.find((c) => c.code === formVals.country)?.name || formVals.country || 'este país')
+        setLoadError(a.errPhone.replace('{country}', name))
         return
       }
     }
@@ -364,12 +391,40 @@ export default function Addresses({ app, token }) {
                       <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
                     ))}
                   </select>
+                ) : k === 'phone' ? (
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+                    <select
+                      value={formVals.phoneCountry || ''}
+                      onChange={(e) => { setFormVals((v) => ({ ...v, phoneCountry: e.target.value })); setErr(false); setLoadError(null) }}
+                      style={{
+                        flex: '0 0 90px', padding: '14px 12px',
+                        border: `1.5px solid ${err && REQUIRED.includes(k) && !(formVals[k] || '').trim() ? '#C0392B' : '#DCE6F5'}`,
+                        borderRadius: 11, background: '#EEF4FC', fontSize: 15, color: '#001B45', outline: 'none', cursor: 'pointer',
+                      }}
+                    >
+                      <option value="">{a.f.country}</option>
+                      {Object.keys(PHONE_FORMATS).map((c) => (
+                        <option key={c} value={c}>{PHONE_FORMATS[c].code} {c}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      value={formVals[k] || ''}
+                      onChange={(e) => { setFormVals((v) => ({ ...v, [k]: e.target.value })); setErr(false); setLoadError(null) }}
+                      placeholder={formVals.phoneCountry && PHONE_FORMATS[formVals.phoneCountry] ? PHONE_FORMATS[formVals.phoneCountry].example : a.f[k]}
+                      style={{
+                        flex: 1, padding: '14px 15px',
+                        border: `1.5px solid ${err && REQUIRED.includes(k) && !(formVals[k] || '').trim() ? '#C0392B' : '#DCE6F5'}`,
+                        borderRadius: 11, background: '#EEF4FC', fontSize: 15, color: '#001B45', outline: 'none',
+                      }}
+                    />
+                  </div>
                 ) : (
                   <input
                     value={formVals[k] || ''}
                     onChange={(e) => { setFormVals((v) => ({ ...v, [k]: e.target.value })); setErr(false); setLoadError(null) }}
                     placeholder={a.f[k]}
-                    inputMode={k === 'phone' ? 'tel' : undefined}
                     style={{
                       width: '100%', padding: '14px 15px',
                       border: `1.5px solid ${err && REQUIRED.includes(k) && !(formVals[k] || '').trim() ? '#C0392B' : '#DCE6F5'}`,

@@ -1,5 +1,6 @@
 import React from 'react'
 import { api } from '../api'
+import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 
@@ -16,17 +17,6 @@ const CITIES = [
   'Maracaibo', 'Montevideo', 'Punta del Este', 'Paysandú', 'Salto', 'Colonia',
 ]
 
-const COUNTRY_NAMES = {
-  PR: 'Puerto Rico',
-  DO: 'República Dominicana',
-  US: 'Estados Unidos',
-  JM: 'Jamaica',
-  KR: 'Corea del Sur',
-  JP: 'Japón',
-  CN: 'China',
-  VE: 'Venezuela',
-  UY: 'Uruguay',
-}
 
 const CITY_COUNTRY = {
   'San Juan': 'PR',
@@ -49,17 +39,6 @@ const CITY_COUNTRY = {
   'Colonia': 'UY',
 }
 
-const PHONE_FORMATS = {
-  PR: { code: '+1', example: '+1 787 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  DO: { code: '+1', example: '+1 809 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  US: { code: '+1', example: '+1 305 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  JM: { code: '+1', example: '+1 876 555 1234', pattern: /^(\+?1\s?)?\(?\d{3}\)?\s?\d{3}\s?-?\d{4}$/ },
-  KR: { code: '+82', example: '+82 10-1234-5678', pattern: /^(\+82\s?)?\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{4}$/ },
-  JP: { code: '+81', example: '+81 90-1234-5678', pattern: /^(\+81\s?)?\d{1,2}[-.\s]?\d{4}[-.\s]?\d{4}$/ },
-  CN: { code: '+86', example: '+86 138 0013 8000', pattern: /^(\+86\s?)?\d{11}$/ },
-  VE: { code: '+58', example: '+58 412 123 4567', pattern: /^(\+58\s?)?\d{3}\s?\d{7}$/ },
-  UY: { code: '+598', example: '+598 91 234 567', pattern: /^(\+598\s?)?\d{2,3}\s?\d{3}\s?\d{3}$/ },
-}
 
 const emptyAddress = () => ({
   name: '', company: '', address: '', city: '', country: '', zip: '', phone: '', email: '',
@@ -509,9 +488,8 @@ function ShipmentCreateInner({ app, token }) {
         {c.steps.map((label, i) => {
           const on = i === step
           return (
-            <button
+            <div
               key={i}
-              onClick={() => setStep(i)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -523,7 +501,7 @@ function ShipmentCreateInner({ app, token }) {
                 color: on ? '#0768C9' : '#6C82A6',
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: 'pointer',
+                cursor: 'default',
               }}
             >
               <span style={{
@@ -534,7 +512,7 @@ function ShipmentCreateInner({ app, token }) {
                 fontSize: 11, fontWeight: 700,
               }}>{i + 1}</span>
               {label}
-            </button>
+            </div>
           )
         })}
       </div>
