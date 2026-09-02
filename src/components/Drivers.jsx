@@ -1,4 +1,5 @@
 import React from 'react'
+import { api } from '../api'
 
 const STATUS_COLORS = {
   active: { bg: 'rgba(19,122,69,.12)', fg: '#0F5F36' },
@@ -14,15 +15,6 @@ const DOC_COLORS = {
   expired: { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
 }
 
-const DEMO_DRIVERS = [
-  { n: 'E. Rivera', id: 'DRV-0412', v: 'Van 04 · PR-8842', hub: 'Hub San Juan', shift: '06:00–14:00', doc: 'ok', st: 'route' },
-  { n: 'J. Mejía', id: 'DRV-0418', v: 'Van 07 · PR-9104', hub: 'Hub San Juan', shift: '06:00–14:00', doc: 'soon', st: 'route' },
-  { n: 'A. Castillo', id: 'DRV-0423', v: 'Van 09 · PR-7719', hub: 'Hub Caguas', shift: '14:00–22:00', doc: 'ok', st: 'active' },
-  { n: 'P. Rivas', id: 'DRV-0431', v: 'Van 11 · PR-6620', hub: 'Hub Caguas', shift: '—', doc: 'ok', st: 'available' },
-  { n: 'M. Solano', id: 'DRV-0437', v: '—', hub: 'Hub Santo Domingo', shift: '—', doc: 'expired', st: 'suspended' },
-  { n: 'R. Núñez', id: 'DRV-0442', v: 'Van 15 · RD-2284', hub: 'Hub Santo Domingo', shift: '08:00–16:00', doc: 'ok', st: 'offduty' },
-]
-
 const FILTER_KEYS = ['all', 'active', 'route', 'available', 'suspended', 'docsSoon']
 
 function matchesFilter(driver, key) {
@@ -35,12 +27,33 @@ function matchesFilter(driver, key) {
   return true
 }
 
-export default function Drivers({ app }) {
+export default function Drivers({ app, token }) {
   const d = app.drivers
+  const [drivers, setDrivers] = React.useState([])
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState('')
   const [query, setQuery] = React.useState('')
   const [filter, setFilter] = React.useState('all')
 
-  const filtered = DEMO_DRIVERS.filter((driver) => {
+  const fetchDrivers = React.useCallback(async () => {
+    if (!token) return
+    setLoading(true)
+    setError('')
+    try {
+      const data = await api.getDrivers(token)
+      setDrivers(Array.isArray(data) ? data : data.data || [])
+    } catch (e) {
+      setError(e.message || d.error)
+    } finally {
+      setLoading(false)
+    }
+  }, [token, d.error])
+
+  React.useEffect(() => {
+    fetchDrivers()
+  }, [fetchDrivers])
+
+  const filtered = drivers.filter((driver) => {
     const matches = matchesFilter(driver, filter)
     const q = query.trim().toLowerCase()
     const matchesQuery = !q || [driver.n, driver.id, driver.v, driver.hub, driver.shift]
@@ -50,7 +63,7 @@ export default function Drivers({ app }) {
 
   const filterCounts = FILTER_KEYS.map((key) => ({
     key,
-    count: DEMO_DRIVERS.filter((driver) => matchesFilter(driver, key)).length,
+    count: drivers.filter((driver) => matchesFilter(driver, key)).length,
   }))
 
   return (
@@ -60,6 +73,11 @@ export default function Drivers({ app }) {
         <span style={{ background: '#087CF0', width: 9 }}></span>
       </div>
       <div className="app-greeting">{d.greeting}</div>
+      {error && (
+        <div style={{ padding: 14, background: 'rgba(192,57,43,.08)', color: '#A93226', borderRadius: 11, marginBottom: 20, fontSize: 14 }}>
+          {error}
+        </div>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end', marginBottom: 20 }}>
         <div>
           <h1 className="app-h1" style={{ marginBottom: 8 }}>{d.title}</h1>

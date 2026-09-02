@@ -30,7 +30,7 @@ const STATUS_COLORS = {
 
 export default function AppShell({ user, lang, langs, setLang, onLogout, onUserUpdate }) {
   const app = appI18n[lang] || appI18n.es
-  const isAdmin = user?.role === 'operations' || user?.roles?.some((r) => r.name === 'operations')
+  const isAdmin = user?.roles?.some((r) => ['admin', 'operations'].includes(r.name))
   const nav = isAdmin ? app.navA : app.navC
   const navKeys = Object.keys(nav)
   const [activeKey, setActiveKey] = React.useState(navKeys[0])

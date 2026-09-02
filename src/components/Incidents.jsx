@@ -1,4 +1,5 @@
 import React from 'react'
+import { api } from '../api'
 
 const SEV_COLORS = {
   low: { bg: '#EEF4FC', fg: '#10233F' },
@@ -14,14 +15,6 @@ const STATUS_COLORS = {
   closed: { bg: '#EEF4FC', fg: '#6C82A6' },
 }
 
-const DEMO_INCIDENTS = [
-  { id: 'CS-0231', ship: 'TR3-260729-EUAL-08744', type: 'Mercancía dañada', sev: 'high', when: '25 jul · 10:12', owner: 'C. Méndez', st: 'investigating', cost: true },
-  { id: 'CS-0230', ship: 'TR3-260729-RDPC-08790', type: 'Intento de entrega fallido', sev: 'medium', when: '24 jul · 16:40', owner: 'A. Rojas', st: 'open', cost: true },
-  { id: 'CS-0229', ship: 'TR3-260729-PRSJ-08698', type: 'Pieza faltante', sev: 'high', when: '23 jul · 09:05', owner: 'C. Méndez', st: 'investigating', cost: true },
-  { id: 'CS-0228', ship: 'TR3-260729-EUAL-08651', type: 'Retraso', sev: 'low', when: '21 jul · 14:22', owner: 'A. Rojas', st: 'resolved', cost: false },
-  { id: 'CS-0227', ship: 'TR3-260729-RDPC-08604', type: 'Falla del vehículo', sev: 'critical', when: '19 jul · 07:48', owner: 'R. Vega', st: 'closed', cost: true },
-]
-
 const FILTER_KEYS = ['all', 'open', 'investigating', 'high', 'costly', 'closed']
 
 function matchesFilter(incident, key) {
@@ -34,12 +27,33 @@ function matchesFilter(incident, key) {
   return true
 }
 
-export default function Incidents({ app }) {
+export default function Incidents({ app, token }) {
   const d = app.incidents
+  const [incidents, setIncidents] = React.useState([])
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState('')
   const [query, setQuery] = React.useState('')
   const [filter, setFilter] = React.useState('all')
 
-  const filtered = DEMO_INCIDENTS.filter((incident) => {
+  const fetchIncidents = React.useCallback(async () => {
+    if (!token) return
+    setLoading(true)
+    setError('')
+    try {
+      const data = await api.getIncidents(token)
+      setIncidents(Array.isArray(data) ? data : data.data || [])
+    } catch (e) {
+      setError(e.message || d.error)
+    } finally {
+      setLoading(false)
+    }
+  }, [token, d.error])
+
+  React.useEffect(() => {
+    fetchIncidents()
+  }, [fetchIncidents])
+
+  const filtered = incidents.filter((incident) => {
     const matches = matchesFilter(incident, filter)
     const q = query.trim().toLowerCase()
     const matchesQuery = !q || [incident.id, incident.ship, incident.type, incident.owner]
@@ -49,7 +63,7 @@ export default function Incidents({ app }) {
 
   const filterCounts = FILTER_KEYS.map((key) => ({
     key,
-    count: DEMO_INCIDENTS.filter((incident) => matchesFilter(incident, key)).length,
+    count: incidents.filter((incident) => matchesFilter(incident, key)).length,
   }))
 
   return (
@@ -59,6 +73,11 @@ export default function Incidents({ app }) {
         <span style={{ background: '#087CF0', width: 9 }}></span>
       </div>
       <div className="app-greeting">{d.greeting}</div>
+      {error && (
+        <div style={{ padding: 14, background: 'rgba(192,57,43,.08)', color: '#A93226', borderRadius: 11, marginBottom: 20, fontSize: 14 }}>
+          {error}
+        </div>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end', marginBottom: 20 }}>
         <div>
           <h1 className="app-h1" style={{ marginBottom: 8 }}>{d.title}</h1>

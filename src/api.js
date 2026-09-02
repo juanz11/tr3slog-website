@@ -80,6 +80,14 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getDrivers: (token) => fetch(`${API_URL}/drivers`, {
+    headers: headers(token),
+  }).then(handle),
+
+  getIncidents: (token) => fetch(`${API_URL}/incidents`, {
+    headers: headers(token),
+  }).then(handle),
+
   getShipments: (token) => fetch(`${API_URL}/shipments`, {
     headers: headers(token),
   }).then(handle),
