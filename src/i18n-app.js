@@ -135,6 +135,7 @@ export const appI18n = {
           notes: 'Notas',
         },
         required: ['service', 'pickupDate'],
+        windows: ['09:00 - 12:00', '12:00 - 15:00', '15:00 - 18:00'],
         span2: ['notes'],
       },
       payment: {
@@ -452,6 +453,7 @@ export const appI18n = {
           notes: 'Notes',
         },
         required: ['service', 'pickupDate'],
+        windows: ['09:00 - 12:00', '12:00 - 15:00', '15:00 - 18:00'],
         span2: ['notes'],
       },
       payment: {
@@ -768,6 +770,7 @@ export const appI18n = {
           notes: '备注',
         },
         required: ['service', 'pickupDate'],
+        windows: ['09:00 - 12:00', '12:00 - 15:00', '15:00 - 18:00'],
         span2: ['notes'],
       },
       payment: {
