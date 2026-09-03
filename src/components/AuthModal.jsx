@@ -122,8 +122,18 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
       onLogin(res.user, res.token)
       onClose()
     } catch (err) {
+      const msg = err.message || ''
       const knownCodes = ['account_not_found', 'invalid_credentials']
-      setError(knownCodes.includes(err.message) ? a.errCreds : (err.message || a.errCreds))
+      const emailTaken = /already been taken/i.test(msg) || /ya (está|esta) registrado/i.test(msg)
+      let display = a.errCreds
+      if (emailTaken) {
+        display = a.errEmailTaken
+      } else if (knownCodes.includes(msg)) {
+        display = a.errCreds
+      } else if (msg) {
+        display = msg
+      }
+      setError(display)
       setErrorKey('email')
     } finally {
       setLoading(false)
@@ -131,6 +141,13 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
   }
 
   const inputBorder = (key) => errorKey === key ? 'auth-input auth-input-err' : 'auth-input'
+
+  const clearError = () => {
+    if (error) {
+      setError('')
+      setErrorKey('')
+    }
+  }
 
   return (
     <div className="auth-screen">
@@ -206,7 +223,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                   <label className="auth-label">{a.email}</label>
                   <input
                     type="email" required
-                    value={email} onChange={(e) => setEmail(e.target.value)}
+                    value={email} onChange={(e) => { setEmail(e.target.value); clearError() }}
                     placeholder={a.emailPh}
                     className={inputBorder('email')}
                   />
@@ -219,7 +236,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                         <label className="auth-label">{a.name}</label>
                         <input
                           type="text" required
-                          value={name} onChange={(e) => setName(e.target.value)}
+                          value={name} onChange={(e) => { setName(e.target.value); clearError() }}
                           placeholder={a.namePh}
                           className={inputBorder('name')}
                         />
@@ -228,7 +245,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                         <label className="auth-label">{a.company}</label>
                         <input
                           type="text"
-                          value={company} onChange={(e) => setCompany(e.target.value)}
+                          value={company} onChange={(e) => { setCompany(e.target.value); clearError() }}
                           placeholder={a.companyPh}
                           className={inputBorder('company')}
                         />
@@ -239,7 +256,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                     <label className="auth-label">{a.email}</label>
                     <input
                       type="email" required
-                      value={email} onChange={(e) => setEmail(e.target.value)}
+                      value={email} onChange={(e) => { setEmail(e.target.value); clearError() }}
                       placeholder={a.emailPh}
                       className={inputBorder('email')}
                     />
@@ -250,7 +267,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                       <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
                         <select
                           required
-                          value={country} onChange={(e) => setCountry(e.target.value)}
+                          value={country} onChange={(e) => { setCountry(e.target.value); clearError() }}
                           className={inputBorder('country')}
                           style={{ flex: '0 0 90px', padding: '14px 12px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', color: '#001B45', font: 'inherit', fontSize: 13, cursor: 'pointer' }}
                         >
@@ -266,7 +283,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                             type="tel"
                             inputMode="tel"
                             required
-                            value={phone} onChange={(e) => setPhone(e.target.value)}
+                            value={phone} onChange={(e) => { setPhone(e.target.value); clearError() }}
                             placeholder={country && PHONE_FORMATS[country] ? PHONE_FORMATS[country].example : a.phonePh}
                             className={inputBorder('phone')}
                             style={{ flex: 1 }}
@@ -285,7 +302,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                     <div style={{ position: 'relative' }}>
                       <input
                         type={showPass ? 'text' : 'password'} required
-                        value={password} onChange={(e) => setPassword(e.target.value)}
+                        value={password} onChange={(e) => { setPassword(e.target.value); clearError() }}
                         placeholder={a.passwordPh}
                         className={inputBorder('password')}
                         style={{ paddingRight: 40 }}
@@ -309,7 +326,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                       <div style={{ position: 'relative' }}>
                         <input
                           type={showConfirm ? 'text' : 'password'} required
-                          value={passwordConfirmation} onChange={(e) => setPasswordConfirmation(e.target.value)}
+                          value={passwordConfirmation} onChange={(e) => { setPasswordConfirmation(e.target.value); clearError() }}
                           placeholder={a.passwordPh}
                           className={inputBorder('confirm')}
                           style={{ paddingRight: 40 }}
@@ -330,7 +347,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                   )}
 
                   {mode === 'signup' && (
-                    <div onClick={() => setTerms(!terms)} className="auth-check" role="button" tabIndex={0}>
+                    <div onClick={() => { setTerms(!terms); clearError() }} className="auth-check" role="button" tabIndex={0}>
                       <span className={`auth-check-box ${terms ? 'on' : ''}`}>{terms ? '✓' : ''}</span>
                       <span className="auth-check-label">
                         Acepto los{' '}
