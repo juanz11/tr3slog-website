@@ -84,6 +84,16 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getClients: (token) => fetch(`${API_URL}/users/clients`, {
+    headers: headers(token),
+  }).then(handle),
+
+  createDriver: (data, token) => fetch(`${API_URL}/drivers`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
   getIncidents: (token) => fetch(`${API_URL}/incidents`, {
     headers: headers(token),
   }).then(handle),
