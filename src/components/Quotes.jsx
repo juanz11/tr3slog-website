@@ -19,6 +19,7 @@ export default function Quotes({ app, lang, token }) {
   const [quotes, setQuotes] = React.useState([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState('')
+  const [updating, setUpdating] = React.useState(null)
 
   const fetchQuotes = React.useCallback(async () => {
     if (!token) return
@@ -49,6 +50,18 @@ export default function Quotes({ app, lang, token }) {
   }
 
   const statusLabel = (status) => (STATUS_LABELS[lang] || STATUS_LABELS.es)[status] || status
+
+  const handleStatusChange = React.useCallback(async (id, status) => {
+    setUpdating(id)
+    try {
+      const updated = await api.updateQuoteStatus(id, status, token)
+      setQuotes((prev) => prev.map((quote) => quote.id === id ? { ...quote, ...updated } : quote))
+    } catch (e) {
+      setError(e.message || q.error)
+    } finally {
+      setUpdating(null)
+    }
+  }, [token, q.error])
 
   return (
     <div>
@@ -89,6 +102,7 @@ export default function Quotes({ app, lang, token }) {
             )}
             {quotes.map((quote) => {
               const style = STATUS_COLORS[quote.status] || STATUS_COLORS.pending
+              const statusOptions = Object.keys(STATUS_COLORS)
               return (
                 <div key={quote.id} className="app-table-row" style={{ gridTemplateColumns: '1.2fr 1.2fr .8fr 1fr 1fr .8fr', alignItems: 'center' }}>
                   <span className="app-table-text" title={quote.origin}>{quote.origin}</span>
@@ -96,9 +110,24 @@ export default function Quotes({ app, lang, token }) {
                   <span className="app-table-text">{quote.service_type || '-'}</span>
                   <span className="app-table-text">{quote.client_name}</span>
                   <span className="app-table-text">{formatDate(quote.created_at)}</span>
-                  <span className="app-status" style={{ background: style.bg, color: style.fg }}>
-                    {statusLabel(quote.status)}
-                  </span>
+                  <select
+                    className="app-status"
+                    value={quote.status}
+                    disabled={updating === quote.id}
+                    onChange={(e) => handleStatusChange(quote.id, e.target.value)}
+                    style={{
+                      backgroundColor: style.bg,
+                      color: style.fg,
+                      border: 'none',
+                      borderRadius: 100,
+                      cursor: 'pointer',
+                      opacity: updating === quote.id ? 0.6 : 1,
+                    }}
+                  >
+                    {statusOptions.map((s) => (
+                      <option key={s} value={s}>{statusLabel(s)}</option>
+                    ))}
+                  </select>
                 </div>
               )
             })}

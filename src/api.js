@@ -80,6 +80,12 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  updateQuoteStatus: (id, status, token) => fetch(`${API_URL}/quotes/${id}/status`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify({ status }),
+  }).then(handle),
+
   getDrivers: (token) => fetch(`${API_URL}/drivers`, {
     headers: headers(token),
   }).then(handle),
@@ -96,6 +102,18 @@ export const api = {
 
   getIncidents: (token) => fetch(`${API_URL}/incidents`, {
     headers: headers(token),
+  }).then(handle),
+
+  createIncident: (data, token) => fetch(`${API_URL}/incidents`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  updateIncidentStatus: (id, status, token) => fetch(`${API_URL}/incidents/${id}/status`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify({ status }),
   }).then(handle),
 
   getShipments: (token) => fetch(`${API_URL}/shipments`, {

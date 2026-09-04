@@ -69,8 +69,9 @@ function DetailView({ app, shipment, onClose }) {
     { label: 'En tránsito', loc: `En ruta a ${shipment.destination || '—'}` },
     { label: 'En ruta de entrega', loc: shipment.destination || '—' },
     { label: 'Entregada', loc: '—' },
+    { label: 'Incidencia', loc: '—' },
   ]
-  const STATUS_TO_TIMELINE = { 3: 0, 0: 3, 1: 4, 2: 5, 4: 3 }
+  const STATUS_TO_TIMELINE = { 3: 0, 0: 3, 1: 4, 2: 5, 4: 6 }
   const currentIdx = STATUS_TO_TIMELINE[idx] ?? 0
 
   const fmt = (d) => {

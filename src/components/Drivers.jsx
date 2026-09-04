@@ -3,6 +3,12 @@ import { api } from '../api'
 import { authI18n } from '../i18n-auth'
 import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 
+const SHIFT_PLACEHOLDERS = {
+  es: 'Ej. Mañana / Tarde / Noche',
+  en: 'e.g. Morning / Afternoon / Night',
+  'zh-CN': '例如：早班 / 中班 / 晚班',
+}
+
 const STATUS_COLORS = {
   active: { bg: 'rgba(19,122,69,.12)', fg: '#0F5F36' },
   route: { bg: 'rgba(8,124,240,.1)', fg: '#0768C9' },
@@ -38,11 +44,12 @@ export default function Drivers({ app, lang, token }) {
   const [filter, setFilter] = React.useState('all')
   const a = authI18n[lang] || authI18n.es
   const [open, setOpen] = React.useState(false)
-  const [form, setForm] = React.useState({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', password: '' })
+  const [form, setForm] = React.useState({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: '', password: '' })
   const [formError, setFormError] = React.useState('')
   const [formLoading, setFormLoading] = React.useState(false)
   const [newId, setNewId] = React.useState('')
   const [clients, setClients] = React.useState([])
+  const [selected, setSelected] = React.useState(null)
 
   const fetchDrivers = React.useCallback(async () => {
     if (!token) return
@@ -76,7 +83,7 @@ export default function Drivers({ app, lang, token }) {
   }))
 
   const resetForm = () => {
-    setForm({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', password: '' })
+    setForm({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: '', password: '' })
     setFormError('')
     setNewId('')
   }
@@ -155,8 +162,8 @@ export default function Drivers({ app, lang, token }) {
     try {
       const phone = buildPhone()
       const payload = form.user_id
-        ? { user_id: form.user_id, name: form.name, phone, email: form.email, vehicle: form.vehicle, hub: form.hub }
-        : { ...form, phone, password_confirmation: form.password }
+        ? { user_id: form.user_id, name: form.name, phone, email: form.email, vehicle: form.vehicle, hub: form.hub, shift: form.shift }
+        : { ...form, phone, password_confirmation: form.password, shift: form.shift }
       const created = await api.createDriver(payload, token)
       setDrivers((prev) => [created, ...prev])
       setNewId(created.id)
@@ -207,12 +214,12 @@ export default function Drivers({ app, lang, token }) {
               ))}
             </select>
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', rowGap: 28, columnGap: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', rowGap: 28, columnGap: 24 }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 8, gridColumn: '1 / -1' }}>
               <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{a.name}</span>
               <input type="text" required disabled={!!form.user_id} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
             </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8, gridColumn: '1 / -1' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{a.phone}</span>
               <div style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
                 <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} style={{ flex: '0 0 110px', padding: '14px 12px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', color: '#001B45', font: 'inherit', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
@@ -224,7 +231,7 @@ export default function Drivers({ app, lang, token }) {
                 <input type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder={form.country && PHONE_FORMATS[form.country] ? PHONE_FORMATS[form.country].example : d.phonePh} style={{ flex: 1, padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
               </div>
             </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8, gridColumn: '1 / -1' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{a.email}</span>
               <input type="email" required disabled={!!form.user_id} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
             </label>
@@ -235,6 +242,10 @@ export default function Drivers({ app, lang, token }) {
             <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.cols[3]}</span>
               <input type="text" value={form.hub} onChange={(e) => setForm({ ...form, hub: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.cols[4]}</span>
+              <input type="text" value={form.shift} onChange={(e) => setForm({ ...form, shift: e.target.value })} placeholder={SHIFT_PLACEHOLDERS[lang] || SHIFT_PLACEHOLDERS.es} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
             </label>
             {!form.user_id && (
               <label style={{ display: 'flex', flexDirection: 'column', gap: 8, gridColumn: '1 / -1' }}>
@@ -312,7 +323,7 @@ export default function Drivers({ app, lang, token }) {
                   <span className="app-status" style={{ background: docStyle.bg, color: docStyle.fg }}>{d.docStates[driver.doc]}</span>
                   <span className="app-status" style={{ background: stStyle.bg, color: stStyle.fg }}>{d.statuses[driver.st]}</span>
                   <span>
-                    <button style={{ justifySelf: 'end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>{d.viewProfile}</button>
+                    <button onClick={() => setSelected(driver)} style={{ justifySelf: 'end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>{d.viewProfile}</button>
                   </span>
                 </div>
               )
@@ -320,6 +331,31 @@ export default function Drivers({ app, lang, token }) {
           </div>
         </div>
       </div>
+
+      {selected && (
+        <div onClick={() => setSelected(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(16,35,63,.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460, padding: 26, boxShadow: '0 20px 60px rgba(0,27,69,.18)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+              <h2 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 20, margin: 0, color: '#001B45' }}>{selected.n}</h2>
+              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 20, color: '#6C82A6' }}>×</button>
+            </div>
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[1]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.id}</div></div>
+              <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{a.email}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.email}</div></div>
+              <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{a.phone}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.phone}</div></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[2]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.v}</div></div>
+                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[3]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.hub}</div></div>
+              </div>
+              <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[4]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.shift}</div></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[6]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{d.statuses[selected.st]}</div></div>
+                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[5]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{d.docStates[selected.doc]}</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', border: '1px dashed #DCE6F5', background: '#EEF4FC', borderRadius: 14, padding: '16px 18px', marginTop: 16 }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0768C9" strokeWidth="1.8" style={{ flex: '0 0 auto', marginTop: 1 }}>

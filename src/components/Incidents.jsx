@@ -17,6 +17,12 @@ const STATUS_COLORS = {
 
 const FILTER_KEYS = ['all', 'open', 'investigating', 'high', 'costly', 'closed']
 
+const FORM_LABELS = {
+  es: { ship: 'Envío', title: 'Título / tipo', severity: 'Severidad', description: 'Descripción', save: 'Guardar', cancel: 'Cancelar', createTitle: 'Abrir caso' },
+  en: { ship: 'Shipment', title: 'Title / type', severity: 'Severity', description: 'Description', save: 'Save', cancel: 'Cancel', createTitle: 'Open case' },
+  'zh-CN': { ship: '货运', title: '标题/类型', severity: '严重程度', description: '描述', save: '保存', cancel: '取消', createTitle: '打开案件' },
+}
+
 function matchesFilter(incident, key) {
   if (key === 'all') return true
   if (key === 'open') return incident.st === 'open'
@@ -27,13 +33,16 @@ function matchesFilter(incident, key) {
   return true
 }
 
-export default function Incidents({ app, token }) {
+export default function Incidents({ app, lang, token }) {
   const d = app.incidents
   const [incidents, setIncidents] = React.useState([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState('')
   const [query, setQuery] = React.useState('')
   const [filter, setFilter] = React.useState('all')
+  const [updating, setUpdating] = React.useState(null)
+  const [showForm, setShowForm] = React.useState(false)
+  const [form, setForm] = React.useState({ ship: '', title: '', severity: 'medium', description: '' })
 
   const fetchIncidents = React.useCallback(async () => {
     if (!token) return
@@ -66,6 +75,36 @@ export default function Incidents({ app, token }) {
     count: incidents.filter((incident) => matchesFilter(incident, key)).length,
   }))
 
+  const handleStatusChange = React.useCallback(async (id, status) => {
+    setUpdating(id)
+    try {
+      const updated = await api.updateIncidentStatus(id, status, token)
+      setIncidents((prev) => prev.map((inc) => inc.numericId === id ? updated : inc))
+    } catch (e) {
+      setError(e.message || d.error)
+    } finally {
+      setUpdating(null)
+    }
+  }, [token, d.error])
+
+  const handleCreate = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      await api.createIncident(form, token)
+      setShowForm(false)
+      setForm({ ship: '', title: '', severity: 'medium', description: '' })
+      await fetchIncidents()
+    } catch (e) {
+      setError(e.message || d.error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const formLabels = FORM_LABELS[lang] || FORM_LABELS.es
+
   return (
     <div>
       <div className="app-motif" aria-hidden="true">
@@ -78,12 +117,44 @@ export default function Incidents({ app, token }) {
           {error}
         </div>
       )}
+
+      {showForm && (
+        <form onSubmit={handleCreate} className="app-card" style={{ padding: 20, marginBottom: 20 }}>
+          <div className="app-card-title" style={{ marginBottom: 14 }}>{formLabels.createTitle}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14, marginBottom: 14 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6C82A6', marginBottom: 6 }}>{formLabels.ship}</label>
+              <input required value={form.ship} onChange={(e) => setForm({ ...form, ship: e.target.value })} placeholder="TR3-... / SHP-..." style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10, fontSize: 14, outline: 'none' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6C82A6', marginBottom: 6 }}>{formLabels.title}</label>
+              <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10, fontSize: 14, outline: 'none' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6C82A6', marginBottom: 6 }}>{formLabels.severity}</label>
+              <select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10, fontSize: 14, outline: 'none', background: '#fff' }}>
+                {Object.keys(SEV_COLORS).map((s) => (
+                  <option key={s} value={s}>{d.sev[s]}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#6C82A6', marginBottom: 6 }}>{formLabels.description}</label>
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={1} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10, fontSize: 14, outline: 'none', resize: 'vertical' }} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button type="button" onClick={() => setShowForm(false)} style={{ padding: '10px 16px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', color: '#10233F', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{formLabels.cancel}</button>
+            <button type="submit" disabled={loading} className="app-primary" style={{ padding: '10px 16px' }}>{formLabels.save}</button>
+          </div>
+        </form>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end', marginBottom: 20 }}>
         <div>
           <h1 className="app-h1" style={{ marginBottom: 8 }}>{d.title}</h1>
           <p style={{ margin: 0, fontSize: 15, color: '#10233F', maxWidth: '70ch' }}>{d.sub}</p>
         </div>
-        <button className="app-primary" style={{ marginLeft: 'auto' }}>{d.openCaseBtn}</button>
+        <button className="app-primary" onClick={() => setShowForm(true)} style={{ marginLeft: 'auto' }}>{d.openCaseBtn}</button>
       </div>
 
       <div className="app-card">
@@ -146,7 +217,24 @@ export default function Incidents({ app, token }) {
                   <span className="app-status" style={{ background: sevStyle.bg, color: sevStyle.fg }}>{d.sev[incident.sev]}</span>
                   <span className="app-table-text">{incident.when}</span>
                   <span className="app-table-text">{incident.owner}</span>
-                  <span className="app-status" style={{ background: stStyle.bg, color: stStyle.fg }}>{d.statuses[incident.st]}</span>
+                  <select
+                    className="app-status"
+                    value={incident.st}
+                    disabled={updating === incident.numericId}
+                    onChange={(e) => handleStatusChange(incident.numericId, e.target.value)}
+                    style={{
+                      backgroundColor: stStyle.bg,
+                      color: stStyle.fg,
+                      border: 'none',
+                      borderRadius: 100,
+                      cursor: 'pointer',
+                      opacity: updating === incident.numericId ? 0.6 : 1,
+                    }}
+                  >
+                    {Object.keys(STATUS_COLORS).map((s) => (
+                      <option key={s} value={s}>{d.statuses[s]}</option>
+                    ))}
+                  </select>
                   <span>
                     <button style={{ justifySelf: 'end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>{d.viewCase}</button>
                   </span>

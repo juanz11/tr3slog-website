@@ -301,7 +301,7 @@ export const appI18n = {
       searchPh: 'Buscar por caso, envío o conductor',
       empty: 'No hay casos que coincidan.',
       viewCase: 'Ver caso',
-      note: 'La creación y el cierre formal de casos requieren el servicio de incidencias. Los cambios de esta pantalla no persisten.',
+      note: 'Los casos se crean y se actualizan directamente desde este panel y se guardan en la base de datos.',
       filters: {
         all: 'Todas', open: 'Abiertas', investigating: 'En investigación',
         high: 'Severidad alta', costly: 'Con costo', closed: 'Cerradas',
@@ -624,7 +624,7 @@ export const appI18n = {
       searchPh: 'Search by case, shipment or driver',
       empty: 'No matching cases.',
       viewCase: 'View case',
-      note: 'Creating and formally closing cases requires the incident service. Changes on this screen do not persist.',
+      note: 'Cases are created and updated directly from this panel and saved to the database.',
       filters: {
         all: 'All', open: 'Open', investigating: 'Investigating',
         high: 'High severity', costly: 'With cost', closed: 'Closed',
@@ -946,7 +946,7 @@ export const appI18n = {
       searchPh: '按案件、运单或司机搜索',
       empty: '没有匹配的案件。',
       viewCase: '查看案件',
-      note: '案件的正式创建与关闭需要接入异常事件服务。本页面的更改不会持久保存。',
+      note: '可直接在本面板创建和更新案件，并保存到数据库。',
       filters: {
         all: '全部', open: '待处理', investigating: '调查中',
         high: '高严重等级', costly: '产生费用', closed: '已关闭',

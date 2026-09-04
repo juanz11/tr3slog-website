@@ -46,7 +46,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   }, [])
 
   React.useEffect(() => {
-    if (!token || !isAdmin) return
+    if (!token) return
     const fetchCount = async () => {
       try {
         const data = await api.getPendingQuotesCount(token)
@@ -56,7 +56,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
     fetchCount()
     const interval = setInterval(fetchCount, 30000)
     return () => clearInterval(interval)
-  }, [token, isAdmin])
+  }, [token])
 
   const accountInitials = (user?.name || 'US').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
   const accountName = user?.name || user?.email || 'Usuario'
@@ -233,11 +233,13 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery })
   }, [token])
 
   const statusToIdx = (status) => {
+    if (typeof status === 'number') return status
     const s = String(status || '').toLowerCase()
-    if (s === 'in_transit' || s === 'en tránsito' || s === 'en transito') return 1
-    if (s === 'in_route' || s === 'en ruta de entrega') return 2
-    if (s === 'delivered' || s === 'entregado' || s === 'entregada') return 3
-    if (s === 'pending' || s === 'pendiente') return 4
+    if (s === 'in_transit' || s === 'en tránsito' || s === 'en transito') return 0
+    if (s === 'in_route' || s === 'en ruta de entrega' || s === 'out_for_delivery') return 1
+    if (s === 'delivered' || s === 'entregado' || s === 'entregada') return 2
+    if (s === 'pending' || s === 'pendiente' || s === 'solicitud recibida') return 3
+    if (s === 'incident' || s === 'incidencia') return 4
     return 0
   }
 
@@ -315,16 +317,40 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery })
   const statusColor = (status) => STATUS_COLORS[status] || STATUS_COLORS.pending
   const statusLabel = (status) => (q.statuses?.[status] || status)
 
-  const inTransit = shipments.filter((sh) => statusToIdx(sh.status) === 1).length
-  const deliveredThisMonth = shipments.filter((sh) => {
-    const date = sh.updated_at ? new Date(sh.updated_at) : null
-    return statusToIdx(sh.status) === 3 && date && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear()
+  const parseDate = (value) => {
+    const date = value ? new Date(value) : null
+    return date && !isNaN(date.getTime()) ? date : null
+  }
+
+  const inTransit = shipments.filter((sh) => {
+    const idx = statusToIdx(sh.status)
+    return idx === 0 || idx === 1
   }).length
+  const deliveredThisMonth = shipments.filter((sh) => {
+    const date = parseDate(sh.updated_at || sh.created_at)
+    return statusToIdx(sh.status) === 2 && date && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear()
+  }).length
+
+  const delivered = shipments.filter((sh) => statusToIdx(sh.status) === 2)
+  const measuredOnTime = delivered.filter((sh) => {
+    const eta = parseDate(sh.eta || sh.estimated_delivery)
+    const deliveredAt = parseDate(sh.delivered_at || sh.updated_at || sh.created_at)
+    return eta && deliveredAt
+  })
+  const onTimeCount = measuredOnTime.filter((sh) => {
+    const eta = new Date(sh.eta || sh.estimated_delivery)
+    const deliveredAt = new Date(sh.delivered_at || sh.updated_at || sh.created_at)
+    return deliveredAt <= eta
+  }).length
+  const onTimeRate = measuredOnTime.length ? `${Math.round((onTimeCount / measuredOnTime.length) * 100)}%` : d.kpis[2].v
+  const onTimeLabel = lang === 'zh' ? '准时' : lang === 'en' ? 'on time' : 'a tiempo'
+  const onTimeNote = measuredOnTime.length ? `${onTimeCount}/${measuredOnTime.length} ${onTimeLabel}` : d.kpis[2].n
+
   const activeNote = d.kpis[0].n.replace(/\d+/, String(inTransit))
   const kpis = [
     { ...d.kpis[0], v: String(shipments.length), n: activeNote },
     { ...d.kpis[1], v: String(deliveredThisMonth) },
-    d.kpis[2],
+    { ...d.kpis[2], v: onTimeRate, n: onTimeNote },
     { ...d.kpis[3], v: String(pendingQuotes) },
   ]
 
@@ -386,7 +412,7 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery })
                   <span className="app-table-id">{r.id}</span>
                   <span className="app-table-text">{r.route}</span>
                   <span className="app-status" style={{ background: STATUS_TONE[r.statusIdx].bg, color: STATUS_TONE[r.statusIdx].fg }}>
-                    {app.ship.filters[r.statusIdx]}
+                    {app.ship.statuses[r.statusIdx]}
                   </span>
                   <span className="app-table-text">{r.eta}</span>
                 </button>
