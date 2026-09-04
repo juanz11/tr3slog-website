@@ -35,6 +35,12 @@ export const api = {
     body: JSON.stringify(data),
   }).then(handle),
 
+  driverLogin: (data) => fetch(`${API_URL}/driver/login`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(data),
+  }).then(handle),
+
   me: (token) => fetch(`${API_URL}/user`, {
     headers: headers(token),
   }).then(handle),
