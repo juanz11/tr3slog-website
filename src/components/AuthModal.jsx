@@ -21,6 +21,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
   const [errorKey, setErrorKey] = React.useState('')
   const [success, setSuccess] = React.useState('')
   const [loading, setLoading] = React.useState(false)
+  const [isDriver, setIsDriver] = React.useState(false)
 
   const reset = () => {
     setName('')
@@ -37,6 +38,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
     setError('')
     setErrorKey('')
     setSuccess('')
+    setIsDriver(false)
   }
 
   React.useEffect(() => {
@@ -52,10 +54,18 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
   }, [onClose])
 
   const validate = () => {
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      setError(a.errEmail)
-      setErrorKey('email')
-      return false
+    if (mode === 'login' && isDriver) {
+      if (!email.trim()) {
+        setError(t.common.required)
+        setErrorKey('email')
+        return false
+      }
+    } else {
+      if (!/\S+@\S+\.\S+/.test(email)) {
+        setError(a.errEmail)
+        setErrorKey('email')
+        return false
+      }
     }
     if (mode === 'forgot') return true
     if (mode === 'signup') {
@@ -114,10 +124,10 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
         return
       }
       const payload = mode === 'login'
-        ? { email, password }
+        ? (isDriver ? { driver_id: email, email, password } : { email, password })
         : { name, company, email, phone, country, password, password_confirmation: passwordConfirmation }
       const res = mode === 'login'
-        ? await api.login(payload)
+        ? (isDriver ? await api.driverLogin(payload) : await api.login(payload))
         : await api.register(payload)
       onLogin(res.user, res.token)
       onClose()
@@ -253,11 +263,11 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                     </>
                   )}
                   <div>
-                    <label className="auth-label">{a.email}</label>
+                    <label className="auth-label">{isDriver ? (a.driverId || a.email) : a.email}</label>
                     <input
-                      type="email" required
+                      type={isDriver ? 'text' : 'email'} required
                       value={email} onChange={(e) => { setEmail(e.target.value); clearError() }}
-                      placeholder={a.emailPh}
+                      placeholder={isDriver ? (a.driverIdPh || a.emailPh) : a.emailPh}
                       className={inputBorder('email')}
                     />
                   </div>
@@ -377,6 +387,18 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                         <span className="auth-check-label">{a.remember}</span>
                       </button>
                       <button type="button" onClick={() => setMode('forgot')} className="auth-forgot">{a.forgot}</button>
+                    </div>
+                  )}
+
+                  {mode === 'login' && (
+                    <div style={{ textAlign: 'center', marginTop: -6 }}>
+                      <button
+                        type="button"
+                        onClick={() => { setIsDriver(!isDriver); clearError() }}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#087CF0', fontSize: 13, fontWeight: 600 }}
+                      >
+                        {isDriver ? (a.clientLogin || 'Soy cliente') : (a.driverLogin || 'Soy conductor')}
+                      </button>
                     </div>
                   )}
                 </>
