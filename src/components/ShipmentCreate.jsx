@@ -63,10 +63,109 @@ const getInitials = (text = '') => {
   return (first + second).toUpperCase()
 }
 
-function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelectAddress, submitted, error, submitting, result, onChange, onBack, onNext, onFinish }) {
+function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePackage }) {
+  const label = { display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }
+  const input = { width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#fff', font: 'inherit', color: '#001B45', outline: 'none', fontSize: 15 }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {packages.map((pkg, i) => (
+        <div key={i} style={{ background: '#F7F9FC', border: '1px solid #DCE6F5', borderRadius: 16, padding: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 13, color: '#001B45' }}>{`Paquete ${i + 1}`}</span>
+            {packages.length > 1 && (
+              <button
+                type="button"
+                onClick={() => onRemovePackage(i)}
+                style={{ width: 28, height: 28, border: '1.5px solid #C0392B', borderRadius: 8, background: '#fff', color: '#C0392B', fontSize: 18, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                −
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={label}>{c.package.fields.pieces}</label>
+              <input
+                value={pkg.pieces}
+                onChange={(e) => onPackageChange(i, 'pieces', e.target.value.replace(/\D/g, ''))}
+                placeholder={c.package.placeholders.pieces}
+                style={input}
+              />
+            </div>
+            <div>
+              <label style={label}>{c.package.fields.weight}</label>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+                <input
+                  value={pkg.weight}
+                  onChange={(e) => onPackageChange(i, 'weight', e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1'))}
+                  placeholder={c.package.placeholders.weight}
+                  style={{ ...input, flex: 1 }}
+                />
+                <div style={{ display: 'flex', flex: '0 0 auto', border: '1.5px solid #DCE6F5', borderRadius: 11, overflow: 'hidden' }}>
+                  {['kg','lb'].map((u) => {
+                    const active = (pkg.weightUnit || 'kg') === u
+                    return (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => onPackageChange(i, 'weightUnit', u)}
+                        style={{ padding: '0 14px', border: 'none', background: active ? '#087CF0' : '#fff', color: active ? '#fff' : '#10233F', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        {u}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+            <div>
+              <label style={label}>{c.package.fields.dimensions}</label>
+              <input
+                value={pkg.dimensions}
+                onChange={(e) => onPackageChange(i, 'dimensions', e.target.value)}
+                placeholder={c.package.placeholders.dimensions}
+                style={input}
+              />
+            </div>
+            <div>
+              <label style={label}>{c.package.fields.declaredValue}</label>
+              <input
+                value={pkg.declaredValue}
+                onChange={(e) => onPackageChange(i, 'declaredValue', e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1'))}
+                placeholder={c.package.placeholders.declaredValue}
+                style={input}
+              />
+            </div>
+            <div style={{ gridColumn: 'span 2' }}>
+              <label style={label}>{c.package.fields.content}</label>
+              <textarea
+                value={pkg.content}
+                onChange={(e) => onPackageChange(i, 'content', e.target.value)}
+                rows={3}
+                placeholder={c.package.placeholders.content}
+                style={{ ...input, resize: 'vertical' }}
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={onAddPackage}
+        style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', border: '1.5px solid #087CF0', borderRadius: 11, background: 'rgba(8,124,240,.08)', color: '#0768C9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+      >
+        <span style={{ fontSize: 18 }}>+</span> Agregar paquete
+      </button>
+    </div>
+  )
+}
+
+function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, onBack, onNext, onFinish }) {
   const isLastStep = step === c.steps.length - 1
   const isComplete = section
-    ? config.required.every((k) => String(data[section][k] || '').trim() !== '')
+    ? (section === 'package'
+      ? data[section].every((pkg) => config.required.every((k) => String(pkg[k] || '').trim() !== ''))
+      : config.required.every((k) => String(data[section][k] || '').trim() !== ''))
     : true
   const today = new Date()
   const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
@@ -106,6 +205,15 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
             </select>
           </label>
         </div>
+      )}
+      {section === 'package' && (
+        <PackageList
+          c={c}
+          packages={data.package}
+          onPackageChange={onPackageChange}
+          onAddPackage={onAddPackage}
+          onRemovePackage={onRemovePackage}
+        />
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {config.keys.map((key) => (
@@ -325,7 +433,7 @@ function ShipmentCreateInner({ app, token }) {
   const [data, setData] = React.useState({
     sender: emptyAddress(),
     recipient: emptyAddress(),
-    package: emptyPackage(),
+    package: [emptyPackage()],
     service: emptyService(),
     payment: emptyPayment(),
   })
@@ -353,11 +461,8 @@ function ShipmentCreateInner({ app, token }) {
     const phoneExample = getPhoneExample(section)
     if (step === 2) {
       return {
-        keys: Object.keys(c.package.fields),
-        fields: c.package.fields,
-        placeholders: c.package.placeholders,
+        keys: [],
         required: c.package.required,
-        span2: c.package.span2,
       }
     }
     if (step === 3) {
@@ -428,15 +533,16 @@ function ShipmentCreateInner({ app, token }) {
   }
 
   const validatePackage = () => {
-    const { pieces, weight, dimensions } = data.package
-    if (!/^\d+$/.test(String(pieces).trim())) {
-      return c.errPieces
-    }
-    if (!/^\d+(\.\d+)?$/.test(String(weight).trim()) || Number(weight) <= 0) {
-      return c.errWeight
-    }
-    if (String(dimensions).trim() && !/^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(\s*(cm|in|m))?$/i.test(String(dimensions).trim())) {
-      return c.errDimensions
+    for (const pkg of data.package) {
+      if (!/^\d+$/.test(String(pkg.pieces).trim())) {
+        return c.errPieces
+      }
+      if (!/^\d+(\.\d+)?$/.test(String(pkg.weight).trim()) || Number(pkg.weight) <= 0) {
+        return c.errWeight
+      }
+      if (String(pkg.dimensions).trim() && !/^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(\s*(cm|in|m))?$/i.test(String(pkg.dimensions).trim())) {
+        return c.errDimensions
+      }
     }
     return ''
   }
@@ -525,10 +631,14 @@ function ShipmentCreateInner({ app, token }) {
         recipient_email: data.recipient.email,
         recipient_phone: data.recipient.phone,
         service_type: data.service.service,
-        weight: data.package.weight,
-        weight_unit: data.package.weightUnit,
-        dimensions: data.package.dimensions,
-        pieces: data.package.pieces,
+        packages: data.package.map((pkg) => ({
+          pieces: pkg.pieces,
+          weight: pkg.weight,
+          weight_unit: pkg.weightUnit,
+          dimensions: pkg.dimensions,
+          declared_value: pkg.declaredValue,
+          content: pkg.content,
+        })),
         notes: data.service.notes,
         payment_method_id: paymentMethod.id,
         charge_to_account: data.payment.chargeToAccount,
@@ -569,6 +679,23 @@ function ShipmentCreateInner({ app, token }) {
       },
     }))
   }, [savedAddresses])
+
+  const onPackageChange = React.useCallback((index, key, value) => {
+    setError('')
+    setData((prev) => {
+      const packages = [...prev.package]
+      packages[index] = { ...packages[index], [key]: value }
+      return { ...prev, package: packages }
+    })
+  }, [])
+
+  const onAddPackage = React.useCallback(() => {
+    setData((prev) => ({ ...prev, package: [...prev.package, emptyPackage()] }))
+  }, [])
+
+  const onRemovePackage = React.useCallback((index) => {
+    setData((prev) => ({ ...prev, package: prev.package.filter((_, i) => i !== index) }))
+  }, [])
 
   const onChange = React.useCallback((key, value) => {
     if (!section) return
@@ -642,6 +769,9 @@ function ShipmentCreateInner({ app, token }) {
           submitting={submitting}
           result={result}
           onChange={onChange}
+          onPackageChange={onPackageChange}
+          onAddPackage={onAddPackage}
+          onRemovePackage={onRemovePackage}
           onBack={onBack}
           onNext={onNext}
           onFinish={onFinish}
