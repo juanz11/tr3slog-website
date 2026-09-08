@@ -168,7 +168,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             />
             <button onClick={() => { setActiveKey('shipments') }} className="app-search-btn">{app.shell.searchHint}</button>
           </div>
-          {!isCreate && (
+          {!isCreate && !isAdmin && (
             <button onClick={() => setActiveKey('create')} style={{ marginLeft: 'auto', padding: '12px 18px', background: '#087CF0', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {app.dash.newShipment}
             </button>
@@ -210,7 +210,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isProfile ? (
             <Profile app={app} user={user} token={token} onUserUpdate={onUserUpdate} />
           ) : isDash ? (
-            <Dashboard app={app} lang={lang} token={token} shipments={shipments} onGo={setActiveKey} pendingQuotes={pendingQuotes} hquery={hquery} />
+            <Dashboard app={app} lang={lang} token={token} shipments={shipments} onGo={setActiveKey} pendingQuotes={pendingQuotes} hquery={hquery} isAdmin={isAdmin} />
           ) : (
             <div className="app-empty">{app.empty}</div>
           )}
@@ -220,7 +220,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   )
 }
 
-function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery }) {
+function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, isAdmin }) {
   const d = app.dash
   const q = app.quotes
   const [quotes, setQuotes] = React.useState([])
@@ -427,6 +427,7 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery })
             <div className="app-quick-grid">
               {d.quick.map((q, i) => {
                 const targets = ['create', 'create', 'shipments', 'support']
+                if (isAdmin && targets[i] === 'create') return null
                 return (
                   <button key={i} onClick={() => onGo?.(targets[i])} className="app-quick-btn">{q}</button>
                 )

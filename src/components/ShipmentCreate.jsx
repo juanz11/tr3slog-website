@@ -65,11 +65,11 @@ const getInitials = (text = '') => {
 
 function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePackage }) {
   const label = { display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }
-  const input = { width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#fff', font: 'inherit', color: '#001B45', outline: 'none', fontSize: 15 }
+  const input = { width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none', fontSize: 15 }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {packages.map((pkg, i) => (
-        <div key={i} style={{ background: '#F7F9FC', border: '1px solid #DCE6F5', borderRadius: 16, padding: 20 }}>
+        <div key={i} style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 13, color: '#001B45' }}>{`Paquete ${i + 1}`}</span>
             {packages.length > 1 && (
@@ -160,7 +160,7 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
   )
 }
 
-function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, onBack, onNext, onFinish }) {
+function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, isAfterHours, afterHoursMsg, onBack, onNext, onFinish }) {
   const isLastStep = step === c.steps.length - 1
   const isComplete = section
     ? (section === 'package'
@@ -172,6 +172,11 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
 
   return (
     <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 26 }}>
+      {isAfterHours && (
+        <div style={{ marginBottom: 20, padding: 16, borderRadius: 12, background: '#FDECEC', color: '#B91C1C', fontSize: 14, lineHeight: 1.6 }}>
+          {afterHoursMsg}
+        </div>
+      )}
       {(section === 'sender' || section === 'recipient') && (
         <div style={{ marginBottom: 24 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -407,13 +412,13 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
               onNext()
             }
           }}
-          disabled={!isComplete || submitting}
+          disabled={!isComplete || submitting || isAfterHours}
           style={{
             marginLeft: 'auto', padding: '14px 24px',
-            background: isComplete && !submitting ? '#087CF0' : '#8FC6F7',
+            background: (isComplete && !submitting && !isAfterHours) ? '#087CF0' : '#8FC6F7',
             border: 'none', borderRadius: 11,
             color: '#fff', fontSize: 14, fontWeight: 600,
-            cursor: isComplete && !submitting ? 'pointer' : 'not-allowed',
+            cursor: (isComplete && !submitting && !isAfterHours) ? 'pointer' : 'not-allowed',
           }}
         >{isLastStep ? (submitting ? 'Procesando…' : c.payment.submit) : c.continue}</button>
       </div>
@@ -429,6 +434,19 @@ function ShipmentCreateInner({ app, token }) {
   const [error, setError] = React.useState('')
   const [result, setResult] = React.useState(null)
   const [savedAddresses, setSavedAddresses] = React.useState([])
+
+  const afterHours = React.useCallback(() => {
+    const hour = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Santo_Domingo', hour: 'numeric', hour12: false }))
+    return hour >= 20
+  }, [])
+
+  const [isAfterHours, setIsAfterHours] = React.useState(afterHours)
+  const afterHoursMsg = `No se pueden crear envíos después de las 8:00 p.m. (hora de República Dominicana). Estaremos pronto. Nuestros horarios son: ${app.support.hours}`
+
+  React.useEffect(() => {
+    const id = setInterval(() => setIsAfterHours(afterHours()), 60000)
+    return () => clearInterval(id)
+  }, [afterHours])
 
   const [data, setData] = React.useState({
     sender: emptyAddress(),
@@ -596,6 +614,10 @@ function ShipmentCreateInner({ app, token }) {
   const onFinish = React.useCallback(async () => {
     if (!token) {
       setError('Inicie sesión para crear un envío.')
+      return
+    }
+    if (afterHours()) {
+      setError(afterHoursMsg)
       return
     }
     const err = validateAll()
@@ -772,6 +794,8 @@ function ShipmentCreateInner({ app, token }) {
           onPackageChange={onPackageChange}
           onAddPackage={onAddPackage}
           onRemovePackage={onRemovePackage}
+          isAfterHours={isAfterHours}
+          afterHoursMsg={afterHoursMsg}
           onBack={onBack}
           onNext={onNext}
           onFinish={onFinish}
