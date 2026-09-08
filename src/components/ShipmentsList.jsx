@@ -141,6 +141,38 @@ function DetailView({ app, shipment, onClose }) {
               <div style={value}>{shipment.destination || '—'}</div>
             </div>
           </div>
+
+          <div style={cardBase}>
+            <div style={sectionTitle}>Detalles del paquete</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <div style={label}>Piezas</div>
+                <div style={value}>{shipment.pieces || '—'}</div>
+              </div>
+              <div>
+                <div style={label}>Peso</div>
+                <div style={value}>{shipment.weight ? `${shipment.weight} ${shipment.weight_unit || ''}`.trim() : '—'}</div>
+              </div>
+              <div>
+                <div style={label}>Dimensiones</div>
+                <div style={value}>{shipment.dimensions || '—'}</div>
+              </div>
+              <div>
+                <div style={label}>Valor declarado</div>
+                <div style={value}>{shipment.declared_value ? `$${shipment.declared_value}` : '—'}</div>
+              </div>
+              <div style={{ gridColumn: 'span 2' }}>
+                <div style={label}>Contenido</div>
+                <div style={value}>{shipment.content || '—'}</div>
+              </div>
+              {shipment.notes && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <div style={label}>Notas</div>
+                  <div style={value}>{shipment.notes}</div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

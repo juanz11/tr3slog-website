@@ -183,17 +183,54 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
                   options={{ style: { base: { fontSize: '14px', color: '#001B45', '::placeholder': { color: '#8B9DBA' } } } }}
                 />
               </div>
+            ) : key === 'weight' ? (
+              <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  pattern="\\d+(\\.\\d+)?"
+                  placeholder={config.placeholders[key]}
+                  value={section ? data[section][key] : ''}
+                  onChange={(e) => onChange(key, e.target.value.replace(/[^0-9.]/g, '').replace(/(\\..*?)\\./g, '$1'))}
+                  style={{
+                    flex: 1, padding: '14px 15px',
+                    border: '1.5px solid #DCE6F5', borderRadius: 11,
+                    background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                    outline: 'none',
+                  }}
+                />
+                <div style={{ display: 'flex', flex: '0 0 auto', border: '1.5px solid #DCE6F5', borderRadius: 11, overflow: 'hidden' }}>
+                  {['kg','lb'].map((u) => {
+                    const active = (data[section].weightUnit || 'kg') === u
+                    return (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => onChange('weightUnit', u)}
+                        style={{
+                          padding: '0 14px', border: 'none',
+                          background: active ? '#087CF0' : '#fff',
+                          color: active ? '#fff' : '#10233F',
+                          fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        {u}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             ) : (
               <>
                 <input
                     type={key === 'pickupDate' ? 'date' : 'text'}
                     min={key === 'pickupDate' ? minDate : undefined}
                     list={config.datalist && config.datalist[key] ? `${key}-suggestions` : undefined}
-                    inputMode={key === 'pieces' ? 'numeric' : key === 'weight' ? 'decimal' : key === 'pickupDate' ? undefined : 'text'}
-                    pattern={key === 'pieces' ? '\\d*' : key === 'weight' ? '\\d+(\\.\\d+)?' : key === 'dimensions' ? '\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?' : undefined}
+                    inputMode={key === 'pieces' ? 'numeric' : key === 'pickupDate' ? undefined : 'text'}
+                    pattern={key === 'pieces' ? '\\d*' : key === 'dimensions' ? '\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?\\s*x\\s*\\d+(\\.\\d+)?(\\s*(cm|in|m))?' : undefined}
                     placeholder={config.placeholders[key]}
                     value={section ? data[section][key] : ''}
-                    onChange={(e) => onChange(key, key === 'pieces' ? e.target.value.replace(/\\D/g, '') : key === 'weight' ? e.target.value.replace(/[^0-9.]/g, '').replace(/(\\..*?)\\./g, '$1') : e.target.value)}
+                    onChange={(e) => onChange(key, key === 'pieces' ? e.target.value.replace(/\\D/g, '') : e.target.value)}
                     style={{
                       width: '100%', padding: '14px 15px',
                       border: '1.5px solid #DCE6F5', borderRadius: 11,
@@ -321,9 +358,6 @@ function ShipmentCreateInner({ app, token }) {
         placeholders: c.package.placeholders,
         required: c.package.required,
         span2: c.package.span2,
-        options: {
-          weightUnit: ['kg', 'lb'],
-        },
       }
     }
     if (step === 3) {

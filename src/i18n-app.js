@@ -109,7 +109,6 @@ export const appI18n = {
         fields: {
           pieces: 'Piezas',
           weight: 'Peso',
-          weightUnit: 'Unidad de peso',
           dimensions: 'Dimensiones',
           declaredValue: 'Valor declarado',
           content: 'Contenido',
@@ -117,7 +116,6 @@ export const appI18n = {
         placeholders: {
           pieces: 'Piezas',
           weight: 'Peso',
-          weightUnit: 'kg / lb',
           dimensions: 'Dimensiones',
           declaredValue: 'Valor declarado',
           content: 'Contenido',
@@ -444,7 +442,6 @@ export const appI18n = {
         fields: {
           pieces: 'Pieces',
           weight: 'Weight',
-          weightUnit: 'Weight unit',
           dimensions: 'Dimensions',
           declaredValue: 'Declared value',
           content: 'Content',
@@ -452,7 +449,6 @@ export const appI18n = {
         placeholders: {
           pieces: 'Pieces',
           weight: 'Weight',
-          weightUnit: 'kg / lb',
           dimensions: 'Dimensions',
           declaredValue: 'Declared value',
           content: 'Content',
@@ -778,7 +774,6 @@ export const appI18n = {
         fields: {
           pieces: '件数',
           weight: '重量',
-          weightUnit: '重量单位',
           dimensions: '尺寸',
           declaredValue: '申报价值',
           content: '内容物',
@@ -786,7 +781,6 @@ export const appI18n = {
         placeholders: {
           pieces: '件数',
           weight: '重量',
-          weightUnit: 'kg / lb',
           dimensions: '尺寸',
           declaredValue: '申报价值',
           content: '内容物',
