@@ -41,7 +41,7 @@ const CITY_COUNTRY = {
 
 
 const emptyAddress = () => ({
-  name: '', company: '', address: '', city: '', country: '', zip: '', phone: '', email: '',
+  addressId: '', name: '', company: '', address: '', city: '', country: '', zip: '', phone: '', email: '',
 })
 
 const emptyPackage = () => ({
@@ -56,7 +56,14 @@ const emptyPayment = () => ({
   paymentMethod: '', chargeToAccount: '', cardholderName: '', billingZip: '',
 })
 
-function ShipmentForm({ c, step, section, config, data, submitted, error, submitting, result, onChange, onBack, onNext, onFinish }) {
+const getInitials = (text = '') => {
+  const words = text.trim().split(/\s+/).filter(Boolean)
+  const first = words[0]?.[0] || ''
+  const second = words[1]?.[0] || words[0]?.[1] || ''
+  return (first + second).toUpperCase()
+}
+
+function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelectAddress, submitted, error, submitting, result, onChange, onBack, onNext, onFinish }) {
   const isLastStep = step === c.steps.length - 1
   const isComplete = section
     ? config.required.every((k) => String(data[section][k] || '').trim() !== '')
@@ -66,6 +73,40 @@ function ShipmentForm({ c, step, section, config, data, submitted, error, submit
 
   return (
     <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 26 }}>
+      {(section === 'sender' || section === 'recipient') && (
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <span style={{
+              fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
+              textTransform: 'uppercase', color: '#6C82A6',
+            }}>
+              {c.selectAddress || 'Seleccionar una dirección guardada'}
+            </span>
+            <select
+              value={data[section].addressId || ''}
+              onChange={(e) => onSelectAddress(section, e.target.value)}
+              style={{
+                width: '100%', padding: '14px 15px',
+                border: '1.5px solid #DCE6F5', borderRadius: 11,
+                background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                outline: 'none', cursor: 'pointer',
+              }}
+            >
+              <option value="">{c.selectHere || '— Seleccione aquí —'}</option>
+              <option value="manual">{c.manualAddress || 'Ingresar manualmente'}</option>
+              {savedAddresses.map((addr) => {
+                const initials = getInitials(addr.name || addr.address)
+                const label = [initials ? `${initials} —` : '', addr.name || addr.address, addr.city].filter(Boolean).join(' ')
+                return (
+                  <option key={addr.id} value={String(addr.id)}>
+                    {label}
+                  </option>
+                )
+              })}
+            </select>
+          </label>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {config.keys.map((key) => (
           <label key={key} style={{ gridColumn: config.span2.includes(key) ? 'span 2' : 'span 1', display: 'block' }}>
@@ -242,6 +283,8 @@ function ShipmentCreateInner({ app, token }) {
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState('')
   const [result, setResult] = React.useState(null)
+  const [savedAddresses, setSavedAddresses] = React.useState([])
+
   const [data, setData] = React.useState({
     sender: emptyAddress(),
     recipient: emptyAddress(),
@@ -253,6 +296,13 @@ function ShipmentCreateInner({ app, token }) {
   React.useEffect(() => {
     setError('')
   }, [step])
+
+  React.useEffect(() => {
+    if (!token) return
+    api.getAddresses(token)
+      .then((res) => setSavedAddresses(Array.isArray(res) ? res : res.addresses || []))
+      .catch(() => setSavedAddresses([]))
+  }, [token])
 
   const sectionMap = { 0: 'sender', 1: 'recipient', 2: 'package', 3: 'service', 4: 'payment' }
   const section = sectionMap[step]
@@ -459,6 +509,33 @@ function ShipmentCreateInner({ app, token }) {
     }
   }, [data, token, stripe, elements, c])
 
+  const onSelectAddress = React.useCallback((sec, id) => {
+    if (!id) {
+      setData((prev) => ({ ...prev, [sec]: { ...prev[sec], addressId: '' } }))
+      return
+    }
+    if (id === 'manual') {
+      setData((prev) => ({ ...prev, [sec]: { ...emptyAddress(), addressId: 'manual' } }))
+      return
+    }
+    const found = savedAddresses.find((a) => String(a.id) === id)
+    if (!found) return
+    setData((prev) => ({
+      ...prev,
+      [sec]: {
+        ...prev[sec],
+        addressId: String(found.id),
+        name: found.name || found.contact_name || '',
+        company: '',
+        address: found.address || '',
+        city: found.city || '',
+        country: found.country || '',
+        zip: found.zip_code || '',
+        phone: found.phone || '',
+      },
+    }))
+  }, [savedAddresses])
+
   const onChange = React.useCallback((key, value) => {
     if (!section) return
     setError('')
@@ -524,6 +601,8 @@ function ShipmentCreateInner({ app, token }) {
           section={section}
           config={config}
           data={data}
+          savedAddresses={savedAddresses}
+          onSelectAddress={onSelectAddress}
           submitted={submitted}
           error={error}
           submitting={submitting}

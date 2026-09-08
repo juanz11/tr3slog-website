@@ -3,9 +3,14 @@ import { api } from '../api'
 
 export default function Support({ app, token }) {
   const s = app.support
-  const [subject, setSubject] = React.useState('')
+  const [subjectType, setSubjectType] = React.useState('')
+  const [customSubject, setCustomSubject] = React.useState('')
   const [ship, setShip] = React.useState('')
   const [msg, setMsg] = React.useState('')
+
+  const subject = subjectType === 'other'
+    ? customSubject
+    : (s.f.subjectOptions?.[subjectType] || '')
   const [formError, setFormError] = React.useState(false)
   const [sent, setSent] = React.useState(false)
   const [shipments, setShipments] = React.useState([])
@@ -52,16 +57,36 @@ export default function Support({ app, token }) {
 
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }}>{s.f.subject}</label>
-            <input
-              value={subject}
-              onChange={(e) => { setSubject(e.target.value); setFormError(false) }}
-              placeholder={s.f.subjectPh}
+            <select
+              value={subjectType}
+              onChange={(e) => { setSubjectType(e.target.value); setCustomSubject(''); setFormError(false) }}
               style={{
                 width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5',
                 borderRadius: 11, background: '#EEF4FC', fontSize: 15, color: '#001B45', outline: 'none',
+                appearance: 'none',
               }}
-            />
+            >
+              <option value="">{s.f.subjectPh}</option>
+              {Object.entries(s.f.subjectOptions || {}).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
           </div>
+
+          {subjectType === 'other' && (
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }}>{s.f.manualSubject}</label>
+              <input
+                value={customSubject}
+                onChange={(e) => { setCustomSubject(e.target.value); setFormError(false) }}
+                placeholder={s.f.manualSubjectPh}
+                style={{
+                  width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5',
+                  borderRadius: 11, background: '#EEF4FC', fontSize: 15, color: '#001B45', outline: 'none',
+                }}
+              />
+            </div>
+          )}
 
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }}>{s.f.ship}</label>
