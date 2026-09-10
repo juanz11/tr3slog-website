@@ -113,6 +113,8 @@ function backendToRow(addr) {
 const SPAN2 = ['address', 'instructions']
 const REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'contact']
 
+const ADDRESS_DRAFT_KEY = 'tr3slog-address-draft'
+
 function initialPrimary(rows) {
   const found = rows.find((r) => r.primary)
   return found ? found.id : null
@@ -129,6 +131,31 @@ export default function Addresses({ app, token }) {
   const [removeId, setRemoveId] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
   const [loadError, setLoadError] = React.useState(null)
+  const addressDraftLoaded = React.useRef(false)
+
+  React.useEffect(() => {
+    if (addressDraftLoaded.current) return
+    try {
+      const raw = localStorage.getItem(ADDRESS_DRAFT_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed.formMode) setFormMode(parsed.formMode)
+        if (parsed.formVals) setFormVals(parsed.formVals)
+      }
+    } catch (e) {}
+    addressDraftLoaded.current = true
+  }, [])
+
+  React.useEffect(() => {
+    if (!addressDraftLoaded.current) return
+    try {
+      if (formMode === null) {
+        localStorage.removeItem(ADDRESS_DRAFT_KEY)
+      } else {
+        localStorage.setItem(ADDRESS_DRAFT_KEY, JSON.stringify({ formMode, formVals }))
+      }
+    } catch (e) {}
+  }, [formMode, formVals])
 
   const loadAddresses = React.useCallback(async () => {
     if (!token) return
@@ -186,6 +213,7 @@ export default function Addresses({ app, token }) {
   }
 
   const save = async () => {
+    if (loading) return
     const missing = REQUIRED.some((k) => !(formVals[k] || '').trim())
     if (missing) return setErr(true)
 
@@ -453,10 +481,10 @@ export default function Addresses({ app, token }) {
               padding: '14px 20px', background: '#fff', border: '1.5px solid #DCE6F5',
               borderRadius: 11, color: '#10233F', fontSize: 14, fontWeight: 600, cursor: 'pointer',
             }}>{a.cancelBtn}</button>
-            <button onClick={save} style={{
-              marginLeft: 'auto', padding: '14px 22px', background: '#087CF0',
-              border: 'none', borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}>{a.save}</button>
+            <button onClick={save} disabled={loading} style={{
+              marginLeft: 'auto', padding: '14px 22px', background: loading ? '#8FC6F7' : '#087CF0',
+              border: 'none', borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+            }}>{loading ? 'Guardando…' : a.save}</button>
           </div>
         </div>
       )}

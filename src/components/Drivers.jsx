@@ -152,6 +152,7 @@ export default function Drivers({ app, lang, token }) {
 
   const submit = async (e) => {
     e.preventDefault()
+    if (formLoading) return
     setFormError('')
     const msg = validate()
     if (msg) {

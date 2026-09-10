@@ -101,6 +101,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
 
   const submit = async (e) => {
     e.preventDefault()
+    if (loading) return
     setError('')
     setErrorKey('')
     setSuccess('')

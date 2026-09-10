@@ -13,6 +13,7 @@ export default function Support({ app, token }) {
     : (s.f.subjectOptions?.[subjectType] || '')
   const [formError, setFormError] = React.useState(false)
   const [sent, setSent] = React.useState(false)
+  const [sending, setSending] = React.useState(false)
   const [shipments, setShipments] = React.useState([])
 
   React.useEffect(() => {
@@ -26,17 +27,21 @@ export default function Support({ app, token }) {
   }, [token])
 
   const submit = async () => {
+    if (sending) return
     const missing = !subject.trim() || !msg.trim()
     if (missing) {
       setFormError('Complete los campos obligatorios.')
       return
     }
     setFormError(false)
+    setSending(true)
     try {
       await api.createSupport({ subject, message: msg, ship }, token)
       setSent(true)
     } catch (err) {
       setFormError(err.message || 'No se pudo enviar el caso.')
+    } finally {
+      setSending(false)
     }
   }
 
@@ -143,10 +148,10 @@ export default function Support({ app, token }) {
             </div>
           )}
 
-          <button onClick={submit} style={{
-            padding: 16, background: '#087CF0', border: 'none', borderRadius: 11,
-            color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-          }}>{s.submit}</button>
+          <button onClick={submit} disabled={sending} style={{
+            padding: 16, background: sending ? '#8FC6F7' : '#087CF0', border: 'none', borderRadius: 11,
+            color: '#fff', fontSize: 14, fontWeight: 600, cursor: sending ? 'not-allowed' : 'pointer',
+          }}>{sending ? 'Enviando…' : s.submit}</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
