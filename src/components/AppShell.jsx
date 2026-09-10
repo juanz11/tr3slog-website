@@ -233,14 +233,19 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
   }, [token])
 
   const statusToIdx = (status) => {
-    if (typeof status === 'number') return status
-    const s = String(status || '').toLowerCase()
-    if (s === 'in_transit' || s === 'en tránsito' || s === 'en transito') return 0
-    if (s === 'in_route' || s === 'en ruta de entrega' || s === 'out_for_delivery') return 1
-    if (s === 'delivered' || s === 'entregado' || s === 'entregada') return 2
-    if (s === 'pending' || s === 'pendiente' || s === 'solicitud recibida') return 3
-    if (s === 'incident' || s === 'incidencia') return 4
-    return 0
+    let idx = 0
+    if (typeof status === 'number') {
+      idx = status
+    } else {
+      const s = String(status || '').toLowerCase()
+      if (s === 'in_transit' || s === 'en tránsito' || s === 'en transito') idx = 0
+      else if (s === 'in_route' || s === 'en ruta de entrega' || s === 'out_for_delivery') idx = 1
+      else if (s === 'delivered' || s === 'entregado' || s === 'entregada') idx = 2
+      else if (s === 'pending' || s === 'pendiente' || s === 'solicitud recibida') idx = 3
+      else if (s === 'incident' || s === 'incidencia') idx = 4
+    }
+    if (idx < 0 || idx >= STATUS_TONE.length) idx = 0
+    return idx
   }
 
   const formatDate = (date) => {
@@ -407,16 +412,20 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
                 <span>{app.ship.cols[3]}</span>
                 <span>{app.ship.cols[4]}</span>
               </div>
-              {filteredRows.map((r, i) => (
-                <button key={i} onClick={() => {}} className="app-table-row">
-                  <span className="app-table-id">{r.id}</span>
-                  <span className="app-table-text">{r.route}</span>
-                  <span className="app-status" style={{ background: STATUS_TONE[r.statusIdx].bg, color: STATUS_TONE[r.statusIdx].fg }}>
-                    {app.ship.statuses[r.statusIdx]}
-                  </span>
-                  <span className="app-table-text">{r.eta}</span>
-                </button>
-              ))}
+              {filteredRows.map((r, i) => {
+                const tone = STATUS_TONE[r.statusIdx] || STATUS_TONE[0]
+                const statusText = app.ship.statuses[r.statusIdx] || '—'
+                return (
+                  <button key={i} onClick={() => {}} className="app-table-row">
+                    <span className="app-table-id">{r.id}</span>
+                    <span className="app-table-text">{r.route}</span>
+                    <span className="app-status" style={{ background: tone.bg, color: tone.fg }}>
+                      {statusText}
+                    </span>
+                    <span className="app-table-text">{r.eta}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
         </div>

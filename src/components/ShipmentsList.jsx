@@ -23,8 +23,11 @@ const STATUS_TONE = [
 ]
 
 const statusIndex = (status, statuses) => {
-  if (typeof status === 'number') return status
   const list = statuses || []
+  if (typeof status === 'number') {
+    if (status >= 0 && status < list.length) return status
+    return 0
+  }
   const normalized = String(status || '').toLowerCase()
   if (normalized === 'pending') return 3
   const idx = list.findIndex((s) => s && s.toLowerCase() === normalized)
@@ -261,7 +264,8 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
   const filtered = shipments.filter((r) => {
     const matchesFilter = filter === 0 || r.status === filter - 1
     const q = query.toLowerCase()
-    const matchesQuery = !q || r.id.toLowerCase().includes(q) || r.route.toLowerCase().includes(q) || s.statuses[r.status].toLowerCase().includes(q)
+    const statusText = s.statuses[r.status] || ''
+    const matchesQuery = !q || r.id.toLowerCase().includes(q) || r.route.toLowerCase().includes(q) || statusText.toLowerCase().includes(q)
     return matchesFilter && matchesQuery
   })
 
@@ -355,9 +359,10 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
                 <span style={{
                   display: 'inline-flex', padding: '5px 11px', borderRadius: 100,
                   fontSize: 11, fontWeight: 600,
-                  background: STATUS_TONE[r.status].bg, color: STATUS_TONE[r.status].fg,
+                  background: (STATUS_TONE[r.status] || STATUS_TONE[0]).bg,
+                  color: (STATUS_TONE[r.status] || STATUS_TONE[0]).fg,
                   justifySelf: 'start',
-                }}>{s.statuses[r.status]}</span>
+                }}>{s.statuses[r.status] || '—'}</span>
                 <span style={{ fontSize: 13, color: '#10233F' }}>{r.eta}</span>
                 <button onClick={() => setSelected(r.raw)} style={{ justifySelf: 'end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>{s.view}</button>
               </div>

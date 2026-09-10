@@ -36,8 +36,13 @@ export default function Support({ app, token }) {
     setFormError(false)
     setSending(true)
     try {
-      await api.createSupport({ subject, message: msg, ship }, token)
+      const body = ship ? `${msg}\n\n${s.f.ship}: ${ship}` : msg
+      await api.createSupport({ subject, message: body, ship }, token)
       setSent(true)
+      setSubjectType('')
+      setCustomSubject('')
+      setShip('')
+      setMsg('')
     } catch (err) {
       setFormError(err.message || 'No se pudo enviar el caso.')
     } finally {

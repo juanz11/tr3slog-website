@@ -495,7 +495,7 @@ function ShipmentCreateInner({ app, token }) {
   }, [])
 
   const [isAfterHours, setIsAfterHours] = React.useState(afterHours)
-  const afterHoursMsg = `No se pueden crear envíos después de las 8:00 p.m. (hora de República Dominicana). Estaremos pronto. Nuestros horarios son: ${app.support.hours}`
+  const afterHoursMsg = 'Los envíos se pueden recoger hasta las 8:00 p.m. (hora de República Dominicana). Estaremos abiertos de lunes a viernes, de 8:00 a.m. a 6:00 p.m. Si desea, puede programar su recogida para mañana.'
 
   React.useEffect(() => {
     const id = setInterval(() => setIsAfterHours(afterHours()), 60000)
@@ -621,13 +621,13 @@ function ShipmentCreateInner({ app, token }) {
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     if (pickupDate < todayStr) return c.errPickupDate
     if (pickupDate === todayStr && timeWindow) {
-      const start = timeWindow.split(' - ')[0]
-      const [startHour, startMin] = start.split(':').map(Number)
+      const end = timeWindow.split(' - ')[1]
+      const [endHour, endMin] = end.split(':').map(Number)
       const currentTime = new Date().toLocaleTimeString('en-US', { timeZone: 'America/Santo_Domingo', hour12: false })
       const [currentHour, currentMin] = currentTime.split(':').map(Number)
       const currentMinutes = currentHour * 60 + currentMin
-      const startMinutes = startHour * 60 + startMin
-      if (currentMinutes >= startMinutes) {
+      const endMinutes = endHour * 60 + endMin
+      if (currentMinutes >= endMinutes) {
         return c.errTimeWindow || 'La ventana de horario ya no está disponible para hoy. Seleccione una fecha futura.'
       }
     }
@@ -742,7 +742,15 @@ function ShipmentCreateInner({ app, token }) {
       return
     }
     if (id === 'manual') {
-      setData((prev) => ({ ...prev, [sec]: { ...emptyAddress(), addressId: 'manual' } }))
+      setData((prev) => ({
+        ...prev,
+        [sec]: {
+          ...emptyAddress(),
+          addressId: 'manual',
+          name: prev[sec].name || '',
+          company: prev[sec].company || '',
+        },
+      }))
       return
     }
     const found = savedAddresses.find((a) => String(a.id) === id)
