@@ -306,7 +306,7 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
   const filteredRows = React.useMemo(() => {
     const qry = (hquery || '').trim().toLowerCase()
     const rows = shipments.map((sh) => ({
-      id: sh.tracking_number || `#${sh.id}`,
+      id: String(sh.tracking_number || `#${sh.id}`),
       route: `${sh.origin || '—'} → ${sh.destination || '—'}`,
       statusIdx: statusToIdx(sh.status),
       eta: sh.eta || sh.estimated_delivery || formatDate(sh.updated_at || sh.created_at),

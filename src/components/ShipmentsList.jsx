@@ -42,7 +42,7 @@ function formatDate(date) {
 }
 
 const buildRow = (sh, statuses) => ({
-  id: sh.tracking_number || sh.id || sh.guide || '',
+  id: String(sh.tracking_number || sh.id || sh.guide || ''),
   route: `${getCityCode(sh.origin)} → ${getCityCode(sh.destination)}`,
   service: sh.service_type || sh.service || '',
   status: statusIndex(sh.status, statuses),
@@ -263,7 +263,7 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
 
   const filtered = shipments.filter((r) => {
     const matchesFilter = filter === 0 || r.status === filter - 1
-    const q = query.toLowerCase()
+    const q = (query || '').toLowerCase()
     const statusText = s.statuses[r.status] || ''
     const matchesQuery = !q || r.id.toLowerCase().includes(q) || r.route.toLowerCase().includes(q) || statusText.toLowerCase().includes(q)
     return matchesFilter && matchesQuery
