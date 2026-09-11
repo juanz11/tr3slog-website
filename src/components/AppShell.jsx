@@ -30,7 +30,20 @@ const STATUS_COLORS = {
 
 export default function AppShell({ user, lang, langs, setLang, onLogout, onUserUpdate }) {
   const app = appI18n[lang] || appI18n.es
-  const isAdmin = user?.roles?.some((r) => ['admin', 'operations'].includes(r.name))
+  // Lo responde el backend en `GET /me` (`data.is_admin`), no lo deduce la web.
+  //
+  // POR QUE CAMBIO: antes era `user?.roles?.some(r => [...].includes(r.name))`,
+  // o sea objetos `{name}` de la tabla LOCAL `role_user`. Para quien entra por el
+  // SSO esa tabla esta VACIA — su fila en TR3SLOG es un espejo con el ancla y
+  // poco mas— asi que `roles` llegaba `[]`, `some()` devolvia `false` SIN ERROR y
+  // el sintoma no era una pantalla rota: era un admin viendo el portal del
+  // cliente. Ahora `roles` es una lista de STRINGS (`['treslog:admin']`) que sale
+  // de `X-User-Roles`, y el `.name` de la version vieja habria sido `undefined`
+  // en silencio.
+  //
+  // `=== true` y no un valor blando: si algun dia `/me` deja de mandar la clave,
+  // esto da `false` (portal de cliente) y no `undefined` colandose por un `if`.
+  const isAdmin = user?.is_admin === true
   const nav = isAdmin ? app.navA : app.navC
   const navKeys = Object.keys(nav)
   const [activeKey, setActiveKey] = React.useState(navKeys[0])

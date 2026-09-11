@@ -7,10 +7,9 @@ import Footer from '../src/components/Footer'
 import CTA from '../src/components/CTA'
 import Toast from '../src/components/Toast'
 import LegalModal from '../src/components/LegalModal'
-import AuthModal from '../src/components/AuthModal'
+import { iniciarLogin, cerrarSesionEnElSso, leerToken, borrarToken } from '../src/lib/sso'
 
 import '../src/index.css'
-import '../src/components/AuthModal.css'
 import '../src/components/AppShell.css'
 
 const LANGS = ['en', 'es', 'zh-CN']
@@ -23,7 +22,10 @@ export default function App({ Component, pageProps }) {
   const [toast, setToast] = useState('')
   const [legal, setLegal] = useState(null)
   const [user, setUser] = useState(null)
-  const [authOpen, setAuthOpen] = useState(false)
+  // El 403 `forbidden` de `/me`: existe en el SSO, no esta habilitada en TR3SLOG.
+  // Es un estado propio y NO un "no logueado" porque se trata al reves — no hay
+  // que mandar a loguearse de nuevo, hay que mostrar que falta y a quien pedirselo.
+  const [bloqueo, setBloqueo] = useState(null)
   const [authReady, setAuthReady] = useState(false)
   const toastTimer = useRef(null)
 
@@ -72,15 +74,26 @@ export default function App({ Component, pageProps }) {
   useEffect(() => {
     let active = true
     const verify = async () => {
-      let token = null
-      try { token = localStorage.getItem('tr3slog-token') } catch (e) {}
+      const token = leerToken()
       if (token) {
         try {
-          const data = await api.me(token)
-          const u = data?.user || data?.data || data
-          if (active) setUser(u)
+          // `GET /me` por el GATEWAY. Devuelve `{data:{...}}` con el id local,
+          // los roles `treslog:*` que emitio el SSO y `is_admin`. El SSO por su
+          // cuenta NO devuelve roles (contrato §4.1), por eso no se le pregunta
+          // directo a `/api/v1/user`.
+          const respuesta = await api.me(token)
+          if (active) setUser(respuesta?.data || null)
         } catch (e) {
-          try { localStorage.removeItem('tr3slog-token') } catch (e) {}
+          if (e?.status === 403 && e?.slug === 'forbidden') {
+            // EL TOKEN NO SE BORRA ACA, y es lo que corta el bucle: si lo
+            // borraramos, la persona veria "inicia sesion", entraria al SSO —que
+            // ya tiene su sesion abierta y la devuelve al instante— y volveria a
+            // este mismo 403. Para siempre, sin tocar una tecla.
+            if (active) setBloqueo({ mensaje: e.message, requestId: e.requestId })
+          } else {
+            // 401 o red: el token no sirve. Se borra y se vuelve a empezar.
+            borrarToken()
+          }
         }
       }
       if (active) setAuthReady(true)
@@ -118,24 +131,24 @@ export default function App({ Component, pageProps }) {
     toastTimer.current = setTimeout(() => setToast(''), 6000)
   }
 
-  const handleLogin = (u, token) => {
-    setUser(u)
-    try { localStorage.setItem('tr3slog-token', token) } catch (e) {}
-    if (typeof window !== 'undefined') {
-      router.push('/dashboard')
-    }
+  // «Iniciar sesion» y «Registrarse» son EL MISMO boton ahora, y salen de la web:
+  // el alta la hace el SSO (es su pantalla, su verificacion de email y su
+  // contraseña). Esta aplicacion ya no pide credenciales en ningun formulario.
+  const entrar = () => {
+    setMenuOpen(false)
+    iniciarLogin().catch((e) => showToast(e?.message || 'No se pudo iniciar el ingreso.'))
   }
 
   const handleLogout = async () => {
-    if (user) {
-      let token = null
-      try { token = localStorage.getItem('tr3slog-token') } catch (e) {}
-      if (token) {
-        try { await api.logout(token) } catch (e) {}
-      }
-    }
+    // El logout va al SSO, no a TR3SLOG: la sesion vive alla. `POST /api/logout`
+    // con el Bearer, y best-effort — si la red falla, el token local se borra
+    // igual. Dejar a alguien "logueado" en su navegador porque el servidor no
+    // contesto es lo peor de las dos opciones.
+    await cerrarSesionEnElSso(leerToken())
+
     setUser(null)
-    try { localStorage.removeItem('tr3slog-token') } catch (e) {}
+    setBloqueo(null)
+    borrarToken()
     showToast('Sesión cerrada')
     router.push('/')
   }
@@ -154,6 +167,13 @@ export default function App({ Component, pageProps }) {
   })
 
   const isApp = router.pathname === '/dashboard'
+
+  // El callback del SSO se pinta SOLO, sin Header ni Footer ni CTA: no es una
+  // pagina del sitio, es un paso del login que dura dos segundos. Con el layout de
+  // marketing alrededor, la persona ve aparecer y desaparecer la web entera.
+  if (router.pathname === '/login/sso/callback') {
+    return <Component {...pageProps} />
+  }
 
   if (isApp) {
     if (!authReady) {
@@ -179,15 +199,7 @@ export default function App({ Component, pageProps }) {
             {...pageProps}
           />
         ) : (
-          <AuthModal
-            t={t}
-            lang={lang}
-            langs={langs}
-            setLang={setLang}
-            onClose={() => router.push('/')}
-            onLogin={handleLogin}
-            setLegal={setLegal}
-          />
+          <Puerta bloqueo={bloqueo} onEntrar={entrar} onSalir={handleLogout} />
         )}
         {toast && <Toast text={toast} />}
       </div>
@@ -205,15 +217,67 @@ export default function App({ Component, pageProps }) {
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
         user={user}
-        onSignIn={() => setAuthOpen(true)}
+        onSignIn={entrar}
         onLogout={handleLogout}
       />
-      <Component t={t} go={go} showToast={showToast} lang={lang} langs={langs} setLang={setLang} user={user} onLogout={handleLogout} onSignIn={() => setAuthOpen(true)} {...pageProps} />
+      <Component t={t} go={go} showToast={showToast} lang={lang} langs={langs} setLang={setLang} user={user} onLogout={handleLogout} onSignIn={entrar} {...pageProps} />
       <CTA t={t} go={go} />
       <Footer t={t} langs={langs} setLang={setLang} go={go} setLegal={setLegal} />
       {legal && <LegalModal t={t} legal={legal} onClose={() => setLegal(null)} />}
       {toast && <Toast text={toast} />}
-      {authOpen && <AuthModal t={t} lang={lang} langs={langs} setLang={setLang} onClose={() => setAuthOpen(false)} onLogin={handleLogin} setLegal={setLegal} />}
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+//  La puerta del dashboard: dos «no» que NO se tratan igual
+// -----------------------------------------------------------------------------
+//  1. No hay sesion -> un boton que manda al SSO. Y es un BOTON, no un redirect
+//     automatico: un redirect en el montaje es exactamente la forma en que se
+//     arma un bucle cuando algo del otro lado falla, y el bucle no se ve en
+//     desarrollo — se ve en produccion, con una persona mirando la pantalla
+//     parpadear.
+//  2. Hay sesion en el SSO pero la cuenta no esta habilitada en TR3SLOG (el 403
+//     `forbidden` de `gateway.user`) -> NO se ofrece entrar de nuevo, porque
+//     entrar de nuevo no lo arregla NUNCA: el SSO ya la conoce, el que falta es
+//     TR3SLOG. Se muestra que hacer y el `request_id`, que es el unico dato con
+//     el que soporte encuentra esta peticion entre los logs del gateway, del SSO
+//     y del backend.
+function Puerta({ bloqueo, onEntrar, onSalir }) {
+  const caja = { width: '100%', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', background: '#EEF4FC' }
+  const tarjeta = { width: '100%', maxWidth: 460, background: '#fff', borderRadius: 16, padding: 36, border: '1px solid #DCE6F5', boxShadow: '0 24px 80px rgba(0,0,0,.08)', textAlign: 'center' }
+  const marca = { fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 22, color: '#001B45', letterSpacing: '-.02em', marginBottom: 18 }
+  const titulo = { fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 22, color: '#001B45', margin: '0 0 12px' }
+  const texto = { fontSize: 15, lineHeight: 1.65, color: '#10233F', margin: 0 }
+  const boton = { marginTop: 22, padding: '14px 24px', background: '#087CF0', border: 'none', borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }
+
+  return (
+    <div style={caja}>
+      <div style={tarjeta}>
+        <div style={marca}>TR3<span style={{ color: '#D99A00' }}>S</span>LOG</div>
+
+        {bloqueo ? (
+          <>
+            <h1 style={titulo}>Tu cuenta del SSO todavía no está habilitada en TR3SLOG</h1>
+            <p style={texto}>
+              Entraste bien en MyGlobalHub, pero esta cuenta no tiene acceso a TR3SLOG.
+              Pedile a tu administrador que la habilite.
+            </p>
+            {bloqueo.requestId && (
+              <p style={{ ...texto, marginTop: 14, fontSize: 13, color: '#6C82A6' }}>
+                Referencia para soporte: <code>{bloqueo.requestId}</code>
+              </p>
+            )}
+            <button type="button" onClick={onSalir} style={{ ...boton, background: '#10233F' }}>Cerrar sesión</button>
+          </>
+        ) : (
+          <>
+            <h1 style={titulo}>Iniciá sesión para continuar</h1>
+            <p style={texto}>Te vamos a llevar a MyGlobalHub para verificar tu identidad.</p>
+            <button type="button" onClick={onEntrar} style={boton}>Iniciar sesión</button>
+          </>
+        )}
+      </div>
     </div>
   )
 }
