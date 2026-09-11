@@ -32,7 +32,10 @@ export const SSO_CLIENT_ID = process.env.NEXT_PUBLIC_SSO_CLIENT_ID
 // TIENE QUE COINCIDIR EXACTAMENTE con la registrada en el SSO, caracter por
 // caracter: el servidor de autorizacion la compara con `===`, no la normaliza.
 // `http://127.0.0.1:3200/...` y `http://localhost:3200/...` son DOS uris
-// distintas, y las dos estan registradas justamente por eso.
+// distintas, y SOLO la de `localhost` esta registrada: desde `127.0.0.1:3200` el
+// login falla con `invalid_request` antes de mostrar nada (SETUP_LOCAL.md §4).
+// Una version anterior de este comentario decia que estaban las dos; lo marco
+// la auditoria del Lote 7.
 export const SSO_REDIRECT_URI = process.env.NEXT_PUBLIC_SSO_REDIRECT_URI
   || 'http://localhost:3200/login/sso/callback'
 

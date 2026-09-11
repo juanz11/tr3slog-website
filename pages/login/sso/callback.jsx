@@ -1,6 +1,7 @@
 import React from 'react'
 import { useRouter } from 'next/router'
 import { completarLogin, iniciarLogin } from '../../../src/lib/sso'
+import { authI18n } from '../../../src/i18n-auth'
 
 // -----------------------------------------------------------------------------
 //  La vuelta del SSO: `redirect_uri` = http://localhost:3200/login/sso/callback
@@ -54,8 +55,11 @@ const BOTON = {
   cursor: 'pointer',
 }
 
-export default function SsoCallback() {
+// `lang` lo pasa _app.jsx (que es quien lo persiste): esta pagina se pinta sin
+// layout, pero no sin idioma — la web es trilingue.
+export default function SsoCallback({ lang }) {
   const router = useRouter()
+  const a = authI18n[lang] || authI18n.es
   const [error, setError] = React.useState('')
   const corrio = React.useRef(false)
 
@@ -85,7 +89,7 @@ export default function SsoCallback() {
         window.location.replace('/dashboard')
       })
       .catch((e) => {
-        setError(e?.message || 'No se pudo completar el ingreso.')
+        setError(e?.message || a.ssoFailFallback)
       })
   }, [router.isReady, router.query])
 
@@ -93,7 +97,7 @@ export default function SsoCallback() {
   // ya no sirve (es de un solo uso) y el verifier que lo acompañaba ya se borro.
   const reintentar = () => {
     setError('')
-    iniciarLogin().catch((e) => setError(e?.message || 'No se pudo iniciar el ingreso.'))
+    iniciarLogin().catch((e) => setError(e?.message || a.ssoStartFail))
   }
 
   return (
@@ -104,13 +108,13 @@ export default function SsoCallback() {
         {error ? (
           <>
             <h1 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 22, color: '#001B45', margin: '0 0 12px' }}>
-              No pudimos completar el ingreso
+              {a.ssoFailTitle}
             </h1>
             <p style={{ fontSize: 15, lineHeight: 1.65, color: '#10233F', margin: 0 }}>{error}</p>
-            <button type="button" onClick={reintentar} style={BOTON}>Volver a intentar</button>
+            <button type="button" onClick={reintentar} style={BOTON}>{a.ssoRetry}</button>
           </>
         ) : (
-          <p style={{ fontSize: 15, color: '#6C82A6', margin: 0 }}>Verificando tu ingreso…</p>
+          <p style={{ fontSize: 15, color: '#6C82A6', margin: 0 }}>{a.ssoChecking}</p>
         )}
       </div>
     </div>

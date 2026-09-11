@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { i18n, langList } from '../src/i18n'
+import { authI18n } from '../src/i18n-auth'
 import { api } from '../src/api'
 import Header from '../src/components/Header'
 import Footer from '../src/components/Footer'
@@ -136,7 +137,7 @@ export default function App({ Component, pageProps }) {
   // contraseña). Esta aplicacion ya no pide credenciales en ningun formulario.
   const entrar = () => {
     setMenuOpen(false)
-    iniciarLogin().catch((e) => showToast(e?.message || 'No se pudo iniciar el ingreso.'))
+    iniciarLogin().catch((e) => showToast(e?.message || (authI18n[lang] || authI18n.es).ssoStartFail))
   }
 
   const handleLogout = async () => {
@@ -172,7 +173,9 @@ export default function App({ Component, pageProps }) {
   // pagina del sitio, es un paso del login que dura dos segundos. Con el layout de
   // marketing alrededor, la persona ve aparecer y desaparecer la web entera.
   if (router.pathname === '/login/sso/callback') {
-    return <Component {...pageProps} />
+    // Sin layout, pero CON idioma: la web es trilingue y el paso del login no
+    // puede ser la unica pantalla que ignora la eleccion de la persona.
+    return <Component {...pageProps} lang={lang} />
   }
 
   if (isApp) {
@@ -199,7 +202,7 @@ export default function App({ Component, pageProps }) {
             {...pageProps}
           />
         ) : (
-          <Puerta bloqueo={bloqueo} onEntrar={entrar} onSalir={handleLogout} />
+          <Puerta a={authI18n[lang] || authI18n.es} bloqueo={bloqueo} onEntrar={entrar} onSalir={handleLogout} />
         )}
         {toast && <Toast text={toast} />}
       </div>
@@ -243,7 +246,9 @@ export default function App({ Component, pageProps }) {
 //     TR3SLOG. Se muestra que hacer y el `request_id`, que es el unico dato con
 //     el que soporte encuentra esta peticion entre los logs del gateway, del SSO
 //     y del backend.
-function Puerta({ bloqueo, onEntrar, onSalir }) {
+// `a` son los textos de i18n-auth.js en el idioma elegido: el modal viejo era
+// trilingue y esta pantalla, que lo reemplaza, no puede ser menos.
+function Puerta({ a, bloqueo, onEntrar, onSalir }) {
   const caja = { width: '100%', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', background: '#EEF4FC' }
   const tarjeta = { width: '100%', maxWidth: 460, background: '#fff', borderRadius: 16, padding: 36, border: '1px solid #DCE6F5', boxShadow: '0 24px 80px rgba(0,0,0,.08)', textAlign: 'center' }
   const marca = { fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 22, color: '#001B45', letterSpacing: '-.02em', marginBottom: 18 }
@@ -258,23 +263,20 @@ function Puerta({ bloqueo, onEntrar, onSalir }) {
 
         {bloqueo ? (
           <>
-            <h1 style={titulo}>Tu cuenta del SSO todavía no está habilitada en TR3SLOG</h1>
-            <p style={texto}>
-              Entraste bien en MyGlobalHub, pero esta cuenta no tiene acceso a TR3SLOG.
-              Pedile a tu administrador que la habilite.
-            </p>
+            <h1 style={titulo}>{a.ssoBlockedTitle}</h1>
+            <p style={texto}>{a.ssoBlockedText}</p>
             {bloqueo.requestId && (
               <p style={{ ...texto, marginTop: 14, fontSize: 13, color: '#6C82A6' }}>
-                Referencia para soporte: <code>{bloqueo.requestId}</code>
+                {a.ssoRef} <code>{bloqueo.requestId}</code>
               </p>
             )}
-            <button type="button" onClick={onSalir} style={{ ...boton, background: '#10233F' }}>Cerrar sesión</button>
+            <button type="button" onClick={onSalir} style={{ ...boton, background: '#10233F' }}>{a.ssoLogout}</button>
           </>
         ) : (
           <>
-            <h1 style={titulo}>Iniciá sesión para continuar</h1>
-            <p style={texto}>Te vamos a llevar a MyGlobalHub para verificar tu identidad.</p>
-            <button type="button" onClick={onEntrar} style={boton}>Iniciar sesión</button>
+            <h1 style={titulo}>{a.ssoEnterTitle}</h1>
+            <p style={texto}>{a.ssoEnterText}</p>
+            <button type="button" onClick={onEntrar} style={boton}>{a.ssoEnterBtn}</button>
           </>
         )}
       </div>
