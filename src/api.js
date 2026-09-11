@@ -1,40 +1,35 @@
-import { API_URL, SSO_URL } from './config/sso'
+// Con extension, como src/lib/sso.js: `node --test` importa este modulo sin
+// pasar por webpack y Node no adivina extensiones en ESM.
+import { API_URL, SSO_URL } from './config/sso.js'
 
 // -----------------------------------------------------------------------------
-//  DOS bases, y no es un descuido: la migracion al SSO va por lotes
+//  DOS bases, y las dos son deliberadas (Lote 8)
 // -----------------------------------------------------------------------------
 //  `API_URL` (config/sso.js) es EL GATEWAY: `http://localhost:8003/api/treslog`.
 //  Todo lo que salga por ahi llega al backend con las cabeceras `X-User-*` ya
-//  puestas por NGINX, y exige un Bearer del SSO valido.
+//  puestas por NGINX, y exige un Bearer del SSO valido. Desde el Lote 8 TODO el
+//  dominio con identidad va por aca: envios, cotizaciones de la consola,
+//  direcciones, soporte, choferes, incidentes, usuarios (routes/domain.php del
+//  backend, montado bajo `/api/treslog`).
 //
-//  `LEGACY_API_URL` es el backend de TR3SLOG directo, con `auth:sanctum`. Lo usa
-//  TODO lo que todavia no esta montado detras del gateway. Hoy, detras del
-//  gateway hay exactamente tres cosas (`routes/api.php` del backend): la
-//  administracion de roles/permisos/zonas, las rutas del conductor, y `/me`. De
-//  esas, la web solo usa `/me`.
+//  `PUBLIC_API_URL` es el backend de TR3SLOG DIRECTO, y se queda para lo que NO
+//  lleva identidad: el formulario de contacto, cotizar sin cuenta y seguir un
+//  envio por codigo (D8.1). El gateway exige Bearer y responde 401 antes de
+//  tocar el backend (comprobado: `POST .../api/treslog/contact` -> 401), asi que
+//  esas tres no pueden pasar por ahi, y no tienen por que: no hay nadie a quien
+//  identificar. Tambien sirve los archivos de `storage` (MEDIA_URL), que el
+//  gateway no proxya.
 //
-//  ---- LO QUE ESTO SIGNIFICA HOY, DICHO SIN MAQUILLAJE -----------------------
-//  Desde este lote la web entra con un token del SSO. Ese token NO LO ENTIENDE
-//  `auth:sanctum`: cada llamada de dominio de esta lista (envios, cotizaciones,
-//  direcciones, soporte, choferes, incidentes) responde 401 hasta que el Lote 8
-//  monte esas rutas detras del gateway. No es un bug de este lote — es el orden
-//  que eligio el plan (Lote 7 antes que 8) y esta anotado en 4-tasks.md.
+//  Se llama PUBLIC y no LEGACY a proposito: cuando el bloque `auth:sanctum` del
+//  backend muera (Lote 9), estas rutas siguen vivas. Un nombre que dice "legado"
+//  invita a borrarlas junto con lo que si se retira.
 //
-//  ---- Y ALGO QUE EL LOTE 8 TODAVIA NO RESUELVE -----------------------------
-//  Tres de estas llamadas son PUBLICAS y no llevan token: `contact`,
-//  `createQuote` (`/app/quotes`) y `trackQuote`. Las usa cualquiera que entra a
-//  la web sin cuenta. El gateway EXIGE Bearer y responde 401 antes de tocar el
-//  backend (comprobado: `POST http://localhost:8003/api/treslog/contact` -> 401),
-//  asi que estas tres NO PUEDEN pasar por ahi tal cual. 4-tasks.md §8.1 no las
-//  distingue del resto del dominio; necesitan decision propia (ruta publica en el
-//  gateway, o quedarse contra el backend directo).
-//
-//  `NEXT_PUBLIC_API_URL` se queda apuntando a lo de SIEMPRE (el backend legado) y
-//  el gateway estrena `NEXT_PUBLIC_GATEWAY_URL`. El porque largo —con la
-//  comprobacion sobre el bundle compilado— esta en src/config/sso.js.
-export const LEGACY_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+//  `NEXT_PUBLIC_API_URL` sigue significando lo de SIEMPRE (el backend directo) y
+//  el gateway usa `NEXT_PUBLIC_GATEWAY_URL`. El porque largo —con la comprobacion
+//  sobre el bundle compilado— esta en src/config/sso.js.
+export const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
 
-const API_BASE = LEGACY_API_URL.replace(/\/api\/?$/, '')
+const API_BASE = PUBLIC_API_URL.replace(/\/api\/?$/, '')
 export const MEDIA_URL = `${API_BASE}/storage`
 
 function headers(token) {
@@ -85,111 +80,114 @@ export const api = {
     body: JSON.stringify(data),
   }).then(handle),
 
-  // -- Contra el backend LEGADO (migran en el Lote 8) ----------------------
-  updateUser: (id, data, token) => fetch(`${LEGACY_API_URL}/users/${id}`, {
+  // -- Por el GATEWAY: el dominio con identidad (Lote 8, routes/domain.php) --
+  updateUser: (id, data, token) => fetch(`${API_URL}/users/${id}`, {
     method: 'PUT',
     headers: headers(token),
     body: JSON.stringify(data),
   }).then(handle),
 
-  createQuote: (data) => fetch(`${LEGACY_API_URL}/app/quotes`, {
+  // -- Sin identidad: backend DIRECTO (D8.1). Cotizar y seguir un envio no
+  //    piden cuenta; el gateway exigiria un Bearer que no existe.
+  createQuote: (data) => fetch(`${PUBLIC_API_URL}/app/quotes`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify(data),
   }).then(handle),
 
-  trackQuote: (code) => fetch(`${LEGACY_API_URL}/app/quotes/track/${encodeURIComponent(code)}`, {
+  trackQuote: (code) => fetch(`${PUBLIC_API_URL}/app/quotes/track/${encodeURIComponent(code)}`, {
     headers: headers(),
   }).then(handle),
 
-  getQuotes: (token) => fetch(`${LEGACY_API_URL}/quotes`, {
+  getQuotes: (token) => fetch(`${API_URL}/quotes`, {
     headers: headers(token),
   }).then(handle),
 
-  getPendingQuotesCount: (token) => fetch(`${LEGACY_API_URL}/quotes/pending-count`, {
+  getPendingQuotesCount: (token) => fetch(`${API_URL}/quotes/pending-count`, {
     headers: headers(token),
   }).then(handle),
 
-  updateQuoteStatus: (id, status, token) => fetch(`${LEGACY_API_URL}/quotes/${id}/status`, {
+  updateQuoteStatus: (id, status, token) => fetch(`${API_URL}/quotes/${id}/status`, {
     method: 'PATCH',
     headers: headers(token),
     body: JSON.stringify({ status }),
   }).then(handle),
 
-  getDrivers: (token) => fetch(`${LEGACY_API_URL}/drivers`, {
+  getDrivers: (token) => fetch(`${API_URL}/drivers`, {
     headers: headers(token),
   }).then(handle),
 
-  getClients: (token) => fetch(`${LEGACY_API_URL}/users/clients`, {
+  getClients: (token) => fetch(`${API_URL}/users/clients`, {
     headers: headers(token),
   }).then(handle),
 
-  createDriver: (data, token) => fetch(`${LEGACY_API_URL}/drivers`, {
+  createDriver: (data, token) => fetch(`${API_URL}/drivers`, {
     method: 'POST',
     headers: headers(token),
     body: JSON.stringify(data),
   }).then(handle),
 
-  getIncidents: (token) => fetch(`${LEGACY_API_URL}/incidents`, {
+  getIncidents: (token) => fetch(`${API_URL}/incidents`, {
     headers: headers(token),
   }).then(handle),
 
-  createIncident: (data, token) => fetch(`${LEGACY_API_URL}/incidents`, {
+  createIncident: (data, token) => fetch(`${API_URL}/incidents`, {
     method: 'POST',
     headers: headers(token),
     body: JSON.stringify(data),
   }).then(handle),
 
-  updateIncidentStatus: (id, status, token) => fetch(`${LEGACY_API_URL}/incidents/${id}/status`, {
+  updateIncidentStatus: (id, status, token) => fetch(`${API_URL}/incidents/${id}/status`, {
     method: 'PATCH',
     headers: headers(token),
     body: JSON.stringify({ status }),
   }).then(handle),
 
-  getShipments: (token) => fetch(`${LEGACY_API_URL}/shipments`, {
+  getShipments: (token) => fetch(`${API_URL}/shipments`, {
     headers: headers(token),
   }).then(handle),
 
-  updateShipmentStatus: (id, status, token) => fetch(`${LEGACY_API_URL}/shipments/${id}`, {
+  updateShipmentStatus: (id, status, token) => fetch(`${API_URL}/shipments/${id}`, {
     method: 'PUT',
     headers: headers(token),
     body: JSON.stringify({ status }),
   }).then(handle),
 
-  createShipment: (data, token) => fetch(`${LEGACY_API_URL}/shipments`, {
+  createShipment: (data, token) => fetch(`${API_URL}/shipments`, {
     method: 'POST',
     headers: headers(token),
     body: JSON.stringify(data),
   }).then(handle),
 
-  getAddresses: (token) => fetch(`${LEGACY_API_URL}/addresses`, {
+  getAddresses: (token) => fetch(`${API_URL}/addresses`, {
     headers: headers(token),
   }).then(handle),
 
-  createAddress: (data, token) => fetch(`${LEGACY_API_URL}/addresses`, {
+  createAddress: (data, token) => fetch(`${API_URL}/addresses`, {
     method: 'POST',
     headers: headers(token),
     body: JSON.stringify(data),
   }).then(handle),
 
-  updateAddress: (id, data, token) => fetch(`${LEGACY_API_URL}/addresses/${id}`, {
+  updateAddress: (id, data, token) => fetch(`${API_URL}/addresses/${id}`, {
     method: 'PUT',
     headers: headers(token),
     body: JSON.stringify(data),
   }).then(handle),
 
-  deleteAddress: (id, token) => fetch(`${LEGACY_API_URL}/addresses/${id}`, {
+  deleteAddress: (id, token) => fetch(`${API_URL}/addresses/${id}`, {
     method: 'DELETE',
     headers: headers(token),
   }).then(handle),
 
-  contact: (data) => fetch(`${LEGACY_API_URL}/contact`, {
+  // Sin identidad: backend DIRECTO (D8.1), igual que cotizar.
+  contact: (data) => fetch(`${PUBLIC_API_URL}/contact`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify(data),
   }).then(handle),
 
-  createSupport: (data, token) => fetch(`${LEGACY_API_URL}/support`, {
+  createSupport: (data, token) => fetch(`${API_URL}/support`, {
     method: 'POST',
     headers: headers(token),
     body: JSON.stringify(data),

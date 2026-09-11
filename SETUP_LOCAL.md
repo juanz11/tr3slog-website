@@ -61,11 +61,16 @@ te logueás, aceptás el consentimiento, y volvés a `/dashboard` ya identificad
 | Menú de administración según el rol | anda (`data.is_admin`) |
 | Teléfono del perfil | anda: se guarda en el SSO (`PUT /api/v1/profile`) |
 | Nombre y correo del perfil | **solo lectura**: los administra MyGlobalHub |
-| Envíos, cotizaciones, direcciones, soporte | **401 hasta el Lote 8** |
+| Envíos, cotizaciones, direcciones, soporte, choferes, incidentes | anda desde el **Lote 8**: van por el gateway (`/api/treslog/*`), con el rol del SSO |
+| Cotizar sin cuenta, seguir un envío, contacto | anda: van al backend **directo** (`NEXT_PUBLIC_API_URL`), no llevan identidad |
 
-Lo último no es un bug de este lote: esas rutas siguen detrás de `auth:sanctum`
-en el backend, y `auth:sanctum` no entiende un token del SSO. El Lote 8 las monta
-detrás del gateway.
+Necesita el backend en la rama del Lote 8 (`sso/lote8-dominio-por-gateway`) o
+posterior: es la que monta el dominio bajo `/api/treslog`. Con el backend de un
+lote anterior, esas llamadas dan 404 en el gateway.
+
+Un 403 en una sección de la consola no es «volvé a loguearte»: es que tu
+persona no tiene `treslog:operations` ni `treslog:admin` en el SSO. El error
+trae un `request_id` para pedirlo con el dato.
 
 ---
 
