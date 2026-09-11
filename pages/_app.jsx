@@ -8,7 +8,7 @@ import Footer from '../src/components/Footer'
 import CTA from '../src/components/CTA'
 import Toast from '../src/components/Toast'
 import LegalModal from '../src/components/LegalModal'
-import { iniciarLogin, cerrarSesionEnElSso, leerToken, borrarToken } from '../src/lib/sso'
+import { iniciarLogin, cerrarSesionGlobal, leerToken, borrarToken } from '../src/lib/sso'
 
 import '../src/index.css'
 import '../src/components/AppShell.css'
@@ -141,17 +141,19 @@ export default function App({ Component, pageProps }) {
   }
 
   const handleLogout = async () => {
-    // El logout va al SSO, no a TR3SLOG: la sesion vive alla. `POST /api/logout`
-    // con el Bearer, y best-effort — si la red falla, el token local se borra
-    // igual. Dejar a alguien "logueado" en su navegador porque el servidor no
-    // contesto es lo peor de las dos opciones.
-    await cerrarSesionEnElSso(leerToken())
-
+    // Cierre GLOBAL: borra el token de aca, revoca los de todas las aplicaciones
+    // y SALE hacia el `/logout` del SSO, que es el unico que puede cerrar la
+    // sesion del navegador (y la de Clerk). Sin ese salto, volver a entrar no
+    // pedia nada y el logout parecia no hacer nada.
+    //
+    // El estado local se limpia ANTES de navegar: la navegacion tarda, y durante
+    // ese rato la pantalla no puede seguir mostrando datos de alguien que acaba
+    // de irse.
     setUser(null)
     setBloqueo(null)
-    borrarToken()
-    showToast('Sesión cerrada')
-    router.push('/')
+    showToast('Cerrando sesión…')
+
+    await cerrarSesionGlobal(leerToken())
   }
 
   const langs = langList.map((l) => {

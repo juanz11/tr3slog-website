@@ -249,3 +249,42 @@ test('cerrarSesionEnElSso manda el Bearer al SSO y se traga el error de red', as
   assert.equal(pedido.opciones.method, 'POST')
   assert.equal(pedido.opciones.headers.Authorization, 'Bearer tok-123')
 })
+
+test('cerrarSesionGlobal borra lo local, revoca, y SALE hacia el /logout del SSO', async () => {
+  // Las tres cosas que hacen falta para que «cerrar sesion» cierre algo. La
+  // tercera —la navegacion— es la que faltaba: sin ella el SSO seguia
+  // reconociendo a la persona y volver a entrar no le pedia nada.
+  const { local } = conAlmacenes()
+  local.setItem('tr3slog-token', 'tok-123')
+
+  let pedido = null
+  globalThis.fetch = async (url, opciones) => {
+    pedido = { url, opciones }
+    return { ok: true, status: 200, json: async () => ({}) }
+  }
+
+  let destino = null
+  globalThis.window = { location: { assign: (u) => { destino = u } } }
+
+  await sso.cerrarSesionGlobal('tok-123')
+
+  assert.equal(local.getItem('tr3slog-token'), null, 'El token local tiene que quedar borrado.')
+  assert.equal(pedido.url, 'https://sso.test/api/logout', 'Hay que revocar los tokens de TODAS las apps.')
+  assert.equal(destino, 'https://sso.test/logout', 'Hay que salir al /logout del SSO: es el unico que cierra la sesion del navegador.')
+})
+
+test('cerrarSesionGlobal sale al SSO aunque la revocacion falle', async () => {
+  // Si la red se cae justo ahi, quedarse adentro seria el peor final posible.
+  const { local } = conAlmacenes()
+  local.setItem('tr3slog-token', 'tok-123')
+
+  globalThis.fetch = async () => { throw new Error('ECONNREFUSED') }
+
+  let destino = null
+  globalThis.window = { location: { assign: (u) => { destino = u } } }
+
+  await sso.cerrarSesionGlobal('tok-123')
+
+  assert.equal(local.getItem('tr3slog-token'), null)
+  assert.equal(destino, 'https://sso.test/logout')
+})

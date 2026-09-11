@@ -284,9 +284,35 @@ export async function completarLogin(query) {
 }
 
 /**
- * Cierra sesion en el SSO. Best-effort a proposito: si la red falla, el token
- * local se borra igual — dejar a la persona "logueada" en su navegador porque el
- * servidor no contesto es lo peor de las dos opciones.
+ * Cierre de sesion COMPLETO: el unico que de verdad cierra algo.
+ *
+ * Son tres cosas, y la llamada de API sola hace UNA:
+ *   1. el token de esta web (localStorage)          -> `borrarToken`
+ *   2. los tokens de la persona en TODAS las apps   -> `POST /api/logout`
+ *   3. la sesion del NAVEGADOR en el SSO y en Clerk -> solo navegando a `/logout`
+ *
+ * El punto 3 no se puede hacer con `fetch`: la peticion sale de otro origen y no
+ * lleva la cookie de sesion del SSO. Sin el, «cerrar sesion» borraba el token de
+ * aca y la persona volvia a entrar sin que le pidieran NADA —el SSO todavia la
+ * reconocia— asi que parecia que el logout no hacia nada. Por eso al final se
+ * SALE de la aplicacion hacia el `/logout` del SSO, que revoca, invalida la
+ * sesion y termina en su pantalla de login, que ademas cierra la de Clerk.
+ *
+ * El `POST` se mantiene ademas de la navegacion, y no es redundancia inutil: si
+ * el navegador no manda la cookie (otro perfil, cookies bloqueadas), la
+ * navegacion no revoca nada y el token seguiria vivo en las otras aplicaciones.
+ */
+export async function cerrarSesionGlobal(token) {
+  borrarToken()
+  await cerrarSesionEnElSso(token)
+
+  window.location.assign(`${SSO_URL}/logout`)
+}
+
+/**
+ * Revoca los tokens en el SSO. Best-effort a proposito: si la red falla, el
+ * token local se borra igual — dejar a la persona "logueada" en su navegador
+ * porque el servidor no contesto es lo peor de las dos opciones.
  */
 export async function cerrarSesionEnElSso(token) {
   if (!token) return
