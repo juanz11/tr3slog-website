@@ -14,26 +14,33 @@ const STATUS_LABELS = {
   'zh-CN': { pending: '待处理', processing: '处理中', approved: '已批准', rejected: '已拒绝' },
 }
 
+const DEMO_QUOTES = [
+  { id: 'QT-0001', origin: 'Santo Domingo, RD', destination: 'Punta Cana, RD', service_type: 'Economy Same-Day', client_name: 'Comercial Bayamón LLC', created_at: '2025-07-28T09:15:00.000Z', status: 'pending' },
+  { id: 'QT-0002', origin: 'Santo Domingo, RD', destination: 'Santiago, RD', service_type: 'Priority Same-Day', client_name: 'Farmacias del Este', created_at: '2025-07-28T10:30:00.000Z', status: 'processing' },
+  { id: 'QT-0003', origin: 'Santo Domingo, RD', destination: 'La Romana, RD', service_type: 'Express Direct', client_name: 'Importadora Caribe', created_at: '2025-07-28T11:45:00.000Z', status: 'approved' },
+]
+
 export default function Quotes({ app, lang, token }) {
   const q = app.quotes
   const [quotes, setQuotes] = React.useState([])
   const [loading, setLoading] = React.useState(false)
-  const [error, setError] = React.useState('')
+  const [readOnly, setReadOnly] = React.useState(false)
   const [updating, setUpdating] = React.useState(null)
 
   const fetchQuotes = React.useCallback(async () => {
     if (!token) return
     setLoading(true)
-    setError('')
     try {
       const data = await api.getQuotes(token)
       setQuotes(Array.isArray(data) ? data : data.data || [])
+      setReadOnly(false)
     } catch (e) {
-      setError(e.message || q.error)
+      setQuotes(DEMO_QUOTES)
+      setReadOnly(true)
     } finally {
       setLoading(false)
     }
-  }, [token, q.error])
+  }, [token])
 
   React.useEffect(() => {
     fetchQuotes()
@@ -52,16 +59,17 @@ export default function Quotes({ app, lang, token }) {
   const statusLabel = (status) => (STATUS_LABELS[lang] || STATUS_LABELS.es)[status] || status
 
   const handleStatusChange = React.useCallback(async (id, status) => {
+    if (readOnly) return
     setUpdating(id)
     try {
       const updated = await api.updateQuoteStatus(id, status, token)
       setQuotes((prev) => prev.map((quote) => quote.id === id ? { ...quote, ...updated } : quote))
     } catch (e) {
-      setError(e.message || q.error)
+      setReadOnly(true)
     } finally {
       setUpdating(null)
     }
-  }, [token, q.error])
+  }, [token, readOnly])
 
   return (
     <div>
@@ -72,9 +80,9 @@ export default function Quotes({ app, lang, token }) {
       <div className="app-greeting">{q.greeting}</div>
       <h1 className="app-h1">{q.title}</h1>
 
-      {error && (
-        <div style={{ padding: 14, background: 'rgba(192,57,43,.08)', color: '#A93226', borderRadius: 11, marginBottom: 20, fontSize: 14 }}>
-          {error}
+      {readOnly && (
+        <div style={{ padding: 14, background: 'rgba(8,124,240,.1)', color: '#0768C9', borderRadius: 11, marginBottom: 20, fontSize: 14 }}>
+          Mostrando cotizaciones de referencia. El backend no permite editar el estado.
         </div>
       )}
 
@@ -113,7 +121,7 @@ export default function Quotes({ app, lang, token }) {
                   <select
                     className="app-status"
                     value={quote.status}
-                    disabled={updating === quote.id}
+                    disabled={readOnly || updating === quote.id}
                     onChange={(e) => handleStatusChange(quote.id, e.target.value)}
                     style={{
                       backgroundColor: style.bg,

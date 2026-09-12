@@ -7,9 +7,9 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   || 'pk_test_51U9oCHLy571aG6WWmqNdtAiM9E7ZVDjTeB2Qs62VvLjOhv0Y253OGaFztaJseVBUhhkiZ3Q3CxaY8Fy9S2VHOg8L00mmeKsQQK'
 
-const ADDRESS_KEYS = ['name', 'company', 'city', 'country', 'zip', 'phone', 'email']
-const ADDRESS_REQUIRED = ['name', 'city', 'country', 'zip', 'phone', 'email']
-const ADDRESS_SPAN2 = []
+const ADDRESS_KEYS = ['name', 'company', 'address', 'city', 'country', 'zip', 'phone', 'email']
+const ADDRESS_REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'phone', 'email']
+const ADDRESS_SPAN2 = ['address']
 
 const CITIES = [
   'San Juan', 'Santo Domingo', 'Punta Cana', 'Miami', 'New York', 'Atlanta',
@@ -354,7 +354,11 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
                 >
                   <option value="">{c.selectHere || '— Seleccione aquí —'}</option>
                   <option value="manual">{c.manualAddress || 'Ingresar manualmente'}</option>
-                  {savedAddresses.map((addr) => {
+                  {savedAddresses.filter((addr) => {
+                    if (section !== 'recipient') return true
+                    if (!data.sender.addressId || data.sender.addressId === 'manual') return true
+                    return String(addr.id) !== String(data.sender.addressId)
+                  }).map((addr) => {
                     const initials = getInitials(addr.address || addr.name)
                     const label = [initials ? `${initials} —` : '', addr.address || addr.name, addr.city].filter(Boolean).join(' ')
                     return (
@@ -437,6 +441,79 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
             cursor: (canContinue && !submitting && !isAfterHours) ? 'pointer' : 'not-allowed',
           }}
         >{isLastStep ? (submitting ? 'Procesando…' : c.payment.submit) : c.continue}</button>
+      </div>
+    </div>
+  )
+}
+
+function ShipmentSuccess({ app, result, onNew }) {
+  const [copied, setCopied] = React.useState(false)
+  const guide = result.tracking_number || result.id || result.guide || ''
+  const copy = async () => {
+    if (!guide) return
+    try {
+      await navigator.clipboard.writeText(guide)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (e) {}
+  }
+  return (
+    <div style={{
+      background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16,
+      padding: 40, textAlign: 'center', color: '#6C82A6', fontSize: 15,
+    }}>
+      <div style={{
+        width: 72, height: 72, borderRadius: '50%',
+        background: '#F1FAF5', color: '#0F5F36',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 20px', fontSize: 28,
+      }}>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+        </svg>
+      </div>
+      <h2 style={{
+        fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 24,
+        color: '#001B45', margin: '0 0 8px',
+      }}>Envío creado</h2>
+      <p style={{ margin: '0 0 24px', color: '#6C82A6' }}>Se asignó la guía</p>
+      <div style={{
+        display: 'inline-block', padding: '14px 24px', borderRadius: 12,
+        background: '#F6FAFF', border: '1px solid #DCE6F5',
+        color: '#001B45', fontSize: 20, fontWeight: 700, letterSpacing: '.02em',
+        wordBreak: 'break-word',
+      }}>
+        {guide}
+      </div>
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 28, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={copy}
+          style={{
+            padding: '12px 20px', borderRadius: 11, border: '1.5px solid #DCE6F5',
+            background: '#fff', color: '#001B45', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >{copied ? 'Copiado' : 'Copiar guía'}</button>
+        <button
+          type="button"
+          onClick={() => app.go('track?code=' + encodeURIComponent(guide))}
+          style={{
+            padding: '12px 20px', borderRadius: 11, border: 'none',
+            background: '#087CF0', color: '#fff', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >Rastrear envío</button>
+        <button
+          type="button"
+          onClick={onNew}
+          style={{
+            padding: '12px 20px', borderRadius: 11, border: 'none',
+            background: '#001B45', color: '#fff', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >Crear otro envío</button>
       </div>
     </div>
   )
@@ -531,7 +608,7 @@ function ShipmentCreateInner({ app, token }) {
     }
     if (step === 3) {
       return {
-        keys: Object.keys(c.service.fields),
+        keys: Object.keys(c.service.fields).filter((k) => k !== 'service'),
         fields: c.service.fields,
         placeholders: c.service.placeholders,
         required: c.service.required,
@@ -555,15 +632,16 @@ function ShipmentCreateInner({ app, token }) {
         },
       }
     }
+    const isManual = data[section]?.addressId === 'manual'
+    const isHiddenIfSaved = (k) => k === 'address' || k === 'city' || k === 'zip'
     return {
-      keys: ADDRESS_KEYS.filter((k) => k !== 'country'),
+      keys: ADDRESS_KEYS.filter((k) => k !== 'country' && (!isHiddenIfSaved(k) || isManual)),
       fields: c.fields,
       placeholders: c.placeholders,
       required: ADDRESS_REQUIRED,
       span2: ADDRESS_SPAN2,
       datalist: {
         city: CITIES,
-        address: CITIES,
       },
       countryOptions: Object.keys(PHONE_FORMATS).map((k) => ({
         code: k, short: k, flag: PHONE_FORMATS[k].code,
@@ -736,6 +814,20 @@ function ShipmentCreateInner({ app, token }) {
     }
   }, [data, token, stripe, elements, c])
 
+  const onNew = React.useCallback(() => {
+    setSubmitted(false)
+    setResult(null)
+    setError('')
+    setStep(0)
+    setData({
+      sender: emptyAddress(),
+      recipient: emptyAddress(),
+      package: [emptyPackage()],
+      service: emptyService(),
+      payment: emptyPayment(),
+    })
+  }, [])
+
   const onSelectAddress = React.useCallback((sec, id) => {
     if (!id) {
       setData((prev) => ({ ...prev, [sec]: { ...prev[sec], addressId: '' } }))
@@ -813,7 +905,7 @@ function ShipmentCreateInner({ app, token }) {
         color: '#001B45',
       }}>{c.title}</h1>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+      {!submitted && (<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
         {c.steps.map((label, i) => {
           const on = i === step
           return (
@@ -844,41 +936,45 @@ function ShipmentCreateInner({ app, token }) {
             </div>
           )
         })}
-      </div>
+      </div>)}
 
-      {section ? (
-        <ShipmentForm
-          c={c}
-          step={step}
-          section={section}
-          config={config}
-          data={data}
-          savedAddresses={savedAddresses}
-          onSelectAddress={onSelectAddress}
-          submitted={submitted}
-          error={error}
-          submitting={submitting}
-          result={result}
-          onChange={onChange}
-          onPackageChange={onPackageChange}
-          onAddPackage={onAddPackage}
-          onRemovePackage={onRemovePackage}
-          isAfterHours={isAfterHours}
-          afterHoursMsg={afterHoursMsg}
-          onBack={onBack}
-          onNext={onNext}
-          onFinish={onFinish}
-        />
+      {submitted && result ? (
+        <ShipmentSuccess app={app} result={result} onNew={onNew} />
       ) : (
-        <div style={{
-          background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16,
-          padding: 40, textAlign: 'center', color: '#6C82A6', fontSize: 15,
-        }}>
-          <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, color: '#001B45', marginBottom: 8, fontSize: 16 }}>
-            {c.steps[step]}
+        section ? (
+          <ShipmentForm
+            c={c}
+            step={step}
+            section={section}
+            config={config}
+            data={data}
+            savedAddresses={savedAddresses}
+            onSelectAddress={onSelectAddress}
+            submitted={submitted}
+            error={error}
+            submitting={submitting}
+            result={result}
+            onChange={onChange}
+            onPackageChange={onPackageChange}
+            onAddPackage={onAddPackage}
+            onRemovePackage={onRemovePackage}
+            isAfterHours={isAfterHours}
+            afterHoursMsg={afterHoursMsg}
+            onBack={onBack}
+            onNext={onNext}
+            onFinish={onFinish}
+          />
+        ) : (
+          <div style={{
+            background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16,
+            padding: 40, textAlign: 'center', color: '#6C82A6', fontSize: 15,
+          }}>
+            <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, color: '#001B45', marginBottom: 8, fontSize: 16 }}>
+              {c.steps[step]}
+            </div>
+            {app.empty}
           </div>
-          {app.empty}
-        </div>
+        )
       )}
     </div>
   )
