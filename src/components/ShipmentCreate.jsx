@@ -49,12 +49,14 @@ const emptyPackage = () => ({
 })
 
 const emptyService = () => ({
-  service: '', pickupDate: '', timeWindow: '', notes: '',
+  service: 'Terrestre', pickupDate: '', timeWindow: '', notes: '',
 })
 
 const emptyPayment = () => ({
   paymentMethod: '', chargeToAccount: '', cardholderName: '', billingZip: '',
 })
+
+const DRAFT_KEY = 'tr3slog-shipment-draft'
 
 const getInitials = (text = '') => {
   const words = text.trim().split(/\s+/).filter(Boolean)
@@ -167,6 +169,8 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
       ? data[section].every((pkg) => config.required.every((k) => String(pkg[k] || '').trim() !== ''))
       : config.required.every((k) => String(data[section][k] || '').trim() !== ''))
     : true
+  const isServiceAvailable = section !== 'service' || data.service.service === 'Terrestre'
+  const canContinue = isComplete && isServiceAvailable
   const today = new Date()
   const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
@@ -177,40 +181,7 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
           {afterHoursMsg}
         </div>
       )}
-      {(section === 'sender' || section === 'recipient') && (
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{
-              fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
-              textTransform: 'uppercase', color: '#6C82A6',
-            }}>
-              {c.selectAddress || 'Seleccionar una dirección guardada'}
-            </span>
-            <select
-              value={data[section].addressId || ''}
-              onChange={(e) => onSelectAddress(section, e.target.value)}
-              style={{
-                width: '100%', padding: '14px 15px',
-                border: '1.5px solid #DCE6F5', borderRadius: 11,
-                background: '#EEF4FC', font: 'inherit', color: '#001B45',
-                outline: 'none', cursor: 'pointer',
-              }}
-            >
-              <option value="">{c.selectHere || '— Seleccione aquí —'}</option>
-              <option value="manual">{c.manualAddress || 'Ingresar manualmente'}</option>
-              {savedAddresses.map((addr) => {
-                const initials = getInitials(addr.name || addr.address)
-                const label = [initials ? `${initials} —` : '', addr.name || addr.address, addr.city].filter(Boolean).join(' ')
-                return (
-                  <option key={addr.id} value={String(addr.id)}>
-                    {label}
-                  </option>
-                )
-              })}
-            </select>
-          </label>
-        </div>
-      )}
+
       {section === 'package' && (
         <PackageList
           c={c}
@@ -222,7 +193,8 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {config.keys.map((key) => (
-          <label key={key} style={{ gridColumn: config.span2.includes(key) ? 'span 2' : 'span 1', display: 'block' }}>
+          <React.Fragment key={key}>
+            <label style={{ gridColumn: config.span2.includes(key) ? 'span 2' : 'span 1', display: 'block' }}>
             <span style={{
               display: 'flex', gap: 8, alignItems: 'baseline',
               fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
@@ -361,8 +333,56 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
               </>
             )}
           </label>
+          {(section === 'sender' || section === 'recipient') && key === 'company' && (
+            <div style={{ gridColumn: 'span 2' }}>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
+                  textTransform: 'uppercase', color: '#6C82A6',
+                }}>
+                  {c.selectAddress || 'Dirección'}
+                </span>
+                <select
+                  value={data[section].addressId || ''}
+                  onChange={(e) => onSelectAddress(section, e.target.value)}
+                  style={{
+                    width: '100%', padding: '14px 15px',
+                    border: '1.5px solid #DCE6F5', borderRadius: 11,
+                    background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                    outline: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <option value="">{c.selectHere || '— Seleccione aquí —'}</option>
+                  <option value="manual">{c.manualAddress || 'Ingresar manualmente'}</option>
+                  {savedAddresses.filter((addr) => {
+                    if (section !== 'recipient') return true
+                    if (!data.sender.addressId || data.sender.addressId === 'manual') return true
+                    return String(addr.id) !== String(data.sender.addressId)
+                  }).map((addr) => {
+                    const initials = getInitials(addr.address || addr.name)
+                    const label = [initials ? `${initials} —` : '', addr.address || addr.name, addr.city].filter(Boolean).join(' ')
+                    return (
+                      <option key={addr.id} value={String(addr.id)}>
+                        {label}
+                      </option>
+                    )
+                  })}
+                </select>
+              </label>
+            </div>
+          )}
+          </React.Fragment>
         ))}
       </div>
+
+      {section === 'service' && data.service.service !== 'Terrestre' && data.service.service && (
+        <div style={{
+          marginTop: 20, padding: 14, borderRadius: 12,
+          background: '#FEF3C7', color: '#92400E', fontSize: 14,
+        }}>
+          {c.serviceUnavailable || 'Servicio no disponible. Pronto estará habilitado.'}
+        </div>
+      )}
 
       {step === 4 && submitted && result && (
         <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -408,19 +428,92 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
           onClick={() => {
             if (isLastStep) {
               onFinish()
-            } else if (isComplete) {
+            } else if (canContinue) {
               onNext()
             }
           }}
-          disabled={!isComplete || submitting || isAfterHours}
+          disabled={!canContinue || submitting || isAfterHours}
           style={{
             marginLeft: 'auto', padding: '14px 24px',
-            background: (isComplete && !submitting && !isAfterHours) ? '#087CF0' : '#8FC6F7',
+            background: (canContinue && !submitting && !isAfterHours) ? '#087CF0' : '#8FC6F7',
             border: 'none', borderRadius: 11,
             color: '#fff', fontSize: 14, fontWeight: 600,
-            cursor: (isComplete && !submitting && !isAfterHours) ? 'pointer' : 'not-allowed',
+            cursor: (canContinue && !submitting && !isAfterHours) ? 'pointer' : 'not-allowed',
           }}
         >{isLastStep ? (submitting ? 'Procesando…' : c.payment.submit) : c.continue}</button>
+      </div>
+    </div>
+  )
+}
+
+function ShipmentSuccess({ app, result, onNew }) {
+  const [copied, setCopied] = React.useState(false)
+  const guide = result.tracking_number || result.id || result.guide || ''
+  const copy = async () => {
+    if (!guide) return
+    try {
+      await navigator.clipboard.writeText(guide)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (e) {}
+  }
+  return (
+    <div style={{
+      background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16,
+      padding: 40, textAlign: 'center', color: '#6C82A6', fontSize: 15,
+    }}>
+      <div style={{
+        width: 72, height: 72, borderRadius: '50%',
+        background: '#F1FAF5', color: '#0F5F36',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: '0 auto 20px', fontSize: 28,
+      }}>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M8.5 12.5l2.5 2.5 4.5-5" />
+        </svg>
+      </div>
+      <h2 style={{
+        fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 24,
+        color: '#001B45', margin: '0 0 8px',
+      }}>Envío creado</h2>
+      <p style={{ margin: '0 0 24px', color: '#6C82A6' }}>Se asignó la guía</p>
+      <div style={{
+        display: 'inline-block', padding: '14px 24px', borderRadius: 12,
+        background: '#F6FAFF', border: '1px solid #DCE6F5',
+        color: '#001B45', fontSize: 20, fontWeight: 700, letterSpacing: '.02em',
+        wordBreak: 'break-word',
+      }}>
+        {guide}
+      </div>
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 28, flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={copy}
+          style={{
+            padding: '12px 20px', borderRadius: 11, border: '1.5px solid #DCE6F5',
+            background: '#fff', color: '#001B45', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >{copied ? 'Copiado' : 'Copiar guía'}</button>
+        <button
+          type="button"
+          onClick={() => app.go('track?code=' + encodeURIComponent(guide))}
+          style={{
+            padding: '12px 20px', borderRadius: 11, border: 'none',
+            background: '#087CF0', color: '#fff', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >Rastrear envío</button>
+        <button
+          type="button"
+          onClick={onNew}
+          style={{
+            padding: '12px 20px', borderRadius: 11, border: 'none',
+            background: '#001B45', color: '#fff', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >Crear otro envío</button>
       </div>
     </div>
   )
@@ -434,20 +527,6 @@ function ShipmentCreateInner({ app, token }) {
   const [error, setError] = React.useState('')
   const [result, setResult] = React.useState(null)
   const [savedAddresses, setSavedAddresses] = React.useState([])
-
-  const afterHours = React.useCallback(() => {
-    const hour = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Santo_Domingo', hour: 'numeric', hour12: false }))
-    return hour >= 20
-  }, [])
-
-  const [isAfterHours, setIsAfterHours] = React.useState(afterHours)
-  const afterHoursMsg = `No se pueden crear envíos después de las 8:00 p.m. (hora de República Dominicana). Estaremos pronto. Nuestros horarios son: ${app.support.hours}`
-
-  React.useEffect(() => {
-    const id = setInterval(() => setIsAfterHours(afterHours()), 60000)
-    return () => clearInterval(id)
-  }, [afterHours])
-
   const [data, setData] = React.useState({
     sender: emptyAddress(),
     recipient: emptyAddress(),
@@ -455,6 +534,50 @@ function ShipmentCreateInner({ app, token }) {
     service: emptyService(),
     payment: emptyPayment(),
   })
+  const draftLoaded = React.useRef(false)
+
+  React.useEffect(() => {
+    if (draftLoaded.current) return
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        setData(parsed.data || {
+          sender: emptyAddress(),
+          recipient: emptyAddress(),
+          package: [emptyPackage()],
+          service: emptyService(),
+          payment: emptyPayment(),
+        })
+        setStep(typeof parsed.step === 'number' ? parsed.step : 0)
+      }
+    } catch (e) {}
+    draftLoaded.current = true
+  }, [])
+
+  React.useEffect(() => {
+    if (!draftLoaded.current) return
+    if (submitted) {
+      try { localStorage.removeItem(DRAFT_KEY) } catch (e) {}
+      return
+    }
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ data, step }))
+    } catch (e) {}
+  }, [data, step, submitted])
+
+  const afterHours = React.useCallback(() => {
+    const hour = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Santo_Domingo', hour: 'numeric', hour12: false }))
+    return hour >= 20
+  }, [])
+
+  const [isAfterHours, setIsAfterHours] = React.useState(afterHours)
+  const afterHoursMsg = 'Los envíos se pueden recoger hasta las 8:00 p.m. (hora de República Dominicana). Estaremos abiertos de lunes a viernes, de 8:00 a.m. a 6:00 p.m. Si desea, puede programar su recogida para mañana.'
+
+  React.useEffect(() => {
+    const id = setInterval(() => setIsAfterHours(afterHours()), 60000)
+    return () => clearInterval(id)
+  }, [afterHours])
 
   React.useEffect(() => {
     setError('')
@@ -485,13 +608,13 @@ function ShipmentCreateInner({ app, token }) {
     }
     if (step === 3) {
       return {
-        keys: Object.keys(c.service.fields),
+        keys: Object.keys(c.service.fields).filter((k) => k !== 'service'),
         fields: c.service.fields,
         placeholders: c.service.placeholders,
         required: c.service.required,
         span2: c.service.span2,
         options: {
-          service: ['Consolidado', 'Marítimo', 'Aéreo', 'Carga terrestre', 'Última milla'],
+          service: ['Terrestre', 'Consolidado', 'Marítimo', 'Aéreo', 'Última milla'],
           timeWindow: c.service.windows,
         },
       }
@@ -509,17 +632,18 @@ function ShipmentCreateInner({ app, token }) {
         },
       }
     }
+    const isManual = data[section]?.addressId === 'manual'
+    const isHiddenIfSaved = (k) => k === 'address' || k === 'city' || k === 'zip'
     return {
-      keys: ADDRESS_KEYS.filter((k) => k !== 'country'),
+      keys: ADDRESS_KEYS.filter((k) => k !== 'country' && (!isHiddenIfSaved(k) || isManual)),
       fields: c.fields,
       placeholders: c.placeholders,
       required: ADDRESS_REQUIRED,
       span2: ADDRESS_SPAN2,
       datalist: {
         city: CITIES,
-        address: CITIES,
       },
-      countryOptions: Object.keys(PHONE_FORMATS).map((k) => ({
+      countryOptions: Object.keys(PHONE_FORMATS).filter((k) => k === 'DO' || k === 'CR').map((k) => ({
         code: k, short: k, flag: PHONE_FORMATS[k].code,
       })),
       phoneExample,
@@ -566,11 +690,25 @@ function ShipmentCreateInner({ app, token }) {
   }
 
   const validateService = () => {
-    const { pickupDate } = data.service
+    const { service, pickupDate, timeWindow } = data.service
+    if (service !== 'Terrestre') {
+      return c.serviceUnavailable || 'Servicio no disponible. Pronto estará habilitado.'
+    }
     if (!pickupDate) return ''
     const today = new Date()
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     if (pickupDate < todayStr) return c.errPickupDate
+    if (pickupDate === todayStr && timeWindow) {
+      const end = timeWindow.split(' - ')[1]
+      const [endHour, endMin] = end.split(':').map(Number)
+      const currentTime = new Date().toLocaleTimeString('en-US', { timeZone: 'America/Santo_Domingo', hour12: false })
+      const [currentHour, currentMin] = currentTime.split(':').map(Number)
+      const currentMinutes = currentHour * 60 + currentMin
+      const endMinutes = endHour * 60 + endMin
+      if (currentMinutes >= endMinutes) {
+        return c.errTimeWindow || 'La ventana de horario ya no está disponible para hoy. Seleccione una fecha futura.'
+      }
+    }
     return ''
   }
 
@@ -612,6 +750,7 @@ function ShipmentCreateInner({ app, token }) {
   }
 
   const onFinish = React.useCallback(async () => {
+    if (submitting) return
     if (!token) {
       setError('Inicie sesión para crear un envío.')
       return
@@ -675,13 +814,35 @@ function ShipmentCreateInner({ app, token }) {
     }
   }, [data, token, stripe, elements, c])
 
+  const onNew = React.useCallback(() => {
+    setSubmitted(false)
+    setResult(null)
+    setError('')
+    setStep(0)
+    setData({
+      sender: emptyAddress(),
+      recipient: emptyAddress(),
+      package: [emptyPackage()],
+      service: emptyService(),
+      payment: emptyPayment(),
+    })
+  }, [])
+
   const onSelectAddress = React.useCallback((sec, id) => {
     if (!id) {
       setData((prev) => ({ ...prev, [sec]: { ...prev[sec], addressId: '' } }))
       return
     }
     if (id === 'manual') {
-      setData((prev) => ({ ...prev, [sec]: { ...emptyAddress(), addressId: 'manual' } }))
+      setData((prev) => ({
+        ...prev,
+        [sec]: {
+          ...emptyAddress(),
+          addressId: 'manual',
+          name: prev[sec].name || '',
+          company: prev[sec].company || '',
+        },
+      }))
       return
     }
     const found = savedAddresses.find((a) => String(a.id) === id)
@@ -691,7 +852,7 @@ function ShipmentCreateInner({ app, token }) {
       [sec]: {
         ...prev[sec],
         addressId: String(found.id),
-        name: found.name || found.contact_name || '',
+        name: prev[sec].name || '',
         company: '',
         address: found.address || '',
         city: found.city || '',
@@ -744,7 +905,7 @@ function ShipmentCreateInner({ app, token }) {
         color: '#001B45',
       }}>{c.title}</h1>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+      {!submitted && (<div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
         {c.steps.map((label, i) => {
           const on = i === step
           return (
@@ -775,41 +936,45 @@ function ShipmentCreateInner({ app, token }) {
             </div>
           )
         })}
-      </div>
+      </div>)}
 
-      {section ? (
-        <ShipmentForm
-          c={c}
-          step={step}
-          section={section}
-          config={config}
-          data={data}
-          savedAddresses={savedAddresses}
-          onSelectAddress={onSelectAddress}
-          submitted={submitted}
-          error={error}
-          submitting={submitting}
-          result={result}
-          onChange={onChange}
-          onPackageChange={onPackageChange}
-          onAddPackage={onAddPackage}
-          onRemovePackage={onRemovePackage}
-          isAfterHours={isAfterHours}
-          afterHoursMsg={afterHoursMsg}
-          onBack={onBack}
-          onNext={onNext}
-          onFinish={onFinish}
-        />
+      {submitted && result ? (
+        <ShipmentSuccess app={app} result={result} onNew={onNew} />
       ) : (
-        <div style={{
-          background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16,
-          padding: 40, textAlign: 'center', color: '#6C82A6', fontSize: 15,
-        }}>
-          <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, color: '#001B45', marginBottom: 8, fontSize: 16 }}>
-            {c.steps[step]}
+        section ? (
+          <ShipmentForm
+            c={c}
+            step={step}
+            section={section}
+            config={config}
+            data={data}
+            savedAddresses={savedAddresses}
+            onSelectAddress={onSelectAddress}
+            submitted={submitted}
+            error={error}
+            submitting={submitting}
+            result={result}
+            onChange={onChange}
+            onPackageChange={onPackageChange}
+            onAddPackage={onAddPackage}
+            onRemovePackage={onRemovePackage}
+            isAfterHours={isAfterHours}
+            afterHoursMsg={afterHoursMsg}
+            onBack={onBack}
+            onNext={onNext}
+            onFinish={onFinish}
+          />
+        ) : (
+          <div style={{
+            background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16,
+            padding: 40, textAlign: 'center', color: '#6C82A6', fontSize: 15,
+          }}>
+            <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, color: '#001B45', marginBottom: 8, fontSize: 16 }}>
+              {c.steps[step]}
+            </div>
+            {app.empty}
           </div>
-          {app.empty}
-        </div>
+        )
       )}
     </div>
   )

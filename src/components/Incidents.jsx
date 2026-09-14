@@ -89,6 +89,7 @@ export default function Incidents({ app, lang, token }) {
 
   const handleCreate = async (e) => {
     e.preventDefault()
+    if (loading) return
     setLoading(true)
     setError('')
     try {

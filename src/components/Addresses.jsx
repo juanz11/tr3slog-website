@@ -3,47 +3,8 @@ import { api } from '../api'
 import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 
 const COUNTRY_OPTIONS = [
-  { code: 'AF', name: 'Afganistán' },
-  { code: 'AL', name: 'Albania' },
-  { code: 'AR', name: 'Argentina' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'BE', name: 'Bélgica' },
-  { code: 'BO', name: 'Bolivia' },
-  { code: 'BR', name: 'Brasil' },
-  { code: 'CA', name: 'Canadá' },
-  { code: 'CH', name: 'Suiza' },
-  { code: 'CL', name: 'Chile' },
-  { code: 'CO', name: 'Colombia' },
-  { code: 'CR', name: 'Costa Rica' },
-  { code: 'CU', name: 'Cuba' },
-  { code: 'DE', name: 'Alemania' },
   { code: 'DO', name: 'República Dominicana' },
-  { code: 'EC', name: 'Ecuador' },
-  { code: 'EG', name: 'Egipto' },
-  { code: 'ES', name: 'España' },
-  { code: 'FR', name: 'Francia' },
-  { code: 'GB', name: 'Reino Unido' },
-  { code: 'GT', name: 'Guatemala' },
-  { code: 'HN', name: 'Honduras' },
-  { code: 'IT', name: 'Italia' },
-  { code: 'JM', name: 'Jamaica' },
-  { code: 'JP', name: 'Japón' },
-  { code: 'KR', name: 'Corea del Sur' },
-  { code: 'MX', name: 'México' },
-  { code: 'NI', name: 'Nicaragua' },
-  { code: 'NL', name: 'Países Bajos' },
-  { code: 'PA', name: 'Panamá' },
-  { code: 'PE', name: 'Perú' },
-  { code: 'PR', name: 'Puerto Rico' },
-  { code: 'PT', name: 'Portugal' },
-  { code: 'PY', name: 'Paraguay' },
-  { code: 'CN', name: 'China' },
-  { code: 'RU', name: 'Rusia' },
-  { code: 'SV', name: 'El Salvador' },
-  { code: 'US', name: 'Estados Unidos' },
-  { code: 'UY', name: 'Uruguay' },
-  { code: 'VE', name: 'Venezuela' },
-  { code: 'ZA', name: 'Sudáfrica' },
+  { code: 'CR', name: 'Costa Rica' },
 ]
 
 const ZIP_PATTERNS = {
@@ -113,6 +74,8 @@ function backendToRow(addr) {
 const SPAN2 = ['address', 'instructions']
 const REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'contact']
 
+const ADDRESS_DRAFT_KEY = 'tr3slog-address-draft'
+
 function initialPrimary(rows) {
   const found = rows.find((r) => r.primary)
   return found ? found.id : null
@@ -129,6 +92,31 @@ export default function Addresses({ app, token }) {
   const [removeId, setRemoveId] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
   const [loadError, setLoadError] = React.useState(null)
+  const addressDraftLoaded = React.useRef(false)
+
+  React.useEffect(() => {
+    if (addressDraftLoaded.current) return
+    try {
+      const raw = localStorage.getItem(ADDRESS_DRAFT_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed.formMode) setFormMode(parsed.formMode)
+        if (parsed.formVals) setFormVals(parsed.formVals)
+      }
+    } catch (e) {}
+    addressDraftLoaded.current = true
+  }, [])
+
+  React.useEffect(() => {
+    if (!addressDraftLoaded.current) return
+    try {
+      if (formMode === null) {
+        localStorage.removeItem(ADDRESS_DRAFT_KEY)
+      } else {
+        localStorage.setItem(ADDRESS_DRAFT_KEY, JSON.stringify({ formMode, formVals }))
+      }
+    } catch (e) {}
+  }, [formMode, formVals])
 
   const loadAddresses = React.useCallback(async () => {
     if (!token) return
@@ -186,6 +174,7 @@ export default function Addresses({ app, token }) {
   }
 
   const save = async () => {
+    if (loading) return
     const missing = REQUIRED.some((k) => !(formVals[k] || '').trim())
     if (missing) return setErr(true)
 
@@ -349,10 +338,17 @@ export default function Addresses({ app, token }) {
 
       {formOpen && (
         <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 24, marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div style={{
-            fontFamily: 'Montserrat, "Noto Sans SC", sans-serif',
-            fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase',
-          }}>{formTitle}</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{
+              fontFamily: 'Montserrat, "Noto Sans SC", sans-serif',
+              fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase',
+            }}>{formTitle}</div>
+            <button onClick={() => setFormMode(null)} style={{
+              padding: '6px 12px', borderRadius: 8, border: '1.5px solid #DCE6F5',
+              background: '#fff', color: '#6C82A6', fontSize: 12, fontWeight: 600,
+              cursor: 'pointer',
+            }}>{a.cancelBtn}</button>
+          </div>
 
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 10 }}>{a.typeT}</div>
@@ -403,7 +399,7 @@ export default function Addresses({ app, token }) {
                       }}
                     >
                       <option value="">{a.f.country}</option>
-                      {Object.keys(PHONE_FORMATS).map((c) => (
+                      {Object.keys(PHONE_FORMATS).filter((c) => c === 'DO' || c === 'CR').map((c) => (
                         <option key={c} value={c}>{PHONE_FORMATS[c].code} {c}</option>
                       ))}
                     </select>
@@ -453,10 +449,10 @@ export default function Addresses({ app, token }) {
               padding: '14px 20px', background: '#fff', border: '1.5px solid #DCE6F5',
               borderRadius: 11, color: '#10233F', fontSize: 14, fontWeight: 600, cursor: 'pointer',
             }}>{a.cancelBtn}</button>
-            <button onClick={save} style={{
-              marginLeft: 'auto', padding: '14px 22px', background: '#087CF0',
-              border: 'none', borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            }}>{a.save}</button>
+            <button onClick={save} disabled={loading} style={{
+              marginLeft: 'auto', padding: '14px 22px', background: loading ? '#8FC6F7' : '#087CF0',
+              border: 'none', borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+            }}>{loading ? 'Guardando…' : a.save}</button>
           </div>
         </div>
       )}
