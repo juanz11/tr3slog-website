@@ -40,20 +40,25 @@ volvés a `/dashboard` con tus datos de producción.
 
 ## Perfil B — tu backend local
 
+Es el perfil del repo del backend (`backend_trelog/SETUP_LOCAL.md`): ahí se levanta tu
+backend, tu **espejo** (`php artisan sso:espejo tu@correo.com <tu id del VPS>`) y el
+gateway en `:8003`, que ya viene apuntando al SSO del VPS. De este lado:
+
 ```bash
-bash /Volumes/External/sources/myglobalhub/SSO/Docs/demo/treslog_stack.sh up   # backend :8000 + gateway :8003 contra el SSO del VPS
 npm run dev:backend-local
 ```
 
-El gateway (`../backend_trelog/gateway/`) ya viene apuntando al SSO del VPS en su `env.example`.
-Tu espejo en la base local tiene que tener el `sso_user_id` **del VPS** (no el del SSO local):
-con el id cruzado, la web dice «tu cuenta no está habilitada» y parece un fallo del SSO.
+> El espejo lleva tu id **del SSO del VPS**, no el del SSO local. Con el id cruzado, la
+> web dice «tu cuenta no está habilitada» y parece un fallo del SSO cuando es un dato
+> mal copiado.
 
 ## Perfil C — todo local
 
+Es el B con el SSO en tu máquina (`SSO/`, `docker compose up -d`, queda en
+`http://localhost`), el gateway con las líneas del perfil local en su `.env`, y el
+espejo con tu id **del SSO local**. De este lado:
+
 ```bash
-cd /Volumes/External/sources/myglobalhub/SSO && docker compose up -d      # el SSO, en http://localhost
-bash Docs/demo/treslog_stack.sh up                                       # backend + gateway, contra el SSO local
 npm run dev:local
 ```
 
