@@ -9,46 +9,59 @@ un error de esta guía y hay que corregirlo, no un problema tuyo.
 
 ---
 
-## 1. Levantá el SSO
+## Elegí un perfil
+
+| | **A — solo la web** ⭐ | **B — tu backend local** | **C — todo local** |
+|---|---|---|---|
+| Levantás | `npm run dev` | la web + tu backend + el gateway | todo eso + **el SSO entero** |
+| Te logueás contra | el SSO del VPS | el SSO del VPS | usuarios de prueba tuyos |
+| Los datos son | los del VPS | los tuyos | los tuyos |
+| Docker | no | sí (el gateway) | sí (gateway + SSO) |
+| Es para | tocar la web | tocar el backend de TR3SLOG | tocar el SSO |
+
+**Usá el A.** Es la decisión del equipo (2026-09-14): cuantas menos dependencias haya que
+levantar, mejor. Los perfiles viven en `next.config.mjs` (un solo lugar, versionado, con el
+porqué al lado) y se eligen con el script de `package.json`. No hay nada que pedir ni que
+copiar: el `client_id` ya está ahí, y es público por definición (PKCE, sin secreto, solo
+redirige a `localhost`).
+
+> **Lo que el A implica, dicho claro:** escribís sobre los datos del VPS. Hoy ese VPS es de
+> demostración; el día que tenga usuarios reales, este perfil necesita un ambiente de pruebas.
+
+## Perfil A — solo la web
 
 ```bash
-cd /Volumes/External/sources/myglobalhub/SSO
-docker compose up -d
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost/login   # 200
-```
-
-## 2. Levantá el backend y el gateway de TR3SLOG
-
-```bash
-bash /Volumes/External/sources/myglobalhub/SSO/Docs/demo/treslog_stack.sh up
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8003/_health   # 200
-```
-
-Deja el backend en `:8000`, el gateway en `:8003` y un usuario espejo de prueba.
-Para bajarlo todo: el mismo comando con `down`.
-
-## 3. Levantá la web
-
-```bash
-cd /Volumes/External/sources/myglobalhub/treslog/tr3slog-website
 npm install
-npm run dev            # queda en http://localhost:3200
+npm run dev            # queda en http://localhost:3200, contra el VPS
 ```
 
-## 4. Entrá
+Abrí **`http://localhost:3200`** y apretá «Iniciar sesión». Te lleva al SSO del VPS, entrás, y
+volvés a `/dashboard` con tus datos de producción.
 
-Abrí **`http://localhost:3200`** y apretá «Iniciar sesión». Te lleva al SSO,
-te logueás, aceptás el consentimiento, y volvés a `/dashboard` ya identificado.
+## Perfil B — tu backend local
 
-> **`localhost`, NO `127.0.0.1`.** El SSO tiene registrada una sola
-> `redirect_uri` para esta web —`http://localhost:3200/login/sso/callback`— y la
-> compara caracter por caracter. Desde `127.0.0.1:3200` el login falla con
-> `invalid_request` antes de mostrarte nada.
+```bash
+bash /Volumes/External/sources/myglobalhub/SSO/Docs/demo/treslog_stack.sh up   # backend :8000 + gateway :8003 contra el SSO del VPS
+npm run dev:backend-local
+```
 
-> **El puerto 3200 tampoco es decorativo**: es el que el SSO tiene registrado
-> como origen CORS y dentro de la `redirect_uri`. El 3000 es de la web de MSH, y
-> `next dev` se corre solo a otro puerto si lo encuentra ocupado — por eso el
-> script `dev` fija `-p 3200`.
+El gateway (`../backend_trelog/gateway/`) ya viene apuntando al SSO del VPS en su `env.example`.
+Tu espejo en la base local tiene que tener el `sso_user_id` **del VPS** (no el del SSO local):
+con el id cruzado, la web dice «tu cuenta no está habilitada» y parece un fallo del SSO.
+
+## Perfil C — todo local
+
+```bash
+cd /Volumes/External/sources/myglobalhub/SSO && docker compose up -d      # el SSO, en http://localhost
+bash Docs/demo/treslog_stack.sh up                                       # backend + gateway, contra el SSO local
+npm run dev:local
+```
+
+> **`localhost`, NO `127.0.0.1`.** El SSO tiene registrada una sola `redirect_uri` para esta
+> web —`http://localhost:3200/login/sso/callback`— y la compara caracter por caracter.
+
+> **El puerto 3200 tampoco es decorativo**: es el que el SSO tiene registrado como origen CORS y
+> dentro de la `redirect_uri`. El 3000 es de la web de MSH.
 
 ---
 
@@ -74,28 +87,24 @@ trae un `request_id` para pedirlo con el dato.
 
 ---
 
-## Qué cambiar para apuntar al VPS
+## Publicarla (el build de producción)
 
-Cuatro variables de entorno, **en el momento del build** (Next inlinea las
-`NEXT_PUBLIC_*` al compilar: cambiarlas en el servidor no cambia un bundle ya
-construido — hay que volver a buildear):
+Los perfiles de `next.config.mjs` son para **desarrollar**. Para publicar, las
+`NEXT_PUBLIC_*` se pasan en el entorno **al compilar** y ganan sobre el perfil, clave
+por clave (Next las inlinea al compilar: cambiarlas en el servidor no cambia un
+bundle ya construido). Lo que cambia respecto del perfil `vps`:
 
-| Variable | Local (valor por defecto en el código) | VPS |
+| Variable | Desarrollo (perfil `vps`) | Publicada |
 |---|---|---|
-| `NEXT_PUBLIC_SSO_URL` | `http://localhost` | la URL pública del SSO |
-| `NEXT_PUBLIC_SSO_CLIENT_ID` | el cliente `frontend-dev` de `treslog` | **otro** client_id, el de producción |
-| `NEXT_PUBLIC_SSO_REDIRECT_URI` | `http://localhost:3200/login/sso/callback` | `https://<dominio>/login/sso/callback` |
-| `NEXT_PUBLIC_GATEWAY_URL` | `http://localhost:8003/api/treslog` | `https://<gateway>/api/treslog` |
+| `NEXT_PUBLIC_SSO_CLIENT_ID` | el cliente `frontend-dev` | **otro**: el cliente `frontend` de producción |
+| `NEXT_PUBLIC_SSO_REDIRECT_URI` | `http://localhost:3200/login/sso/callback` | `https://<url pública>/login/sso/callback` |
 
 Dos cosas que hay que hacer del lado del SSO **antes** de ese build, o el login
 falla en producción y no en tu máquina:
 
-1. Registrar la `redirect_uri` de producción en el cliente OAuth. Se compara con
+1. Registrar la `redirect_uri` pública en el cliente OAuth. Se compara con
    `===`: sobra una barra al final y no entra nadie.
-2. Registrar el origen de producción para CORS de la aplicación `treslog`.
-
-`NEXT_PUBLIC_API_URL` **no se toca**: sigue significando lo de siempre (el
-backend legado) y la usan las llamadas que todavía no pasan por el gateway.
+2. Registrar el origen público para CORS de la aplicación `treslog`.
 
 ### Si servís el build estático
 
