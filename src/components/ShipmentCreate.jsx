@@ -643,7 +643,7 @@ function ShipmentCreateInner({ app, token }) {
       datalist: {
         city: CITIES,
       },
-      countryOptions: Object.keys(PHONE_FORMATS).map((k) => ({
+      countryOptions: Object.keys(PHONE_FORMATS).filter((k) => k === 'DO' || k === 'CR').map((k) => ({
         code: k, short: k, flag: PHONE_FORMATS[k].code,
       })),
       phoneExample,
