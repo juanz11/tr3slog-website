@@ -96,6 +96,53 @@ function DetailView({ app, shipment, onClose }) {
   const label = { fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 10 }
   const value = { fontSize: 14, lineHeight: 1.7, color: '#10233F' }
 
+  const getAddress = (type) => {
+    const obj = shipment[type] || {}
+    const fallback = (k) => obj[k] || shipment[`${type}_${k}`] || ''
+    const city = fallback('city') || (type === 'sender' ? shipment.origin : shipment.destination) || ''
+    return {
+      name: fallback('name'),
+      company: fallback('company'),
+      address: fallback('address'),
+      city,
+      country: fallback('country'),
+      zip: fallback('zip'),
+      phone: fallback('phone'),
+      email: fallback('email'),
+    }
+  }
+
+  const sender = getAddress('sender')
+  const recipient = getAddress('recipient')
+
+  const clientName = (shipment.client && shipment.client.name) || shipment.client_name
+  const clientEmail = (shipment.client && shipment.client.email) || shipment.client_email
+  const clientPhone = (shipment.client && shipment.client.phone) || shipment.client_phone
+
+  const payment = {
+    method: shipment.payment_method || (shipment.payment_method_id ? 'card' : ''),
+    bank: shipment.payment_bank,
+    reference: shipment.payment_reference,
+    charge: shipment.charge_to_account,
+  }
+  const methodLabel = payment.method === 'card' ? 'Tarjeta' : payment.method === 'transfer' ? 'Transferencia' : payment.method === 'cash' ? 'Efectivo' : payment.method || '—'
+
+  const AddressCard = ({ title, addr }) => (
+    <div style={cardBase}>
+      <div style={sectionTitle}>{title}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+        {addr.name && <div style={{ gridColumn: 'span 2' }}><div style={label}>Nombre</div><div style={value}>{addr.name}</div></div>}
+        {addr.company && <div style={{ gridColumn: 'span 2' }}><div style={label}>Empresa</div><div style={value}>{addr.company}</div></div>}
+        {addr.address && <div style={{ gridColumn: 'span 2' }}><div style={label}>Dirección</div><div style={value}>{addr.address}</div></div>}
+        {addr.city && <div><div style={label}>Ciudad</div><div style={value}>{addr.city}</div></div>}
+        {addr.country && <div><div style={label}>País</div><div style={value}>{addr.country}</div></div>}
+        {addr.zip && <div><div style={label}>ZIP</div><div style={value}>{addr.zip}</div></div>}
+        {addr.phone && <div><div style={label}>Teléfono</div><div style={value}>{addr.phone}</div></div>}
+        {addr.email && <div style={{ gridColumn: 'span 2' }}><div style={label}>Correo</div><div style={value}>{addr.email}</div></div>}
+      </div>
+    </div>
+  )
+
   return (
     <div style={{ width: '100%' }}>
       <button onClick={onClose} style={{ background: 'none', border: 'none', padding: 0, marginBottom: 14, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>← Volver a mis envíos</button>
@@ -133,17 +180,32 @@ function DetailView({ app, shipment, onClose }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div style={cardBase}>
-              <div style={label}>Remitente</div>
-              <div style={value}>{shipment.sender_name || '—'}</div>
-              <div style={value}>{shipment.origin || '—'}</div>
-            </div>
-            <div style={cardBase}>
-              <div style={label}>Destinatario</div>
-              <div style={value}>{shipment.recipient_name || '—'}</div>
-              <div style={value}>{shipment.destination || '—'}</div>
-            </div>
+            <AddressCard title="Remitente" addr={sender} />
+            <AddressCard title="Destinatario" addr={recipient} />
           </div>
+
+          {(clientName || clientEmail || clientPhone) && (
+            <div style={cardBase}>
+              <div style={sectionTitle}>Cliente</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+                {clientName && <div><div style={label}>Nombre</div><div style={value}>{clientName}</div></div>}
+                {clientEmail && <div><div style={label}>Correo</div><div style={value}>{clientEmail}</div></div>}
+                {clientPhone && <div><div style={label}>Teléfono</div><div style={value}>{clientPhone}</div></div>}
+              </div>
+            </div>
+          )}
+
+          {(payment.method || payment.charge) && (
+            <div style={cardBase}>
+              <div style={sectionTitle}>Pago</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+                {payment.method && <div><div style={label}>Método</div><div style={value}>{methodLabel}</div></div>}
+                {payment.bank && <div><div style={label}>Banco</div><div style={value}>{payment.bank}</div></div>}
+                {payment.reference && <div style={{ gridColumn: payment.bank ? 'span 1' : 'span 2' }}><div style={label}>Referencia</div><div style={value}>{payment.reference}</div></div>}
+                {payment.charge && <div><div style={label}>Cargar a cuenta</div><div style={value}>{payment.charge}</div></div>}
+              </div>
+            </div>
+          )}
 
           {(shipment.packages || [shipment]).map((pkg, i) => (
             <div key={i} style={cardBase}>

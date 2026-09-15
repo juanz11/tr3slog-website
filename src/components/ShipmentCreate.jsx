@@ -53,7 +53,7 @@ const emptyService = () => ({
 })
 
 const emptyPayment = () => ({
-  paymentMethod: '', chargeToAccount: '', cardholderName: '', billingZip: '',
+  method: '', paymentMethod: '', chargeToAccount: '', cardholderName: '', billingZip: '', bank: '', reference: '',
 })
 
 const DRAFT_KEY = 'tr3slog-shipment-draft'
@@ -194,7 +194,7 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {config.keys.map((key) => (
           <React.Fragment key={key}>
-            <label style={{ gridColumn: config.span2.includes(key) ? 'span 2' : 'span 1', display: 'block' }}>
+            <label style={{ gridColumn: (config.span2.includes(key) || key === 'method') ? 'span 2' : 'span 1', display: 'block' }}>
             <span style={{
               display: 'flex', gap: 8, alignItems: 'baseline',
               fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
@@ -207,41 +207,58 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
             </span>
             {key === 'phone' && config.countryOptions ? (
               <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-                <select
-                  value={section ? data[section].country : ''}
-                  onChange={(e) => onChange('country', e.target.value)}
+                <input
+                  type="text"
+                  inputMode="tel"
+                  placeholder={config.phoneExample}
+                  value={section ? data[section].phone : ''}
+                  onChange={(e) => onChange('phone', e.target.value)}
                   style={{
-                    flex: '0 0 90px', padding: '14px 12px',
+                    flex: 1, padding: '14px 15px',
                     border: '1.5px solid #DCE6F5', borderRadius: 11,
                     background: '#EEF4FC', font: 'inherit', color: '#001B45',
-                    outline: 'none', cursor: 'pointer', fontSize: 13,
+                    outline: 'none',
                   }}
-                >
-                  <option value="">{c.fields.country}</option>
-                  {config.countryOptions.map((opt) => (
-                    <option key={opt.code} value={opt.code}>
-                      {opt.flag} {opt.short}
-                    </option>
-                  ))}
-                </select>
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <input
-                    type="text"
-                    inputMode="tel"
-                    placeholder={config.phoneExample}
-                    value={section ? data[section].phone : ''}
-                    onChange={(e) => onChange('phone', e.target.value)}
-                    style={{
-                      flex: 1, padding: '14px 15px',
-                      border: '1.5px solid #DCE6F5', borderRadius: 11,
-                      background: '#EEF4FC', font: 'inherit', color: '#001B45',
-                      outline: 'none',
-                    }}
-                  />
-                  <span style={{ fontSize: 12, color: '#8B9DBA', whiteSpace: 'nowrap' }}>
-                    Ej: {config.phoneExample}
-                  </span>
-                </div>
+                />
+                <span style={{ fontSize: 12, color: '#8B9DBA', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
+                  Ej: {config.phoneExample}
+                </span>
+              </div>
+            ) : key === 'method' && config.options && config.options.method ? (
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {config.options.method.map((opt) => {
+                  const value = opt.value
+                  const label = opt.label
+                  const active = (section ? data[section][key] : '') === value
+                  const icon =
+                    value === 'card' ? (
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    ) : value === 'transfer' ? (
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16V4M7 4L3 8M7 4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+                    ) : (
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 10h.01M6 14h.01M18 10h.01M18 14h.01"/></svg>
+                    )
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      title={label}
+                      onClick={() => onChange(key, value)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '14px 18px', borderRadius: 11, border: '1.5px solid',
+                        borderColor: active ? '#087CF0' : '#DCE6F5',
+                        background: active ? 'rgba(8,124,240,.08)' : '#fff',
+                        color: active ? '#0768C9' : '#001B45',
+                        font: 'inherit', fontSize: 14, fontWeight: 600,
+                        cursor: 'pointer', transition: 'all .15s ease',
+                      }}
+                    >
+                      {icon}
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
             ) : config.options && config.options[key] ? (
               <select
@@ -255,9 +272,13 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
                 }}
               >
                 <option value="">{config.placeholders[key]}</option>
-                {config.options[key].map((opt) => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
+                {config.options[key].map((opt) => {
+                  const value = typeof opt === 'object' ? opt.value : opt
+                  const label = typeof opt === 'object' ? opt.label : opt
+                  return (
+                    <option key={value} value={value}>{label}</option>
+                  )
+                })}
               </select>
             ) : key === 'paymentMethod' && section === 'payment' ? (
               <div style={{ width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC' }}>
@@ -620,22 +641,47 @@ function ShipmentCreateInner({ app, token }) {
       }
     }
     if (step === 4) {
+      const method = data.payment.method || ''
+      const baseKeys = ['method', 'chargeToAccount']
+      const extraKeys = []
+      const extraRequired = []
+      if (method === 'card') {
+        extraKeys.push('paymentMethod', 'cardholderName', 'billingZip')
+        extraRequired.push('paymentMethod', 'cardholderName', 'billingZip')
+      } else if (method === 'transfer') {
+        extraKeys.push('bank', 'reference')
+        extraRequired.push('bank', 'reference')
+      }
+      const methodOptions = c.payment.methodOptions
+        ? Object.keys(c.payment.methodOptions).map((k) => ({ value: k, label: c.payment.methodOptions[k] }))
+        : [{ value: 'card', label: 'Tarjeta' }, { value: 'transfer', label: 'Transferencia' }, { value: 'cash', label: 'Efectivo' }]
       return {
-        keys: Object.keys(c.payment.fields),
+        keys: [...baseKeys, ...extraKeys],
         fields: c.payment.fields,
         placeholders: c.payment.placeholders,
-        required: c.payment.required,
+        required: ['method', 'chargeToAccount', ...extraRequired],
         span2: c.payment.span2,
         payment: c.payment,
         options: {
+          method: methodOptions,
+          bank: [
+            { value: 'bhd', label: 'BHD León' },
+            { value: 'popular', label: 'Banco Popular' },
+            { value: 'santacruz', label: 'Banco Santa Cruz' },
+            { value: 'reservas', label: 'BanReservas' },
+            { value: 'international', label: 'Transferencia internacional' },
+          ],
           chargeToAccount: ['No', 'Sí'],
         },
       }
     }
     const isManual = data[section]?.addressId === 'manual'
-    const isHiddenIfSaved = (k) => k === 'address' || k === 'city' || k === 'zip'
+    const isHiddenIfSaved = (k) => k === 'address' || k === 'city' || k === 'zip' || k === 'country'
+    const countryOptions = Object.keys(PHONE_FORMATS).filter((k) => k === 'DO' || k === 'CR').map((k) => ({
+      code: k, short: k, flag: PHONE_FORMATS[k].code,
+    }))
     return {
-      keys: ADDRESS_KEYS.filter((k) => k !== 'country' && (!isHiddenIfSaved(k) || isManual)),
+      keys: ADDRESS_KEYS.filter((k) => !isHiddenIfSaved(k) || isManual),
       fields: c.fields,
       placeholders: c.placeholders,
       required: ADDRESS_REQUIRED,
@@ -643,9 +689,10 @@ function ShipmentCreateInner({ app, token }) {
       datalist: {
         city: CITIES,
       },
-      countryOptions: Object.keys(PHONE_FORMATS).filter((k) => k === 'DO' || k === 'CR').map((k) => ({
-        code: k, short: k, flag: PHONE_FORMATS[k].code,
-      })),
+      options: {
+        country: countryOptions.map((o) => ({ value: o.code, label: `${o.flag} ${o.short}` })),
+      },
+      countryOptions,
       phoneExample,
     }
   }
@@ -730,7 +777,13 @@ function ShipmentCreateInner({ app, token }) {
 
   const validatePayment = () => {
     const p = data.payment
-    if (!p.paymentMethod || !p.cardholderName.trim() || !p.billingZip.trim() || !p.chargeToAccount) {
+    if (!p.method || !p.chargeToAccount) {
+      return c.errStep
+    }
+    if (p.method === 'card' && (!p.paymentMethod || !p.cardholderName.trim() || !p.billingZip.trim())) {
+      return c.errStep
+    }
+    if (p.method === 'transfer' && (!p.bank || !p.reference.trim())) {
       return c.errStep
     }
     return ''
@@ -764,33 +817,54 @@ function ShipmentCreateInner({ app, token }) {
       setError(err)
       return
     }
-    if (!stripe || !elements) {
-      setError('La pasarela de pago aún no está lista.')
-      return
-    }
     setSubmitting(true)
     setError('')
-    const cardElement = elements.getElement(CardElement)
-    const { error: stripeError, paymentMethod } = await stripe.createPaymentMethod({
-      type: 'card',
-      card: cardElement,
-      billing_details: {
-        name: data.payment.cardholderName,
-        address: { postal_code: data.payment.billingZip },
-      },
-    })
-    if (stripeError) {
-      setError(stripeError.message)
-      setSubmitting(false)
-      return
+    let payment_method_id = data.payment.method
+    let payment_meta = {}
+    if (data.payment.method === 'card') {
+      const cardElement = elements.getElement(CardElement)
+      if (!stripe || !cardElement) {
+        setError('La pasarela de pago aún no está lista.')
+        setSubmitting(false)
+        return
+      }
+      const { error: stripeError, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardElement,
+        billing_details: {
+          name: data.payment.cardholderName,
+          address: { postal_code: data.payment.billingZip },
+        },
+      })
+      if (stripeError) {
+        setError(stripeError.message)
+        setSubmitting(false)
+        return
+      }
+      payment_method_id = paymentMethod.id
+    } else if (data.payment.method === 'transfer') {
+      payment_meta = { payment_bank: data.payment.bank, payment_reference: data.payment.reference }
     }
     try {
       const payload = {
         origin: data.sender.city,
         destination: data.recipient.city,
+        sender_name: data.sender.name,
+        sender_company: data.sender.company,
+        sender_address: data.sender.address,
+        sender_city: data.sender.city,
+        sender_country: data.sender.country,
+        sender_zip: data.sender.zip,
+        sender_phone: data.sender.phone,
+        sender_email: data.sender.email,
         recipient_name: data.recipient.name,
-        recipient_email: data.recipient.email,
+        recipient_company: data.recipient.company,
+        recipient_address: data.recipient.address,
+        recipient_city: data.recipient.city,
+        recipient_country: data.recipient.country,
+        recipient_zip: data.recipient.zip,
         recipient_phone: data.recipient.phone,
+        recipient_email: data.recipient.email,
         service_type: data.service.service,
         packages: data.package.map((pkg) => ({
           pieces: pkg.pieces,
@@ -801,7 +875,9 @@ function ShipmentCreateInner({ app, token }) {
           content: pkg.content,
         })),
         notes: data.service.notes,
-        payment_method_id: paymentMethod.id,
+        payment_method: data.payment.method,
+        payment_method_id,
+        ...payment_meta,
         charge_to_account: data.payment.chargeToAccount,
       }
       const res = await api.createShipment(payload, token)
