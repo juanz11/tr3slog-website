@@ -7,9 +7,11 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   || 'pk_test_51U9oCHLy571aG6WWmqNdtAiM9E7ZVDjTeB2Qs62VvLjOhv0Y253OGaFztaJseVBUhhkiZ3Q3CxaY8Fy9S2VHOg8L00mmeKsQQK'
 
-const ADDRESS_KEYS = ['name', 'company', 'address', 'city', 'country', 'zip', 'phone', 'email']
+const ADDRESS_KEYS = ['name', 'company', 'address', 'country', 'city', 'zip', 'phone', 'email']
 const ADDRESS_REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'phone', 'email']
-const ADDRESS_SPAN2 = ['address']
+const ADDRESS_SPAN2 = ['address', 'country', 'phone', 'email']
+
+const COUNTRY_LABELS = { DO: 'República Dominicana', CR: 'Costa Rica' }
 
 const CITIES = [
   'San Juan', 'Santo Domingo', 'Punta Cana', 'Miami', 'New York', 'Atlanta',
@@ -207,6 +209,34 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
             </span>
             {key === 'phone' && config.countryOptions ? (
               <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+                {data[section]?.addressId === 'manual' ? (
+                  <select
+                    value={section ? data[section].country : ''}
+                    onChange={(e) => onChange('country', e.target.value)}
+                    style={{
+                      flex: '0 0 130px', padding: '14px 15px',
+                      border: '1.5px solid #DCE6F5', borderRadius: 11,
+                      background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                      outline: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">Código</option>
+                    {config.countryOptions.map((o) => (
+                      <option key={o.code} value={o.code}>{o.flag} {o.short}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div style={{
+                    flex: '0 0 130px', padding: '14px 15px',
+                    border: '1.5px solid #DCE6F5', borderRadius: 11,
+                    background: '#F6FAFF', font: 'inherit', color: '#001B45',
+                    display: 'flex', alignItems: 'center',
+                  }}>
+                    {data[section]?.country && PHONE_FORMATS[data[section].country]
+                      ? PHONE_FORMATS[data[section].country].code
+                      : '—'}
+                  </div>
+                )}
                 <input
                   type="text"
                   inputMode="tel"
@@ -690,7 +720,7 @@ function ShipmentCreateInner({ app, token }) {
         city: CITIES,
       },
       options: {
-        country: countryOptions.map((o) => ({ value: o.code, label: `${o.flag} ${o.short}` })),
+        country: countryOptions.map((o) => ({ value: o.code, label: COUNTRY_LABELS[o.code] || COUNTRY_NAMES[o.code] })),
       },
       countryOptions,
       phoneExample,
