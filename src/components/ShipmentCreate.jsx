@@ -7,7 +7,7 @@ import { Elements, CardElement, useStripe, useElements } from '@stripe/react-str
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   || 'pk_test_51U9oCHLy571aG6WWmqNdtAiM9E7ZVDjTeB2Qs62VvLjOhv0Y253OGaFztaJseVBUhhkiZ3Q3CxaY8Fy9S2VHOg8L00mmeKsQQK'
 
-const ADDRESS_KEYS = ['name', 'company', 'address', 'country', 'city', 'zip', 'phone', 'email']
+const ADDRESS_KEYS = ['name', 'company', 'address', 'country', 'phone', 'email']
 const ADDRESS_REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'phone', 'email']
 const ADDRESS_SPAN2 = ['address', 'country', 'phone', 'email']
 
@@ -289,6 +289,48 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
                     </button>
                   )
                 })}
+              </div>
+            ) : key === 'country' ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr 1fr', gap: 12 }}>
+                <label style={{ display: 'block' }}>
+                  <span style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }}>{config.fields.country}</span>
+                  <select
+                    value={section ? data[section].country : ''}
+                    onChange={(e) => onChange('country', e.target.value)}
+                    style={{ width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="">{config.placeholders.country}</option>
+                    {config.options.country.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label style={{ display: 'block' }}>
+                  <span style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }}>{config.fields.city}</span>
+                  <input
+                    type="text"
+                    list={config.datalist && config.datalist.city ? 'city-suggestions' : undefined}
+                    placeholder={config.placeholders.city}
+                    value={section ? data[section].city : ''}
+                    onChange={(e) => onChange('city', e.target.value)}
+                    style={{ width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }}
+                  />
+                  {config.datalist && config.datalist.city && (
+                    <datalist id="city-suggestions">
+                      {config.datalist.city.map((opt) => (<option key={opt} value={opt} />))}
+                    </datalist>
+                  )}
+                </label>
+                <label style={{ display: 'block' }}>
+                  <span style={{ display: 'flex', gap: 8, alignItems: 'baseline', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }}>{config.fields.zip}</span>
+                  <input
+                    type="text"
+                    placeholder={config.placeholders.zip}
+                    value={section ? data[section].zip : ''}
+                    onChange={(e) => onChange('zip', e.target.value)}
+                    style={{ width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }}
+                  />
+                </label>
               </div>
             ) : config.options && config.options[key] ? (
               <select
