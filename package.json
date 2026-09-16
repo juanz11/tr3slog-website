@@ -8,6 +8,7 @@
     "dev:backend-local": "PERFIL=backend-local next dev -p 3200",
     "dev:local": "PERFIL=local next dev -p 3200",
     "build": "next build",
+    "build:produccion": "PERFIL=produccion next build",
     "start": "next start -p 3200",
     "lint": "next lint",
     "test": "node --test \"src/**/*.test.js\""

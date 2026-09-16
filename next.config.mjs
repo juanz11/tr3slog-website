@@ -19,12 +19,26 @@
 //  en la URL de cada login, no es un secreto; y lo peor que hace alguien con el
 //  es abrir un login que vuelve a SU localhost.
 const PERFILES = {
+  // PRODUCCION · el sitio publicado en https://treslog.mysocialhub.social.
+  // Cliente OAuth `frontend` de treslog (no el de desarrollo) y callback real.
+  // Las rutas publicas (contacto, cotizar, tracking) van por el camino publico
+  // del gateway, sin identidad. Se construye con `npm run build:produccion`.
+  produccion: {
+    NEXT_PUBLIC_SSO_URL: 'https://sso.mysocialhub.social',
+    NEXT_PUBLIC_SSO_CLIENT_ID: '01a0a7db-b15f-70ef-8c2f-76ab6d65209c',
+    NEXT_PUBLIC_SSO_REDIRECT_URI: 'https://treslog.mysocialhub.social/login/sso/callback',
+    NEXT_PUBLIC_GATEWAY_URL: 'https://api.mysocialhub.social/api/treslog',
+    NEXT_PUBLIC_API_URL: 'https://api.mysocialhub.social/api/treslog/public',
+  },
   // A · Solo la web. Es el recomendado.
   vps: {
     NEXT_PUBLIC_SSO_URL: 'https://sso.mysocialhub.social',
     NEXT_PUBLIC_SSO_CLIENT_ID: '01a09176-34c0-725f-87d9-e20bc92137ea',
     NEXT_PUBLIC_SSO_REDIRECT_URI: 'http://localhost:3200/login/sso/callback',
     NEXT_PUBLIC_GATEWAY_URL: 'https://api.mysocialhub.social/api/treslog',
+    // Contacto, cotizar y tracking tambien contra el VPS: ya no hace falta un
+    // backend local para que esas tres pantallas funcionen en el perfil A.
+    NEXT_PUBLIC_API_URL: 'https://api.mysocialhub.social/api/treslog/public',
   },
   // B · Tu backend y tu gateway (gateway/, `docker compose up`), identidad del VPS.
   'backend-local': {
@@ -56,10 +70,16 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Lo que el entorno ya trae gana sobre el perfil, clave por clave.
-  env: Object.fromEntries(
-    Object.entries(perfil).map(([clave, valor]) => [clave, process.env[clave] ?? valor]),
-  ),
+  // Lo que el entorno ya trae gana sobre el perfil, clave por clave... SALVO en
+  // `produccion`, que es determinista a proposito: `next build` carga
+  // .env.production (versionado, con valores de otro proyecto) y sin esta
+  // excepcion el sitio publicado salia apuntando a un API ajeno. Lo que se
+  // publica es EXACTAMENTE lo que dice el perfil, y nada mas.
+  env: nombre === 'produccion'
+    ? { ...perfil }
+    : Object.fromEntries(
+        Object.entries(perfil).map(([clave, valor]) => [clave, process.env[clave] ?? valor]),
+      ),
 };
 
 export default nextConfig;

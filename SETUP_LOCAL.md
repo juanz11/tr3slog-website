@@ -92,39 +92,18 @@ trae un `request_id` para pedirlo con el dato.
 
 ---
 
-## Publicarla (el build de producción)
+## Publicar (producción)
 
-Los perfiles de `next.config.mjs` son para **desarrollar**. Para publicar, las
-`NEXT_PUBLIC_*` se pasan en el entorno **al compilar** y ganan sobre el perfil, clave
-por clave (Next las inlinea al compilar: cambiarlas en el servidor no cambia un
-bundle ya construido). Lo que cambia respecto del perfil `vps`:
+El sitio vive en **https://treslog.mysocialhub.social** (DNS A → 159.89.232.240), servido por nginx
+como export estático: no hay Node en el servidor.
 
-| Variable | Desarrollo (perfil `vps`) | Publicada |
-|---|---|---|
-| `NEXT_PUBLIC_SSO_CLIENT_ID` | el cliente `frontend-dev` | **otro**: el cliente `frontend` de producción |
-| `NEXT_PUBLIC_SSO_REDIRECT_URI` | `http://localhost:3200/login/sso/callback` | `https://<url pública>/login/sso/callback` |
-
-Dos cosas que hay que hacer del lado del SSO **antes** de ese build, o el login
-falla en producción y no en tu máquina:
-
-1. Registrar la `redirect_uri` pública en el cliente OAuth. Se compara con
-   `===`: sobra una barra al final y no entra nadie.
-2. Registrar el origen público para CORS de la aplicación `treslog`.
-
-### Si servís el build estático
-
-`npm run build` genera `out/` (`output: 'export'`), y el callback queda en
-`out/login/sso/callback.html`. La `redirect_uri` registrada **no lleva `.html`**,
-así que el servidor tiene que resolver la extensión:
-
-```nginx
-try_files $uri $uri.html $uri/index.html =404;
-```
-
-Sin eso, el login funciona en `npm run dev` y tira 404 en producción, justo
-después de que la persona se autenticó.
-
----
+1. `npm run build:produccion` → usa el perfil `produccion` de `next.config.mjs` (cliente OAuth
+   `frontend` de treslog, callback `https://treslog.mysocialhub.social/login/sso/callback`, gateway
+   `https://api.mysocialhub.social/api/treslog` y el camino público
+   `…/api/treslog/public` para contacto, cotizar y tracking). Ese perfil **ignora** `.env.*` a
+   propósito: lo publicado es exactamente lo que dice el perfil.
+2. `bash SSO/Docs/deployment/treslog_web_en_vps.sh` (repo del SSO): sube `out/`, el sitio nginx y
+   pide el certificado la primera vez. Verifica portada, callback, cotizar y tracking.
 
 ## Cuando algo falla
 
