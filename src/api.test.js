@@ -34,6 +34,7 @@ const TABLA = {
   updateIncidentStatus: [GATEWAY, [2, 'Closed', 'tok']],
   getShipments:        [GATEWAY, ['tok']],
   updateShipmentStatus: [GATEWAY, [5, 'delivered', 'tok']],
+  assignShipmentDriver: [GATEWAY, [5, 'DR-000001', 'tok']],
   createShipment:      [GATEWAY, [{ origin: 'A' }, 'tok']],
   getAddresses:        [GATEWAY, ['tok']],
   createAddress:       [GATEWAY, [{ address: 'C' }, 'tok']],
