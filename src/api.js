@@ -153,6 +153,12 @@ export const api = {
     body: JSON.stringify({ status }),
   }).then(handle),
 
+  assignShipmentDriver: (id, driverId, token) => fetch(`${API_URL}/shipments/${id}/driver`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify({ driver_id: driverId || null }),
+  }).then(handle),
+
   createShipment: (data, token) => fetch(`${API_URL}/shipments`, {
     method: 'POST',
     headers: headers(token),

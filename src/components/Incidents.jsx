@@ -1,5 +1,6 @@
 import React from 'react'
 import { api } from '../api'
+import { Pagination, usePagination, usePolling } from './Shared'
 
 const SEV_COLORS = {
   low: { bg: '#EEF4FC', fg: '#10233F' },
@@ -44,23 +45,21 @@ export default function Incidents({ app, lang, token }) {
   const [showForm, setShowForm] = React.useState(false)
   const [form, setForm] = React.useState({ ship: '', title: '', severity: 'medium', description: '' })
 
-  const fetchIncidents = React.useCallback(async () => {
+  const fetchIncidents = React.useCallback(async (isPoll) => {
     if (!token) return
-    setLoading(true)
-    setError('')
+    if (!isPoll) setLoading(true)
     try {
       const data = await api.getIncidents(token)
       setIncidents(Array.isArray(data) ? data : data.data || [])
+      setError('')
     } catch (e) {
-      setError(e.message || d.error)
+      if (!isPoll) setError(e.message || d.error)
     } finally {
-      setLoading(false)
+      if (!isPoll) setLoading(false)
     }
   }, [token, d.error])
 
-  React.useEffect(() => {
-    fetchIncidents()
-  }, [fetchIncidents])
+  usePolling(fetchIncidents, 30000)
 
   const filtered = incidents.filter((incident) => {
     const matches = matchesFilter(incident, filter)
@@ -69,6 +68,8 @@ export default function Incidents({ app, lang, token }) {
       .some((v) => String(v).toLowerCase().includes(q))
     return matches && matchesQuery
   })
+
+  const pager = usePagination(filtered, 10, `${filter}|${query}`)
 
   const filterCounts = FILTER_KEYS.map((key) => ({
     key,
@@ -207,7 +208,7 @@ export default function Incidents({ app, lang, token }) {
             {filtered.length === 0 && (
               <div style={{ padding: '24px 18px', textAlign: 'center', color: '#6C82A6', fontSize: 14 }}>{d.empty}</div>
             )}
-            {filtered.map((incident) => {
+            {pager.pageItems.map((incident) => {
               const sevStyle = SEV_COLORS[incident.sev] || SEV_COLORS.low
               const stStyle = STATUS_COLORS[incident.st] || STATUS_COLORS.open
               return (
@@ -244,6 +245,8 @@ export default function Incidents({ app, lang, token }) {
             })}
           </div>
         </div>
+
+        <Pagination pager={pager} labels={app.pager} />
       </div>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', border: '1px dashed #DCE6F5', background: '#EEF4FC', borderRadius: 14, padding: '16px 18px', marginTop: 16 }}>

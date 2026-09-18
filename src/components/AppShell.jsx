@@ -11,6 +11,7 @@ import Dispatch from './Dispatch'
 import Drivers from './Drivers'
 import Incidents from './Incidents'
 import Profile from './Profile'
+import { Pagination, usePagination, usePolling } from './Shared'
 import { api } from '../api'
 
 const STATUS_TONE = [
@@ -77,12 +78,15 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
 
   const [shipments, setShipments] = React.useState([])
 
-  React.useEffect(() => {
+  const fetchShipments = React.useCallback(async () => {
     if (!token) return
-    api.getShipments(token)
-      .then((data) => setShipments(Array.isArray(data) ? data : data.data || []))
-      .catch(() => setShipments([]))
+    try {
+      const data = await api.getShipments(token)
+      setShipments(Array.isArray(data) ? data : data.data || [])
+    } catch (e) {}
   }, [token])
+
+  usePolling(fetchShipments, 30000)
 
   const isDash = activeKey === navKeys[0]
   const isCreate = activeKey === 'create'
@@ -238,12 +242,15 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
   const q = app.quotes
   const [quotes, setQuotes] = React.useState([])
 
-  React.useEffect(() => {
+  const fetchQuotes = React.useCallback(async () => {
     if (!token) return
-    api.getQuotes(token)
-      .then((data) => setQuotes(Array.isArray(data) ? data : data.data || []))
-      .catch(() => setQuotes([]))
+    try {
+      const data = await api.getQuotes(token)
+      setQuotes(Array.isArray(data) ? data : data.data || [])
+    } catch (e) {}
   }, [token])
+
+  usePolling(fetchQuotes, 30000)
 
   const statusToIdx = (status) => {
     let idx = 0
@@ -254,7 +261,7 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
       if (s === 'in_transit' || s === 'en tránsito' || s === 'en transito') idx = 0
       else if (s === 'in_route' || s === 'en ruta de entrega' || s === 'out_for_delivery') idx = 1
       else if (s === 'delivered' || s === 'entregado' || s === 'entregada') idx = 2
-      else if (s === 'pending' || s === 'pendiente' || s === 'solicitud recibida') idx = 3
+      else if (s === 'pending' || s === 'pendiente' || s === 'solicitud recibida' || s === 'assigned') idx = 3
       else if (s === 'incident' || s === 'incidencia') idx = 4
     }
     if (idx < 0 || idx >= STATUS_TONE.length) idx = 0
@@ -331,6 +338,8 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
       (r.route || '').toLowerCase().includes(qry)
     )
   }, [hquery, shipments, lang])
+
+  const activePager = usePagination(filteredRows, 5, hquery || '')
 
   const statusColor = (status) => STATUS_COLORS[status] || STATUS_COLORS.pending
   const statusLabel = (status) => (q.statuses?.[status] || status)
@@ -425,7 +434,7 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
                 <span>{app.ship.cols[3]}</span>
                 <span>{app.ship.cols[4]}</span>
               </div>
-              {filteredRows.map((r, i) => {
+              {activePager.pageItems.map((r, i) => {
                 const tone = STATUS_TONE[r.statusIdx] || STATUS_TONE[0]
                 const statusText = app.ship.statuses[r.statusIdx] || '—'
                 return (
@@ -441,6 +450,8 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
               })}
             </div>
           </div>
+
+          <Pagination pager={activePager} labels={app.pager} showPerPage={false} />
         </div>
 
         <div className="app-stack">

@@ -1,4 +1,5 @@
 import React from 'react'
+import { Pagination, usePagination } from './Shared'
 
 const PENDING = [
   { invoice: 'INV-1044', shipment: 'TR3-260729-PRSJ-08821', issued: '24 jul, 2026', amount: '$1,025.00' },
@@ -10,7 +11,9 @@ const COMPLETED = [
   { invoice: 'INV-1041', shipment: 'TR3-260729-PRSJ-08698', issued: '08 jul, 2026', amount: '$640.00' },
 ]
 
-function Table({ p, rows, statusIdx, actionLabel, onAction }) {
+function Table({ p, pagerLabels, rows, statusIdx, actionLabel, onAction }) {
+  const pager = usePagination(rows, 10)
+
   return (
     <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
       <div style={{
@@ -27,7 +30,7 @@ function Table({ p, rows, statusIdx, actionLabel, onAction }) {
           }}>
             {p.cols.map((c, i) => <span key={i}>{c}</span>)}
           </div>
-          {rows.map((r, i) => (
+          {pager.pageItems.map((r, i) => (
             <div key={i} style={{
               display: 'grid', gridTemplateColumns: '0.8fr 1.2fr 1fr 0.8fr 0.8fr 0.7fr',
               gap: 12, padding: '16px 22px', borderTop: '1px solid #E3EBF7', alignItems: 'center',
@@ -48,6 +51,8 @@ function Table({ p, rows, statusIdx, actionLabel, onAction }) {
           ))}
         </div>
       </div>
+
+      <Pagination pager={pager} labels={pagerLabels} />
     </div>
   )
 }
@@ -111,8 +116,8 @@ export default function Payments({ app }) {
         </div>
       )}
 
-      <Table p={p} rows={PENDING} statusIdx={0} actionLabel={p.pay} onAction={() => setNotified(true)} />
-      <Table p={p} rows={COMPLETED} statusIdx={1} actionLabel={p.receipt} onAction={() => setNotified(true)} />
+      <Table p={p} pagerLabels={app.pager} rows={PENDING} statusIdx={0} actionLabel={p.pay} onAction={() => setNotified(true)} />
+      <Table p={p} pagerLabels={app.pager} rows={COMPLETED} statusIdx={1} actionLabel={p.receipt} onAction={() => setNotified(true)} />
     </div>
   )
 }

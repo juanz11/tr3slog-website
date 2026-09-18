@@ -1,5 +1,6 @@
 import React from 'react'
 import { api } from '../api'
+import { Pagination, usePagination } from './Shared'
 
 const STATUS_COLORS = {
   pending: { bg: 'rgba(217,154,0,.12)', fg: '#8A6300' },
@@ -58,6 +59,8 @@ export default function Quotes({ app, lang, token }) {
 
   const statusLabel = (status) => (STATUS_LABELS[lang] || STATUS_LABELS.es)[status] || status
 
+  const pager = usePagination(quotes, 10)
+
   const handleStatusChange = React.useCallback(async (id, status) => {
     if (readOnly) return
     setUpdating(id)
@@ -108,7 +111,7 @@ export default function Quotes({ app, lang, token }) {
                 {q.empty}
               </div>
             )}
-            {quotes.map((quote) => {
+            {pager.pageItems.map((quote) => {
               const style = STATUS_COLORS[quote.status] || STATUS_COLORS.pending
               const statusOptions = Object.keys(STATUS_COLORS)
               return (
@@ -141,6 +144,8 @@ export default function Quotes({ app, lang, token }) {
             })}
           </div>
         </div>
+
+        <Pagination pager={pager} labels={app.pager} />
       </div>
     </div>
   )

@@ -1,8 +1,10 @@
 import React from 'react'
 import { api } from '../api'
+import { Pagination, usePagination } from './Shared'
 
 const STATUS_COLORS = {
   pending: { bg: '#EEF4FC', fg: '#10233F' },
+  assigned: { bg: 'rgba(8,124,240,.16)', fg: '#0A4E96' },
   in_transit: { bg: 'rgba(8,124,240,.1)', fg: '#0768C9' },
   out_for_delivery: { bg: 'rgba(217,154,0,.16)', fg: '#8A6300' },
   delivered: { bg: 'rgba(19,122,69,.12)', fg: '#0F5F36' },
@@ -11,6 +13,7 @@ const STATUS_COLORS = {
 
 const NEXT_STATUS = {
   pending: 'in_transit',
+  assigned: 'in_transit',
   in_transit: 'out_for_delivery',
   out_for_delivery: 'delivered',
 }
@@ -18,10 +21,12 @@ const NEXT_STATUS = {
 export default function Dispatch({ app, lang, token }) {
   const d = app.dispatch
   const [shipments, setShipments] = React.useState([])
+  const [drivers, setDrivers] = React.useState([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState('')
   const [updateError, setUpdateError] = React.useState('')
   const [updatingId, setUpdatingId] = React.useState(null)
+  const [assigningId, setAssigningId] = React.useState(null)
   const [query, setQuery] = React.useState('')
   const [filter, setFilter] = React.useState('all')
 
@@ -30,8 +35,12 @@ export default function Dispatch({ app, lang, token }) {
     setLoading(true)
     setError('')
     try {
-      const data = await api.getShipments(token)
-      setShipments(Array.isArray(data) ? data : data.data || [])
+      const [shipmentData, driverData] = await Promise.all([
+        api.getShipments(token),
+        api.getDrivers(token),
+      ])
+      setShipments(Array.isArray(shipmentData) ? shipmentData : shipmentData.data || [])
+      setDrivers(Array.isArray(driverData) ? driverData : driverData.data || [])
     } catch (e) {
       setError(e.message || d.error)
     } finally {
@@ -64,6 +73,8 @@ export default function Dispatch({ app, lang, token }) {
     return matchesFilter && matchesQuery
   })
 
+  const pager = usePagination(filtered, 10, `${filter}|${query}`)
+
   const formatTracking = (s) => {
     if (s.parsed_tracking) {
       const pt = s.parsed_tracking
@@ -84,6 +95,19 @@ export default function Dispatch({ app, lang, token }) {
       setUpdateError(e.message || d.updateError)
     } finally {
       setUpdatingId(null)
+    }
+  }
+
+  const assignDriver = async (shipment, driverId) => {
+    setAssigningId(shipment.id)
+    setUpdateError('')
+    try {
+      const result = await api.assignShipmentDriver(shipment.id, driverId, token)
+      setShipments((prev) => prev.map((s) => (s.id === shipment.id ? { ...s, ...result.shipment } : s)))
+    } catch (e) {
+      setUpdateError(e.message || d.assignError)
+    } finally {
+      setAssigningId(null)
     }
   }
 
@@ -151,12 +175,13 @@ export default function Dispatch({ app, lang, token }) {
 
         <div className="app-table-scroll">
           <div className="app-table">
-            <div className="app-table-head" style={{ gridTemplateColumns: '1fr 1.4fr 1fr .9fr .9fr .9fr 1.2fr' }}>
+            <div className="app-table-head" style={{ gridTemplateColumns: '1fr 1.3fr 1fr .8fr .9fr 1.2fr .8fr 1fr' }}>
               <span>{d.cols.tracking}</span>
               <span>{d.cols.route}</span>
               <span>{d.cols.recipient}</span>
               <span>{d.cols.service}</span>
               <span>{d.cols.status}</span>
+              <span>{d.cols.driver}</span>
               <span>{d.cols.updatedAt}</span>
               <span>{d.cols.actions}</span>
             </div>
@@ -165,11 +190,11 @@ export default function Dispatch({ app, lang, token }) {
                 {d.empty}
               </div>
             )}
-            {filtered.map((s) => {
+            {pager.pageItems.map((s) => {
               const style = STATUS_COLORS[s.status] || STATUS_COLORS.pending
               const next = NEXT_STATUS[s.status]
               return (
-                <div key={s.id} className="app-table-row" style={{ gridTemplateColumns: '1fr 1.4fr 1fr .9fr .9fr .9fr 1.2fr', alignItems: 'center' }}>
+                <div key={s.id} className="app-table-row" style={{ gridTemplateColumns: '1fr 1.3fr 1fr .8fr .9fr 1.2fr .8fr 1fr', alignItems: 'center' }}>
                   <span className="app-table-id" title={s.tracking_number}>
                     {s.tracking_number || `#${s.id}`}
                     {s.parsed_tracking && (
@@ -185,6 +210,25 @@ export default function Dispatch({ app, lang, token }) {
                   <span className="app-table-text">{s.service_type || '—'}</span>
                   <span className="app-status" style={{ background: style.bg, color: style.fg }}>
                     {statusLabel(s.status)}
+                  </span>
+                  <span>
+                    <select
+                      value={s.driver_id || ''}
+                      onChange={(e) => assignDriver(s, e.target.value)}
+                      disabled={assigningId === s.id}
+                      aria-label={d.assignDriver}
+                      style={{ width: '100%', border: '1px solid #DCE6F5', borderRadius: 8, padding: '7px 8px', background: '#fff', color: '#10233F', fontSize: 12 }}
+                    >
+                      <option value="">{d.unassigned}</option>
+                      {drivers.map((driver) => (
+                        <option key={driver.id} value={driver.user_id || driver.id}>{driver.name || driver.n}</option>
+                      ))}
+                    </select>
+                    {s.assigned_at && (
+                      <span style={{ display: 'block', fontSize: 11, color: '#6C82A6', marginTop: 4 }}>
+                        {formatDate(s.assigned_at)}
+                      </span>
+                    )}
                   </span>
                   <span className="app-table-text">{formatDate(s.updated_at)}</span>
                   <span>
@@ -206,6 +250,8 @@ export default function Dispatch({ app, lang, token }) {
             })}
           </div>
         </div>
+
+        <Pagination pager={pager} labels={app.pager} />
       </div>
     </div>
   )

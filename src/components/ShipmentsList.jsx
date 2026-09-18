@@ -1,5 +1,6 @@
 import React from 'react'
 import { api } from '../api'
+import { Pagination, usePagination, usePolling } from './Shared'
 
 const CITY_CODES = {
   'san juan': 'PRSJ', 'santo domingo': 'DOSD', 'punta cana': 'DOPC', 'miami': 'MIAM',
@@ -29,7 +30,7 @@ const statusIndex = (status, statuses) => {
     return 0
   }
   const normalized = String(status || '').toLowerCase()
-  if (normalized === 'pending') return 3
+  if (normalized === 'pending' || normalized === 'assigned') return 3
   const idx = list.findIndex((s) => s && s.toLowerCase() === normalized)
   return idx >= 0 ? idx : 0
 }
@@ -306,22 +307,26 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
   const [error, setError] = React.useState('')
   const [selected, setSelected] = React.useState(null)
 
-  React.useEffect(() => {
+  const load = React.useCallback(async (isPoll) => {
     if (!token) {
       setLoading(false)
       setError('Inicie sesión para ver sus envíos.')
       return
     }
-    setLoading(true)
-    setError('')
-    api.getShipments(token)
-      .then((data) => {
-        const list = Array.isArray(data) ? data : (data?.data || [])
-        setShipments(list.map((sh) => buildRow(sh, s.statuses)))
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
+    if (!isPoll) setLoading(true)
+    try {
+      const data = await api.getShipments(token)
+      const list = Array.isArray(data) ? data : (data?.data || [])
+      setShipments(list.map((sh) => buildRow(sh, s.statuses)))
+      setError('')
+    } catch (err) {
+      if (!isPoll) setError(err.message)
+    } finally {
+      if (!isPoll) setLoading(false)
+    }
   }, [token, s.statuses])
+
+  usePolling(load, 30000)
 
   const filtered = shipments.filter((r) => {
     const matchesFilter = filter === 0 || r.status === filter - 1
@@ -330,6 +335,8 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
     const matchesQuery = !q || r.id.toLowerCase().includes(q) || r.route.toLowerCase().includes(q) || statusText.toLowerCase().includes(q)
     return matchesFilter && matchesQuery
   })
+
+  const pager = usePagination(filtered, 10, `${filter}|${query}`)
 
   if (selected) {
     return <DetailView app={app} shipment={selected} onClose={() => setSelected(null)} />
@@ -410,7 +417,7 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
             {!loading && !error && filtered.length === 0 && (
               <div style={{ padding: 30, textAlign: 'center', color: '#6C82A6' }}>No hay envíos para mostrar.</div>
             )}
-            {!loading && filtered.map((r, i) => (
+            {!loading && pager.pageItems.map((r, i) => (
               <div key={r.id || i} style={{
                 display: 'grid', gridTemplateColumns: '1.2fr 1.3fr 1fr 1fr 0.7fr 0.5fr',
                 gap: 12, padding: '16px 22px', borderTop: '1px solid #E3EBF7', alignItems: 'center',
@@ -431,6 +438,8 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
             ))}
           </div>
         </div>
+
+        {!loading && !error && <Pagination pager={pager} labels={app.pager} />}
       </div>
     </div>
   )
