@@ -1,5 +1,6 @@
 import React from 'react'
 import { api } from '../api'
+import { Pagination, usePagination } from './Shared'
 import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 
 const COUNTRY_OPTIONS = [
@@ -84,6 +85,7 @@ function initialPrimary(rows) {
 export default function Addresses({ app, token }) {
   const a = app.addr
   const [rows, setRows] = React.useState([])
+  const pager = usePagination(rows, 10)
   const [primaryId, setPrimaryId] = React.useState(null)
   const [formMode, setFormMode] = React.useState(null)
   const [formVals, setFormVals] = React.useState({ type: 0 })
@@ -472,7 +474,7 @@ export default function Addresses({ app, token }) {
               <div style={{ padding: '24px 22px', textAlign: 'center', color: '#6C82A6', fontSize: 15, borderTop: '1px solid #E3EBF7' }}>
                 {a.empty}
               </div>
-            ) : rows.map((r, i) => {
+            ) : pager.pageItems.map((r, i) => {
               const isPrimary = r.id === primaryId
               const removing = r.id === removeId
               return (
@@ -500,6 +502,8 @@ export default function Addresses({ app, token }) {
             })}
           </div>
         </div>
+
+        <Pagination pager={pager} labels={app.pager} />
       </div>
     </div>
   )

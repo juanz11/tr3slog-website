@@ -1,5 +1,6 @@
 import React from 'react'
 import { api } from '../api'
+import { Pagination, usePagination } from './Shared'
 import { authI18n } from '../i18n-auth'
 import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 
@@ -76,6 +77,8 @@ export default function Drivers({ app, lang, token }) {
       .some((v) => String(v).toLowerCase().includes(q))
     return matches && matchesQuery
   })
+
+  const pager = usePagination(filtered, 10, `${filter}|${query}`)
 
   const filterCounts = FILTER_KEYS.map((key) => ({
     key,
@@ -311,7 +314,7 @@ export default function Drivers({ app, lang, token }) {
             {filtered.length === 0 && (
               <div style={{ padding: '24px 18px', textAlign: 'center', color: '#6C82A6', fontSize: 14 }}>{d.empty}</div>
             )}
-            {filtered.map((driver) => {
+            {pager.pageItems.map((driver) => {
               const stStyle = STATUS_COLORS[driver.st] || STATUS_COLORS.available
               const docStyle = DOC_COLORS[driver.doc] || DOC_COLORS.ok
               return (
@@ -331,6 +334,8 @@ export default function Drivers({ app, lang, token }) {
             })}
           </div>
         </div>
+
+        <Pagination pager={pager} labels={app.pager} />
       </div>
 
       {selected && (
