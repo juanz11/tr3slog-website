@@ -11,7 +11,7 @@ import Dispatch from './Dispatch'
 import Drivers from './Drivers'
 import Incidents from './Incidents'
 import Profile from './Profile'
-import { Pagination, usePagination } from './Shared'
+import { Pagination, usePagination, usePolling } from './Shared'
 import { api } from '../api'
 
 const STATUS_TONE = [
@@ -65,12 +65,15 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
 
   const [shipments, setShipments] = React.useState([])
 
-  React.useEffect(() => {
+  const fetchShipments = React.useCallback(async () => {
     if (!token) return
-    api.getShipments(token)
-      .then((data) => setShipments(Array.isArray(data) ? data : data.data || []))
-      .catch(() => setShipments([]))
+    try {
+      const data = await api.getShipments(token)
+      setShipments(Array.isArray(data) ? data : data.data || [])
+    } catch (e) {}
   }, [token])
+
+  usePolling(fetchShipments, 30000)
 
   const isDash = activeKey === navKeys[0]
   const isCreate = activeKey === 'create'
@@ -226,12 +229,15 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
   const q = app.quotes
   const [quotes, setQuotes] = React.useState([])
 
-  React.useEffect(() => {
+  const fetchQuotes = React.useCallback(async () => {
     if (!token) return
-    api.getQuotes(token)
-      .then((data) => setQuotes(Array.isArray(data) ? data : data.data || []))
-      .catch(() => setQuotes([]))
+    try {
+      const data = await api.getQuotes(token)
+      setQuotes(Array.isArray(data) ? data : data.data || [])
+    } catch (e) {}
   }, [token])
+
+  usePolling(fetchQuotes, 30000)
 
   const statusToIdx = (status) => {
     let idx = 0

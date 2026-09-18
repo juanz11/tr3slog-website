@@ -1,6 +1,6 @@
 import React from 'react'
 import { api } from '../api'
-import { Pagination, usePagination } from './Shared'
+import { Pagination, usePagination, usePolling } from './Shared'
 import { authI18n } from '../i18n-auth'
 import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 
@@ -52,23 +52,21 @@ export default function Drivers({ app, lang, token }) {
   const [clients, setClients] = React.useState([])
   const [selected, setSelected] = React.useState(null)
 
-  const fetchDrivers = React.useCallback(async () => {
+  const fetchDrivers = React.useCallback(async (isPoll) => {
     if (!token) return
-    setLoading(true)
-    setError('')
+    if (!isPoll) setLoading(true)
     try {
       const data = await api.getDrivers(token)
       setDrivers(Array.isArray(data) ? data : data.data || [])
+      setError('')
     } catch (e) {
-      setError(e.message || d.error)
+      if (!isPoll) setError(e.message || d.error)
     } finally {
-      setLoading(false)
+      if (!isPoll) setLoading(false)
     }
   }, [token, d.error])
 
-  React.useEffect(() => {
-    fetchDrivers()
-  }, [fetchDrivers])
+  usePolling(fetchDrivers, 30000)
 
   const filtered = drivers.filter((driver) => {
     const matches = matchesFilter(driver, filter)

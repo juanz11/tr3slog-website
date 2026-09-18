@@ -1,6 +1,6 @@
 import React from 'react'
 import { api } from '../api'
-import { Pagination, usePagination } from './Shared'
+import { Pagination, usePagination, usePolling } from './Shared'
 
 const SEV_COLORS = {
   low: { bg: '#EEF4FC', fg: '#10233F' },
@@ -45,23 +45,21 @@ export default function Incidents({ app, lang, token }) {
   const [showForm, setShowForm] = React.useState(false)
   const [form, setForm] = React.useState({ ship: '', title: '', severity: 'medium', description: '' })
 
-  const fetchIncidents = React.useCallback(async () => {
+  const fetchIncidents = React.useCallback(async (isPoll) => {
     if (!token) return
-    setLoading(true)
-    setError('')
+    if (!isPoll) setLoading(true)
     try {
       const data = await api.getIncidents(token)
       setIncidents(Array.isArray(data) ? data : data.data || [])
+      setError('')
     } catch (e) {
-      setError(e.message || d.error)
+      if (!isPoll) setError(e.message || d.error)
     } finally {
-      setLoading(false)
+      if (!isPoll) setLoading(false)
     }
   }, [token, d.error])
 
-  React.useEffect(() => {
-    fetchIncidents()
-  }, [fetchIncidents])
+  usePolling(fetchIncidents, 30000)
 
   const filtered = incidents.filter((incident) => {
     const matches = matchesFilter(incident, filter)

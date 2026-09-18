@@ -43,6 +43,21 @@ const PAGER_FALLBACK = {
 export const PER_PAGE_OPTIONS = [10, 15, 25, 50]
 
 /**
+ * Runs `callback` right away, then every `intervalMs` while the tab is
+ * visible. The callback receives `true` on poll ticks and `false` on the
+ * initial run, so background refreshes can skip loading spinners/errors.
+ */
+export function usePolling(callback, intervalMs = 30000) {
+  React.useEffect(() => {
+    callback(false)
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') callback(true)
+    }, intervalMs)
+    return () => clearInterval(id)
+  }, [callback, intervalMs])
+}
+
+/**
  * Client-side pagination over an already filtered list.
  * Returns the slice for the current page plus the state the pager needs.
  */

@@ -1,6 +1,6 @@
 import React from 'react'
 import { api } from '../api'
-import { Pagination, usePagination } from './Shared'
+import { Pagination, usePagination, usePolling } from './Shared'
 
 const CITY_CODES = {
   'san juan': 'PRSJ', 'santo domingo': 'DOSD', 'punta cana': 'DOPC', 'miami': 'MIAM',
@@ -307,22 +307,26 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
   const [error, setError] = React.useState('')
   const [selected, setSelected] = React.useState(null)
 
-  React.useEffect(() => {
+  const load = React.useCallback(async (isPoll) => {
     if (!token) {
       setLoading(false)
       setError('Inicie sesión para ver sus envíos.')
       return
     }
-    setLoading(true)
-    setError('')
-    api.getShipments(token)
-      .then((data) => {
-        const list = Array.isArray(data) ? data : (data?.data || [])
-        setShipments(list.map((sh) => buildRow(sh, s.statuses)))
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
+    if (!isPoll) setLoading(true)
+    try {
+      const data = await api.getShipments(token)
+      const list = Array.isArray(data) ? data : (data?.data || [])
+      setShipments(list.map((sh) => buildRow(sh, s.statuses)))
+      setError('')
+    } catch (err) {
+      if (!isPoll) setError(err.message)
+    } finally {
+      if (!isPoll) setLoading(false)
+    }
   }, [token, s.statuses])
+
+  usePolling(load, 30000)
 
   const filtered = shipments.filter((r) => {
     const matchesFilter = filter === 0 || r.status === filter - 1
