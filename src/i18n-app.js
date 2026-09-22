@@ -33,6 +33,7 @@ export const appI18n = {
     navA: {
       ops: 'Panel de operaciones',
       dispatch: 'Envíos y despacho',
+      requests: 'Solicitudes',
       drivers: 'Conductores',
       incidents: 'Incidencias',
       quotes: 'Cotizaciones',
@@ -387,6 +388,7 @@ export const appI18n = {
     navA: {
       ops: 'Operations dashboard',
       dispatch: 'Shipments & dispatch',
+      requests: 'Requests',
       drivers: 'Drivers',
       incidents: 'Incidents',
       quotes: 'Quotes',
@@ -740,6 +742,7 @@ export const appI18n = {
     navA: {
       ops: '运营面板',
       dispatch: '货运与调度',
+      requests: '请求',
       drivers: '司机',
       incidents: '异常事件',
       quotes: '报价',
