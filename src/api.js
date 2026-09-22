@@ -94,11 +94,15 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
-  createDriver: (data, token) => fetch(`${API_URL}/drivers`, {
-    method: 'POST',
-    headers: headers(token),
-    body: JSON.stringify(data),
-  }).then(handle),
+  createDriver: (formData, token) => {
+    const h = { 'Accept': 'application/json' }
+    if (token) h['Authorization'] = `Bearer ${token}`
+    return fetch(`${API_URL}/drivers`, {
+      method: 'POST',
+      headers: h,
+      body: formData,
+    }).then(handle)
+  },
 
   getIncidents: (token) => fetch(`${API_URL}/incidents`, {
     headers: headers(token),
