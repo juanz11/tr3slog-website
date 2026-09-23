@@ -1,6 +1,7 @@
 import React from 'react'
 import { appI18n } from '../i18n-app'
 import NavIcon from './NavIcon'
+import ShipmentRequests from './ShipmentRequests'
 import ShipmentCreate from './ShipmentCreate'
 import ShipmentsList from './ShipmentsList'
 import Payments from './Payments'
@@ -96,6 +97,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isSupport = activeKey === 'support'
   const isQuotes = activeKey === 'quotes'
   const isDispatch = activeKey === 'dispatch'
+  const isRequests = activeKey === 'requests'
   const isDrivers = activeKey === 'drivers'
   const isIncidents = activeKey === 'incidents'
   const isProfile = activeKey === 'profile'
@@ -220,6 +222,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             <Quotes app={app} lang={lang} token={token} />
           ) : isDispatch ? (
             <Dispatch app={app} lang={lang} token={token} />
+          ) : isRequests ? (
+            <ShipmentRequests app={app} lang={lang} token={token} />
           ) : isDrivers ? (
             <Drivers app={app} lang={lang} token={token} />
           ) : isIncidents ? (

@@ -121,11 +121,15 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
-  createDriver: (data, token) => fetch(`${API_URL}/drivers`, {
-    method: 'POST',
-    headers: headers(token),
-    body: JSON.stringify(data),
-  }).then(handle),
+  createDriver: (formData, token) => {
+    const h = { 'Accept': 'application/json' }
+    if (token) h['Authorization'] = `Bearer ${token}`
+    return fetch(`${API_URL}/drivers`, {
+      method: 'POST',
+      headers: h,
+      body: formData,
+    }).then(handle)
+  },
 
   getIncidents: (token) => fetch(`${API_URL}/incidents`, {
     headers: headers(token),
@@ -157,6 +161,16 @@ export const api = {
     method: 'PATCH',
     headers: headers(token),
     body: JSON.stringify({ driver_id: driverId || null }),
+  }).then(handle),
+
+  getShipmentRequests: (token, status) => fetch(`${API_URL}/shipments/requests/list${status ? `?status=${status}` : ''}`, {
+    headers: headers(token),
+  }).then(handle),
+
+  updateShipmentRequest: (id, data, token) => fetch(`${API_URL}/shipments/requests/${id}`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify(data),
   }).then(handle),
 
   createShipment: (data, token) => fetch(`${API_URL}/shipments`, {

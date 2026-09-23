@@ -1,5 +1,5 @@
 import React from 'react'
-import { api } from '../api'
+import { api, MEDIA_URL } from '../api'
 import { Pagination, usePagination, usePolling } from './Shared'
 import { authI18n } from '../i18n-auth'
 import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
@@ -26,6 +26,40 @@ const DOC_COLORS = {
 
 const FILTER_KEYS = ['all', 'active', 'route', 'available', 'suspended', 'docsSoon']
 
+const emptyVehicle = () => ({
+  label: '', plate: '', cargoCapacity: '',
+  registrationNumber: '', insuranceNumber: '', insuranceExpires: '',
+  inspectionNumber: '', inspectionExpires: '', permitNumber: '', permitExpires: '',
+  files: {},
+})
+
+const VEHICLE_DOCS = [
+  { key: 'registration', number: 'registrationNumber', file: 'registration' },
+  { key: 'insurance', number: 'insuranceNumber', expiry: 'insuranceExpires', file: 'insurance' },
+  { key: 'inspection', number: 'inspectionNumber', expiry: 'inspectionExpires', file: 'inspection' },
+  { key: 'permit', number: 'permitNumber', expiry: 'permitExpires', file: 'cargo_permit' },
+]
+
+function FileInput({ label, placeholder, file, onChange, accept = 'image/*,.pdf' }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{label}</span>
+      <span style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
+        border: `1.5px dashed ${file ? '#087CF0' : '#DCE6F5'}`, borderRadius: 11,
+        background: '#EEF4FC', cursor: 'pointer', fontSize: 13,
+        color: file ? '#001B45' : '#6C82A6', overflow: 'hidden',
+      }}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#087CF0" strokeWidth="1.8" style={{ flex: '0 0 auto' }}>
+          <path d="M12 16V4m0 0l-4 4m4-4l4 4M4 20h16" />
+        </svg>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file ? file.name : placeholder}</span>
+        <input type="file" accept={accept} onChange={(e) => onChange(e.target.files[0] || null)} style={{ display: 'none' }} />
+      </span>
+    </label>
+  )
+}
+
 function matchesFilter(driver, key) {
   if (key === 'all') return true
   if (key === 'active') return driver.st === 'active' || driver.st === 'route'
@@ -46,6 +80,9 @@ export default function Drivers({ app, lang, token }) {
   const a = authI18n[lang] || authI18n.es
   const [open, setOpen] = React.useState(false)
   const [form, setForm] = React.useState({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: '', password: '' })
+  const [docs, setDocs] = React.useState({ idNumber: '', idExpires: '', licenseNumber: '', licenseExpires: '' })
+  const [docFiles, setDocFiles] = React.useState({ photo: null, idFile: null, licenseFile: null })
+  const [vehicles, setVehicles] = React.useState([])
   const [formError, setFormError] = React.useState('')
   const [formLoading, setFormLoading] = React.useState(false)
   const [newId, setNewId] = React.useState('')
@@ -85,6 +122,9 @@ export default function Drivers({ app, lang, token }) {
 
   const resetForm = () => {
     setForm({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: '', password: '' })
+    setDocs({ idNumber: '', idExpires: '', licenseNumber: '', licenseExpires: '' })
+    setDocFiles({ photo: null, idFile: null, licenseFile: null })
+    setVehicles([])
     setFormError('')
     setNewId('')
   }
@@ -140,6 +180,8 @@ export default function Drivers({ app, lang, token }) {
           .replace('{example}', fmt.example)
       }
     }
+    if (!docs.idNumber.trim() || !docs.licenseNumber.trim() || !docs.licenseExpires || !docFiles.photo) return d.errDocs
+    if (vehicles.some((v) => !v.plate.trim())) return d.errPlate
     return ''
   }
 
@@ -163,13 +205,45 @@ export default function Drivers({ app, lang, token }) {
     setFormLoading(true)
     try {
       const phone = buildPhone()
-      const payload = form.user_id
-        ? { user_id: form.user_id, name: form.name, phone, email: form.email, vehicle: form.vehicle, hub: form.hub, shift: form.shift }
-        : { ...form, phone, password_confirmation: form.password, shift: form.shift }
-      const created = await api.createDriver(payload, token)
+      const fd = new FormData()
+      if (form.user_id) fd.append('user_id', form.user_id)
+      fd.append('name', form.name)
+      fd.append('phone', phone)
+      fd.append('email', form.email)
+      if (form.vehicle) fd.append('vehicle', form.vehicle)
+      if (form.hub) fd.append('hub', form.hub)
+      fd.append('shift', form.shift)
+      if (!form.user_id) {
+        fd.append('password', form.password)
+        fd.append('password_confirmation', form.password)
+      }
+      fd.append('id_document_number', docs.idNumber)
+      if (docs.idExpires) fd.append('id_document_expires_at', docs.idExpires)
+      fd.append('license_number', docs.licenseNumber)
+      fd.append('license_expires_at', docs.licenseExpires)
+      if (docFiles.photo) fd.append('photo', docFiles.photo)
+      if (docFiles.idFile) fd.append('id_document_file', docFiles.idFile)
+      if (docFiles.licenseFile) fd.append('license_file', docFiles.licenseFile)
+      vehicles.forEach((v, i) => {
+        fd.append(`vehicles[${i}][plate]`, v.plate)
+        if (v.label) fd.append(`vehicles[${i}][label]`, v.label)
+        if (v.cargoCapacity) fd.append(`vehicles[${i}][cargo_capacity]`, v.cargoCapacity)
+        if (v.registrationNumber) fd.append(`vehicles[${i}][registration_number]`, v.registrationNumber)
+        if (v.insuranceNumber) fd.append(`vehicles[${i}][insurance_number]`, v.insuranceNumber)
+        if (v.insuranceExpires) fd.append(`vehicles[${i}][insurance_expires_at]`, v.insuranceExpires)
+        if (v.inspectionNumber) fd.append(`vehicles[${i}][inspection_number]`, v.inspectionNumber)
+        if (v.inspectionExpires) fd.append(`vehicles[${i}][inspection_expires_at]`, v.inspectionExpires)
+        if (v.permitNumber) fd.append(`vehicles[${i}][permit_number]`, v.permitNumber)
+        if (v.permitExpires) fd.append(`vehicles[${i}][permit_expires_at]`, v.permitExpires)
+        Object.entries(v.files || {}).forEach(([type, file]) => {
+          if (file) fd.append(`vehicles[${i}][files][${type}]`, file)
+        })
+      })
+      const created = await api.createDriver(fd, token)
       setDrivers((prev) => [created, ...prev])
-      setNewId(created.id)
       resetForm()
+      setNewId(created.id)
+      setOpen(false)
     } catch (err) {
       setFormError(err.message || 'No se pudo registrar el conductor')
     } finally {
@@ -197,15 +271,16 @@ export default function Drivers({ app, lang, token }) {
         <button className="app-primary" onClick={() => { setOpen(!open); resetForm() }} style={{ marginLeft: 'auto' }}>{d.registerBtn}</button>
       </div>
 
+      {newId && (
+        <div style={{ padding: '12px 16px', borderRadius: 8, background: '#F1FAF5', color: '#0F5F36', fontSize: 14, marginBottom: 20 }}>
+          {d.appId}: <strong>{newId}</strong>
+        </div>
+      )}
+
       {open && (
         <form onSubmit={submit} style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 26, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {formError && (
             <div style={{ padding: '12px 16px', borderRadius: 8, background: '#FDECEC', color: '#B91C1C', fontSize: 14 }}>{formError}</div>
-          )}
-          {newId && (
-            <div style={{ padding: '12px 16px', borderRadius: 8, background: '#F1FAF5', color: '#0F5F36', fontSize: 14 }}>
-              {d.appId}: <strong>{newId}</strong>
-            </div>
           )}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.selectClient}</span>
@@ -238,10 +313,6 @@ export default function Drivers({ app, lang, token }) {
               <input type="email" required disabled={!!form.user_id} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.cols[2]}</span>
-              <input type="text" value={form.vehicle} onChange={(e) => setForm({ ...form, vehicle: e.target.value })} placeholder={d.vehiclePh} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.cols[3]}</span>
               <input type="text" value={form.hub} onChange={(e) => setForm({ ...form, hub: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
             </label>
@@ -255,6 +326,73 @@ export default function Drivers({ app, lang, token }) {
                 <input type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
               </label>
             )}
+
+            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #DCE6F5', paddingTop: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#001B45', marginBottom: 6 }}>{d.docs.title}</div>
+              <div style={{ fontSize: 12, color: '#6C82A6', marginBottom: 18 }}>{d.docs.required}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '18px 24px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.docs.idNumber} *</span>
+                  <input type="text" value={docs.idNumber} onChange={(e) => setDocs({ ...docs, idNumber: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.docs.idExpiry}</span>
+                  <input type="date" value={docs.idExpires} onChange={(e) => setDocs({ ...docs, idExpires: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                </label>
+                <FileInput label={d.docs.idFile} placeholder={d.docs.chooseFile} file={docFiles.idFile} onChange={(f) => setDocFiles({ ...docFiles, idFile: f })} />
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.docs.licenseNumber} *</span>
+                  <input type="text" value={docs.licenseNumber} onChange={(e) => setDocs({ ...docs, licenseNumber: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.docs.licenseExpiry} *</span>
+                  <input type="date" value={docs.licenseExpires} onChange={(e) => setDocs({ ...docs, licenseExpires: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                </label>
+                <FileInput label={d.docs.licenseFile} placeholder={d.docs.chooseFile} file={docFiles.licenseFile} onChange={(f) => setDocFiles({ ...docFiles, licenseFile: f })} />
+                <FileInput label={`${d.docs.photo} *`} placeholder={d.docs.chooseFile} file={docFiles.photo} onChange={(f) => setDocFiles({ ...docFiles, photo: f })} accept="image/*" />
+              </div>
+            </div>
+
+            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #DCE6F5', paddingTop: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#001B45' }}>{d.vehicles.title}</span>
+                <button type="button" onClick={() => setVehicles([...vehicles, emptyVehicle()])} style={{ border: '1.5px solid #087CF0', borderRadius: 100, padding: '8px 16px', background: 'rgba(8,124,240,.08)', color: '#0768C9', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>+ {d.vehicles.add}</button>
+              </div>
+              {vehicles.map((v, i) => (
+                <div key={i} style={{ border: '1px solid #DCE6F5', borderRadius: 12, padding: 18, marginBottom: 14, background: '#F6F9FD' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                    <span style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, color: '#001B45' }}>{d.vehicles.name.replace('{n}', i + 1)}</span>
+                    <button type="button" onClick={() => setVehicles(vehicles.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#A93226' }}>{d.vehicles.remove}</button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px 18px', marginBottom: 14 }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.label}</span>
+                      <input type="text" value={v.label} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} placeholder={d.vehiclePh} style={{ padding: '12px 14px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.plate} *</span>
+                      <input type="text" value={v.plate} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, plate: e.target.value } : x))} style={{ padding: '12px 14px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.capacity}</span>
+                      <input type="text" value={v.cargoCapacity} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, cargoCapacity: e.target.value } : x))} placeholder={d.vehicles.capacityPh} style={{ padding: '12px 14px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                    </label>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                    {VEHICLE_DOCS.map((vd) => (
+                      <div key={vd.key} style={{ border: '1px dashed #DCE6F5', borderRadius: 10, padding: 12, background: '#fff', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45' }}>{d.vehicles[vd.key]}</span>
+                        <input type="text" value={v[vd.number]} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, [vd.number]: e.target.value } : x))} placeholder={d.vehicles.number} style={{ padding: '9px 12px', border: '1.5px solid #DCE6F5', borderRadius: 8, background: '#EEF4FC', font: 'inherit', fontSize: 13, color: '#001B45', outline: 'none' }} />
+                        {vd.expiry && (
+                          <input type="date" value={v[vd.expiry]} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, [vd.expiry]: e.target.value } : x))} title={d.vehicles.expiry} style={{ padding: '9px 12px', border: '1.5px solid #DCE6F5', borderRadius: 8, background: '#EEF4FC', font: 'inherit', fontSize: 13, color: '#001B45', outline: 'none' }} />
+                        )}
+                        <FileInput label={d.vehicles.file} placeholder={d.docs.chooseFile} file={v.files[vd.file]} onChange={(f) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, files: { ...x.files, [vd.file]: f } } : x))} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
             <button type="submit" disabled={formLoading} className="app-primary">{formLoading ? 'Procesando…' : d.registerBtn}</button>
@@ -338,13 +476,17 @@ export default function Drivers({ app, lang, token }) {
 
       {selected && (
         <div onClick={() => setSelected(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(16,35,63,.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 460, padding: 26, boxShadow: '0 20px 60px rgba(0,27,69,.18)' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', padding: 26, boxShadow: '0 20px 60px rgba(0,27,69,.18)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <h2 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 20, margin: 0, color: '#001B45' }}>{selected.n}</h2>
               <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 20, color: '#6C82A6' }}>×</button>
             </div>
             <div style={{ display: 'grid', gap: 14 }}>
-              <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[1]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.id}</div></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[1]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.id}</div></div>
+                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.userId}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.user_id || '—'}</div></div>
+              </div>
+              <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{a.name}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.name || selected.n}</div></div>
               <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{a.email}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.email}</div></div>
               <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{a.phone}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.phone}</div></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -356,6 +498,57 @@ export default function Drivers({ app, lang, token }) {
                 <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[6]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{d.statuses[selected.st]}</div></div>
                 <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[5]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{d.docStates[selected.doc]}</div></div>
               </div>
+              {(() => {
+                const sdocs = selected.documents || []
+                const photoDoc = sdocs.find((x) => x.type === 'photo' && x.file_path)
+                const rest = sdocs.filter((x) => x.type !== 'photo')
+                const vehs = selected.vehicles || []
+                if (!photoDoc && !rest.length && !vehs.length) return null
+                const DocRow = ({ doc }) => {
+                  const expired = doc.expires_at && new Date(doc.expires_at) < new Date()
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid #DCE6F5', borderRadius: 8, fontSize: 12 }}>
+                      <span style={{ fontWeight: 600, color: '#001B45' }}>{(d.docTypes && d.docTypes[doc.type]) || doc.type}</span>
+                      {doc.number && <span style={{ color: '#10233F' }}>{doc.number}</span>}
+                      {doc.expires_at && <span style={{ color: expired ? '#A93226' : '#6C82A6' }}>{d.expires} {doc.expires_at}</span>}
+                      {doc.file_path && <a href={`${MEDIA_URL}/${doc.file_path}`} target="_blank" rel="noreferrer" style={{ marginLeft: 'auto', color: '#087CF0', fontWeight: 600 }}>{d.viewFile}</a>}
+                    </div>
+                  )
+                }
+                return (
+                  <>
+                    {photoDoc && (
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <img src={`${MEDIA_URL}/${photoDoc.file_path}`} alt={d.docTypes.photo} style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', border: '2px solid #DCE6F5' }} />
+                      </div>
+                    )}
+                    {rest.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.docs.title}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>{rest.map((doc, j) => <DocRow key={j} doc={doc} />)}</div>
+                      </div>
+                    )}
+                    {vehs.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.vehicles.title}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6 }}>
+                          {vehs.map((v, i) => (
+                            <div key={i} style={{ border: '1px solid #DCE6F5', borderRadius: 10, padding: 12 }}>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: '#001B45' }}>{[v.label, v.plate].filter(Boolean).join(' · ')}</div>
+                              {v.cargo_capacity && <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>{d.vehicles.capacity}: {v.cargo_capacity}</div>}
+                              {(v.documents || []).length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                                  {v.documents.map((doc, j) => <DocRow key={j} doc={doc} />)}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </div>
           </div>
         </div>

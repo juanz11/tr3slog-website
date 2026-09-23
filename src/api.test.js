@@ -35,6 +35,10 @@ const TABLA = {
   getShipments:        [GATEWAY, ['tok']],
   updateShipmentStatus: [GATEWAY, [5, 'delivered', 'tok']],
   assignShipmentDriver: [GATEWAY, [5, 'DR-000001', 'tok']],
+  // Solicitudes de recoleccion (equipo TR3SLOG, 2026-09-22): las revisa
+  // operaciones, o sea que van por el gateway como el resto de la consola.
+  getShipmentRequests:  [GATEWAY, ['tok']],
+  updateShipmentRequest: [GATEWAY, [4, { status: 'approved' }, 'tok']],
   createShipment:      [GATEWAY, [{ origin: 'A' }, 'tok']],
   getAddresses:        [GATEWAY, ['tok']],
   createAddress:       [GATEWAY, [{ address: 'C' }, 'tok']],
