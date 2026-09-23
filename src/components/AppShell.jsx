@@ -40,6 +40,9 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const [mobileOpen, setMobileOpen] = React.useState(false)
   const [token, setToken] = React.useState(null)
   const [pendingQuotes, setPendingQuotes] = React.useState(0)
+  const [pendingRequests, setPendingRequests] = React.useState(0)
+  const [requestToast, setRequestToast] = React.useState(0)
+  const prevRequestsRef = React.useRef(null)
 
   React.useEffect(() => {
     try {
@@ -54,11 +57,27 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
         const data = await api.getPendingQuotesCount(token)
         setPendingQuotes(data?.count ?? 0)
       } catch (e) {}
+      if (!isAdmin) return
+      try {
+        const data = await api.getPendingShipmentRequestsCount(token)
+        const count = data?.count ?? 0
+        if (prevRequestsRef.current !== null && count > prevRequestsRef.current) {
+          setRequestToast(count - prevRequestsRef.current)
+        }
+        prevRequestsRef.current = count
+        setPendingRequests(count)
+      } catch (e) {}
     }
     fetchCount()
     const interval = setInterval(fetchCount, 30000)
     return () => clearInterval(interval)
-  }, [token])
+  }, [token, isAdmin])
+
+  React.useEffect(() => {
+    if (!requestToast) return
+    const t = setTimeout(() => setRequestToast(0), 8000)
+    return () => clearTimeout(t)
+  }, [requestToast])
 
   const accountInitials = (user?.name || 'US').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
   const accountName = user?.name || user?.email || 'Usuario'
@@ -101,6 +120,16 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           >
             <NavIcon name={k} color={on ? '#fff' : '#6C82A6'} />
             <span>{nav[k]}</span>
+            {k === 'requests' && pendingRequests > 0 && (
+              <span style={{
+                marginLeft: 'auto', minWidth: 20, height: 20, padding: '0 6px',
+                borderRadius: 100, background: '#C0392B', color: '#fff',
+                fontSize: 11, fontWeight: 700, display: 'inline-flex',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                {pendingRequests}
+              </span>
+            )}
           </button>
         )
       })}
@@ -224,6 +253,33 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           )}
         </main>
       </div>
+
+      {requestToast > 0 && (
+        <button
+          onClick={() => { setActiveKey('requests'); setRequestToast(0) }}
+          style={{
+            position: 'fixed', bottom: 24, right: 24, zIndex: 200,
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '14px 18px', border: 'none', borderRadius: 12,
+            background: '#001B45', color: '#fff', cursor: 'pointer',
+            boxShadow: '0 12px 32px rgba(0,27,69,.35)', font: 'inherit', textAlign: 'left',
+          }}
+        >
+          <span style={{
+            width: 34, height: 34, borderRadius: 10, background: '#C0392B',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto',
+          }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+            </svg>
+          </span>
+          <span>
+            <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{app.shell.newRequest}</span>
+            <span style={{ display: 'block', fontSize: 12, color: '#C6D6EF' }}>{app.shell.newRequestSub.replace('{n}', requestToast)}</span>
+          </span>
+        </button>
+      )}
     </div>
   )
 }

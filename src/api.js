@@ -140,6 +140,10 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getPendingShipmentRequestsCount: (token) => fetch(`${API_URL}/shipments/requests/pending-count`, {
+    headers: headers(token),
+  }).then(handle),
+
   updateShipmentRequest: (id, data, token) => fetch(`${API_URL}/shipments/requests/${id}`, {
     method: 'PATCH',
     headers: headers(token),
