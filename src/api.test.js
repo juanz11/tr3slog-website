@@ -38,6 +38,7 @@ const TABLA = {
   // Solicitudes de recoleccion (equipo TR3SLOG, 2026-09-22): las revisa
   // operaciones, o sea que van por el gateway como el resto de la consola.
   getShipmentRequests:  [GATEWAY, ['tok']],
+  getPendingShipmentRequestsCount: [GATEWAY, ['tok']],
   updateShipmentRequest: [GATEWAY, [4, { status: 'approved' }, 'tok']],
   createShipment:      [GATEWAY, [{ origin: 'A' }, 'tok']],
   getAddresses:        [GATEWAY, ['tok']],

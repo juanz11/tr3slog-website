@@ -20,6 +20,8 @@ export const appI18n = {
       client: 'Comercial Bayamón LLC',
       operator: 'Operaciones · Hub San Juan',
       searchPh: 'Buscar número de guía, cliente o ruta',
+      newRequest: 'Nueva solicitud de conductor',
+      newRequestSub: '{n} solicitud(es) pendiente(s) por revisar',
     },
     navC: {
       dashboard: 'Panel',
@@ -447,6 +449,8 @@ export const appI18n = {
       client: 'Comercial Bayamón LLC',
       operator: 'Operations · San Juan hub',
       searchPh: 'Search tracking number, client or route',
+      newRequest: 'New driver request',
+      newRequestSub: '{n} pending request(s) to review',
     },
     navC: {
       dashboard: 'Dashboard',
@@ -873,6 +877,8 @@ export const appI18n = {
       role: '企业客户 · BIZ-0241',
       client: 'Comercial Bayamón LLC',
       operator: '运营 · 圣胡安枢纽',
+      newRequest: '新的司机请求',
+      newRequestSub: '{n} 条待审核请求',
     },
     navC: {
       dashboard: '面板',

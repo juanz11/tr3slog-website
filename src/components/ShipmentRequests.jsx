@@ -65,19 +65,31 @@ export default function ShipmentRequests({ app, lang, token }) {
     if (!token) return
     if (!isPoll) setLoading(true)
     try {
-      const status = filter === 'all' ? '' : filter
-      const data = await api.getShipmentRequests(token, status)
+      const data = await api.getShipmentRequests(token)
       setRequests(Array.isArray(data) ? data : data.data || [])
     } catch (e) {
       setRequests([])
     } finally {
       if (!isPoll) setLoading(false)
     }
-  }, [token, filter])
+  }, [token])
 
   usePolling(fetchRequests, 30000)
 
-  const filtered = React.useMemo(() => requests, [requests])
+  const statusOf = (req) => req.status || 'pending'
+  const counts = React.useMemo(() => {
+    const c = { all: requests.length, pending: 0, approved: 0, rejected: 0 }
+    requests.forEach((r) => {
+      const s = statusOf(r)
+      if (c[s] !== undefined) c[s] += 1
+    })
+    return c
+  }, [requests])
+
+  const filtered = React.useMemo(
+    () => (filter === 'all' ? requests : requests.filter((r) => statusOf(r) === filter)),
+    [requests, filter]
+  )
   const pager = usePagination(filtered, 10, `${filter}-${requests.length}`)
   const pageItems = filtered.slice(pager.start, pager.start + pager.perPage)
 
@@ -110,23 +122,38 @@ export default function ShipmentRequests({ app, lang, token }) {
       <section className="section-pad" style={{ maxWidth: 1240, margin: '0 auto', padding: '32px' }}>
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
           {[['all', d.filterAll], ['pending', d.filters.pending], ['approved', d.filters.approved], ['rejected', d.filters.rejected]]
-            .map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setFilter(key)}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 100,
-                  border: '1.5px solid ' + (filter === key ? '#001B45' : '#DCE6F5'),
-                  background: filter === key ? '#001B45' : '#fff',
-                  color: filter === key ? '#fff' : '#001B45',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                {label}
-              </button>
-            ))}
+            .map(([key, label]) => {
+              const on = filter === key
+              const count = counts[key] || 0
+              const isPending = key === 'pending' && count > 0
+              return (
+                <button
+                  key={key}
+                  onClick={() => setFilter(key)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '8px 16px',
+                    borderRadius: 100,
+                    border: '1.5px solid ' + (on ? '#001B45' : isPending ? '#C0392B' : '#DCE6F5'),
+                    background: on ? '#001B45' : '#fff',
+                    color: on ? '#fff' : '#001B45',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {label}
+                  <span style={{
+                    minWidth: 20, height: 20, padding: '0 6px', borderRadius: 100,
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700,
+                    background: isPending ? '#C0392B' : on ? 'rgba(255,255,255,.22)' : '#EEF4FC',
+                    color: isPending || on ? '#fff' : '#6C82A6',
+                  }}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
         </div>
 
         {loading ? (
