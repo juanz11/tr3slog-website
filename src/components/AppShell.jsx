@@ -424,7 +424,7 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
   const kpis = [
     { ...d.kpis[0], v: String(shipments.length), n: activeNote },
     { ...d.kpis[1], v: String(deliveredThisMonth) },
-    { ...d.kpis[2], v: onTimeRate, n: onTimeNote },
+    ...(isAdmin ? [{ ...d.kpis[2], v: onTimeRate, n: onTimeNote }] : []),
     { ...d.kpis[3], v: String(pendingQuotes) },
   ]
 
