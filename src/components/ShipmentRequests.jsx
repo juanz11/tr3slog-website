@@ -91,7 +91,7 @@ export default function ShipmentRequests({ app, lang, token }) {
     [requests, filter]
   )
   const pager = usePagination(filtered, 10, `${filter}-${requests.length}`)
-  const pageItems = filtered.slice(pager.start, pager.start + pager.perPage)
+  const pageItems = pager.pageItems
 
   const updateStatus = async (req, status) => {
     setBusy(req.id)

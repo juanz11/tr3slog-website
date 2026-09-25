@@ -72,8 +72,14 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
       } catch (e) {}
       if (!isAdmin) return
       try {
-        const data = await api.getPendingShipmentRequestsCount(token)
-        const count = data?.count ?? 0
+        let count = 0
+        try {
+          const data = await api.getPendingShipmentRequestsCount(token)
+          count = data?.count ?? 0
+        } catch (e) {
+          const data = await api.getShipmentRequests(token, 'pending')
+          count = (Array.isArray(data) ? data : data.data || []).length
+        }
         if (prevRequestsRef.current !== null && count > prevRequestsRef.current) {
           setRequestToast(count - prevRequestsRef.current)
         }
@@ -437,7 +443,7 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
   const kpis = [
     { ...d.kpis[0], v: String(shipments.length), n: activeNote },
     { ...d.kpis[1], v: String(deliveredThisMonth) },
-    { ...d.kpis[2], v: onTimeRate, n: onTimeNote },
+    ...(isAdmin ? [{ ...d.kpis[2], v: onTimeRate, n: onTimeNote }] : []),
     { ...d.kpis[3], v: String(pendingQuotes) },
   ]
 
