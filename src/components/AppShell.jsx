@@ -11,6 +11,9 @@ import Quotes from './Quotes'
 import Dispatch from './Dispatch'
 import Drivers from './Drivers'
 import Incidents from './Incidents'
+import Users from './Users'
+import AdminConsole, { AdminDashboardScreen } from './AdminConsole'
+import adminDict from '../lib/adminDict'
 import Profile from './Profile'
 import { Pagination, usePagination, usePolling } from './Shared'
 import { api } from '../api'
@@ -32,8 +35,18 @@ const STATUS_COLORS = {
 
 export default function AppShell({ user, lang, langs, setLang, onLogout, onUserUpdate }) {
   const app = appI18n[lang] || appI18n.es
-  const isAdmin = user?.roles?.some((r) => ['admin', 'operations'].includes(r.name))
-  const nav = isAdmin ? app.navA : app.navC
+  const userRoles = user?.roles?.map((r) => r.name) || []
+  const isAdminRole = userRoles.includes('admin')
+  const isOperations = !isAdminRole && userRoles.includes('operations')
+  const isAdmin = isAdminRole || isOperations
+  const isAdministrative = !isAdmin && userRoles.includes('administrative')
+  const nav = isAdminRole
+    ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, users: app.navA.users, console: app.navA.console, profile: app.navA.profile }
+    : isOperations
+      ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => k !== 'console'))
+      : isAdministrative
+        ? { users: app.navA.users, profile: app.navA.profile }
+        : app.navC
   const navKeys = Object.keys(nav)
   const [activeKey, setActiveKey] = React.useState(navKeys[0])
   const [hquery, setHquery] = React.useState('')
@@ -57,7 +70,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
         const data = await api.getPendingQuotesCount(token)
         setPendingQuotes(data?.count ?? 0)
       } catch (e) {}
-      if (!isAdmin) return
+      if (!isOperations) return
       try {
         let count = 0
         try {
@@ -77,7 +90,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
     fetchCount()
     const interval = setInterval(fetchCount, 30000)
     return () => clearInterval(interval)
-  }, [token, isAdmin])
+  }, [token, isOperations])
 
   React.useEffect(() => {
     if (!requestToast) return
@@ -112,6 +125,9 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isRequests = activeKey === 'requests'
   const isDrivers = activeKey === 'drivers'
   const isIncidents = activeKey === 'incidents'
+  const isUsers = activeKey === 'users'
+  const isAdash = activeKey === 'dashboard'
+  const isConsole = activeKey === 'console'
   const isProfile = activeKey === 'profile'
 
   const Nav = ({ compact = false }) => (
@@ -250,6 +266,14 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             <Drivers app={app} lang={lang} token={token} />
           ) : isIncidents ? (
             <Incidents app={app} lang={lang} token={token} />
+          ) : isUsers ? (
+            <Users app={app} lang={lang} token={token} currentUser={user} />
+          ) : isAdash ? (
+            <AdminDashboardScreen dict={adminDict} lang={lang} token={token} statuses={app.ship?.statuses || []} />
+          ) : isConsole ? (
+            <div style={{ margin: -28 }}>
+              <AdminConsole dict={adminDict} lang={lang} defaultRole="sysadmin" startScreen="integr" />
+            </div>
           ) : isProfile ? (
             <Profile app={app} user={user} token={token} onUserUpdate={onUserUpdate} />
           ) : isDash ? (

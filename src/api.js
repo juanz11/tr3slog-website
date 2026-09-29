@@ -94,6 +94,16 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getUsers: (token) => fetch(`${API_URL}/users`, {
+    headers: headers(token),
+  }).then(handle),
+
+  updateUserStatus: (id, status, token) => fetch(`${API_URL}/users/${id}/status`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify({ status }),
+  }).then(handle),
+
   createDriver: (formData, token) => {
     const h = { 'Accept': 'application/json' }
     if (token) h['Authorization'] = `Bearer ${token}`

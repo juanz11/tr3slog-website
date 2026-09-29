@@ -12,6 +12,8 @@ const NAV_ICONS = {
   drivers: 'circle:12,8,3.6|M5 20a7 7 0 0114 0',
   incidents: 'M12 3l9 16H3zM12 9v5M12 17v.1',
   requests: 'M9 5h6l2 3v11H7V8zM9 8h6M9 12h6M9 16h4',
+  users: 'circle:9,8,3.4|M3.5 20a5.5 5.5 0 0111 0|circle:17,9,2.6|M15.5 14.6a4.5 4.5 0 015 5.4',
+  console: 'circle:12,12,3|M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9L7 7M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',
   profile: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2|M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
 }
 

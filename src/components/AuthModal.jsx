@@ -129,6 +129,8 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
       let display = a.errCreds
       if (emailTaken) {
         display = a.errEmailTaken
+      } else if (msg === 'account_suspended') {
+        display = a.errSuspended || msg
       } else if (knownCodes.includes(msg)) {
         display = a.errCreds
       } else if (msg) {

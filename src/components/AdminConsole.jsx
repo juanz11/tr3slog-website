@@ -16,6 +16,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { api } from '../api';
 
 export const LANGS = ['en', 'es', 'zh-CN'];
 export const LANG_STORE = 'tr3slog.lang';
@@ -60,7 +61,7 @@ export const PAGES = {
 };
 
 export const NAV_GROUPS = [
-  { key: 'platform', keys: ['adash', 'integr', 'flags'] },
+  { key: 'platform', keys: ['integr', 'flags'] },
   { key: 'access', keys: ['users', 'roles', 'audit'] },
   { key: 'system', keys: ['keys', 'maint'] }
 ];
@@ -107,9 +108,10 @@ const ghostBtn = { padding: '9px 14px', border: `1.5px solid ${C.border}`, borde
 const primaryBtn = { padding: '14px 22px', border: 'none', borderRadius: 11, background: C.blue, color: C.white, fontSize: 14, fontWeight: 600, cursor: 'pointer' };
 
 function StatsBlock({ items = [], cols = 4 }) {
+  const list = Array.isArray(items) ? items : [];
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gap: 14 }}>
-      {items.map((s, i) => (
+      {list.map((s, i) => (
         <div key={i} style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 14, padding: 20 }}>
           <Motif w={20} h={4} />
           <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, lineHeight: 1.4, minHeight: 34 }}>{s.k}</div>
@@ -122,10 +124,11 @@ function StatsBlock({ items = [], cols = 4 }) {
 }
 
 function ChipsBlock({ label, items = [], selected = 0, onPick }) {
+  const list = Array.isArray(items) ? items : [];
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: C.textMuted, marginRight: 4 }}>{label}</span>
-      {items.map((c, i) => {
+      {list.map((c, i) => {
         const on = selected === i;
         return (
           <button key={i} type="button" aria-pressed={on} onClick={() => onPick(i)}
@@ -216,9 +219,10 @@ function TableBlock({ data = {}, lang, view, common, onToast, onRetry }) {
 }
 
 function PanelsBlock({ items = [], cols = 2 }) {
+  const list = Array.isArray(items) ? items : [];
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gap: 16, alignItems: 'start' }}>
-      {items.map((p, i) => (
+      {list.map((p, i) => (
         <div key={i} style={cardStyle}>
           <div style={{ ...sectionTitleStyle, padding: '16px 20px', borderBottom: `1px solid ${C.border}` }}>{p.t}</div>
           {(p.items || []).map((kv, j) => (
@@ -398,7 +402,7 @@ export default function AdminConsole({ defaultRole = 'sysadmin', startScreen = '
         return <StepsBlock key={i} data={data} stage={stage[screen] || 0}
           onAdvance={() => { setStage(p => ({ ...p, [screen]: Math.min((data.items || []).length - 1, (p[screen] || 0) + 1) })); showToast(data.ok); }} />;
       case 'note':
-        return <NoteBlock key={i} text={data || page.note} />;
+        return <NoteBlock key={i} text={typeof data === 'string' ? data : (page.note || '')} />;
       default:
         return null;
     }
@@ -551,6 +555,209 @@ export default function AdminConsole({ defaultRole = 'sysadmin', startScreen = '
           </div>
         </main>
       </div>
+
+      {toast && (
+        <div role="status" style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 95, maxWidth: 380, display: 'flex', gap: 12, alignItems: 'flex-start', background: C.white, border: `1px solid ${C.border}`, borderLeft: '4px solid #137A45', borderRadius: 14, padding: '18px 20px', boxShadow: '0 24px 60px rgba(0,27,69,.22)' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#137A45" strokeWidth={1.9} style={{ flex: '0 0 auto' }}>
+            <circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" />
+          </svg>
+          <span style={{ fontSize: 14, lineHeight: 1.6 }}>{toast}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const ADASH_I18N = {
+  es: {
+    stActive: 'Envíos activos',
+    stDelivered: 'Entregados',
+    stRequests: 'Solicitudes pendientes',
+    stIncidents: 'Con incidencia',
+    dActive: 'En tránsito o por entregar',
+    dDelivered: 'Total entregadas',
+    dRequests: 'Por revisar',
+    dIncidents: 'Requieren atención',
+    reqT: 'Solicitudes pendientes de conductores',
+    reqCols: ['Guía', 'Ruta', 'Conductor', 'Estado'],
+    reqPill: 'Pendiente',
+    shipT: 'Envíos recientes',
+    shipCols: ['Guía', 'Ruta', 'Estado'],
+    all: 'Todos',
+    loading: 'Cargando datos…',
+    errLoad: 'No se pudieron cargar los datos.',
+    live: 'Datos reales del sistema — se actualiza cada 30 segundos.',
+  },
+  en: {
+    stActive: 'Active shipments',
+    stDelivered: 'Delivered',
+    stRequests: 'Pending requests',
+    stIncidents: 'With incidents',
+    dActive: 'In transit or out for delivery',
+    dDelivered: 'Total delivered',
+    dRequests: 'Awaiting review',
+    dIncidents: 'Need attention',
+    reqT: 'Pending driver requests',
+    reqCols: ['Tracking', 'Route', 'Driver', 'Status'],
+    reqPill: 'Pending',
+    shipT: 'Recent shipments',
+    shipCols: ['Tracking', 'Route', 'Status'],
+    all: 'All',
+    loading: 'Loading data…',
+    errLoad: 'Could not load data.',
+    live: 'Live system data — refreshes every 30 seconds.',
+  },
+  'zh-CN': {
+    stActive: '进行中的货件',
+    stDelivered: '已送达',
+    stRequests: '待处理请求',
+    stIncidents: '异常货件',
+    dActive: '运输中或派送中',
+    dDelivered: '已送达总数',
+    dRequests: '待审核',
+    dIncidents: '需要关注',
+    reqT: '司机待处理请求',
+    reqCols: ['追踪号', '路线', '司机', '状态'],
+    reqPill: '待处理',
+    shipT: '最近货件',
+    shipCols: ['追踪号', '路线', '状态'],
+    all: '全部',
+    loading: '正在加载数据…',
+    errLoad: '无法加载数据。',
+    live: '系统实时数据 — 每 30 秒刷新。',
+  },
+};
+
+const adashStatusIdx = (status, list = []) => {
+  if (typeof status === 'number') return status >= 0 && status < list.length ? status : 0;
+  const n = String(status || '').toLowerCase();
+  if (n === 'pending' || n === 'assigned') return 3;
+  const i = list.findIndex((s) => s && s.toLowerCase() === n);
+  return i >= 0 ? i : 0;
+};
+
+const ADASH_TONE = { 0: 'info', 1: 'info', 2: 'ok', 3: 'warn', 4: 'bad' };
+
+/**
+ * Standalone admin Dashboard with REAL data: shipment stats, pending driver
+ * requests and recent shipment statuses. Refreshes every 30 seconds.
+ */
+export function AdminDashboardScreen({ dict = null, lang = 'es', token = null, statuses = [] }) {
+  const [chipSel, setChipSel] = useState(0);
+  const [toast, setToast] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [shipments, setShipments] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [loadErr, setLoadErr] = useState(false);
+  const toastRef = useRef(null);
+
+  const d = ADASH_I18N[lang] || ADASH_I18N.es;
+
+  const showToast = useCallback(text => {
+    setToast(text);
+    clearTimeout(toastRef.current);
+    toastRef.current = setTimeout(() => setToast(''), 4500);
+  }, []);
+  useEffect(() => () => clearTimeout(toastRef.current), []);
+
+  const fetchData = useCallback(async (isPoll = false) => {
+    if (!token) { setLoading(false); return; }
+    if (!isPoll) setLoading(true);
+    try {
+      const [ships, reqs] = await Promise.all([
+        api.getShipments(token),
+        api.getShipmentRequests(token),
+      ]);
+      setShipments(Array.isArray(ships) ? ships : ships?.data || []);
+      setRequests(Array.isArray(reqs) ? reqs : reqs?.data || []);
+      setLoadErr(false);
+    } catch (e) {
+      setLoadErr(true);
+    } finally {
+      if (!isPoll) setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchData(false);
+    const iv = setInterval(() => fetchData(true), 30000);
+    return () => clearInterval(iv);
+  }, [fetchData]);
+
+  const all = dict || (typeof window !== 'undefined' ? window.TR3S_I18N : null) || {};
+  const t = all[lang] || all.es || all.en || {};
+  const f = t.adm || {};
+  const common = { active: 'Active', inactive: 'Inactive', ...(f.common || {}) };
+  const page = f.adash || {};
+
+  const pendingReqs = requests.filter((r) => (r.status || 'pending') === 'pending');
+  const idxOf = (sh) => adashStatusIdx(sh.status, statuses);
+  const activeCount = shipments.filter((sh) => idxOf(sh) !== 2).length;
+  const deliveredCount = shipments.filter((sh) => idxOf(sh) === 2).length;
+  const incidentCount = shipments.filter((sh) => idxOf(sh) === 4).length;
+
+  const stats = [
+    { k: d.stActive, v: String(activeCount), d: d.dActive },
+    { k: d.stDelivered, v: String(deliveredCount), d: d.dDelivered },
+    { k: d.stRequests, v: String(pendingReqs.length), d: d.dRequests },
+  ];
+  if (incidentCount > 0) stats.push({ k: d.stIncidents, v: String(incidentCount), d: d.dIncidents });
+
+  const chips = [d.all, ...statuses];
+  const filteredShipments = chipSel === 0 ? shipments : shipments.filter((sh) => idxOf(sh) === chipSel - 1);
+  const fmtDate = (v) => {
+    const dt = v ? new Date(v) : null;
+    return dt && !isNaN(dt.getTime()) ? dt.toLocaleDateString(lang === 'zh-CN' ? 'zh-CN' : lang === 'en' ? 'en-US' : 'es-ES', { day: 'numeric', month: 'short' }) : '—';
+  };
+
+  const reqTable = {
+    t: d.reqT,
+    cols: d.reqCols,
+    rows: pendingReqs.slice(0, 10).map((r) => {
+      const s = r.shipment || {};
+      return {
+        c: [s.tracking_number || `ENV-${s.id || r.shipment_id || '—'}`, `${s.origin || '—'} → ${s.destination || '—'}`, r.driver?.name || `ID ${r.driver_id || '—'}`],
+        pill: d.reqPill,
+        st: 'warn',
+      };
+    }),
+  };
+
+  const shipTable = {
+    t: d.shipT,
+    cols: d.shipCols,
+    rows: filteredShipments.slice(0, 10).map((sh) => {
+      const i = idxOf(sh);
+      return {
+        c: [sh.tracking_number || `ENV-${sh.id}`, `${sh.origin || '—'} → ${sh.destination || '—'}`, fmtDate(sh.created_at)],
+        pill: statuses[i] || String(sh.status || '—'),
+        st: ADASH_TONE[i] || 'neutral',
+      };
+    }),
+  };
+
+  const view = loadErr ? 'error' : loading ? 'loading' : 'data';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, color: C.navy, fontFamily: `Inter,'Noto Sans SC',system-ui,sans-serif` }}>
+      <div>
+        <Motif />
+        <h1 style={{ fontFamily: HEAD, fontWeight: 800, fontSize: 30, letterSpacing: '-.02em', margin: '0 0 8px', textWrap: 'pretty' }}>{page.title || 'Dashboard'}</h1>
+        <p style={{ margin: 0, fontSize: 15, color: C.text, maxWidth: '70ch', lineHeight: 1.6, textWrap: 'pretty' }}>{page.sub || ''}</p>
+      </div>
+
+      {loadErr && (
+        <div role="alert" style={{ ...cardStyle, padding: '20px 22px', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#A93226', flex: 1 }}>{d.errLoad}</span>
+          <button type="button" onClick={() => fetchData(false)} style={{ ...primaryBtn, padding: '10px 16px', fontSize: 13 }}>{common.retry || 'Retry'}</button>
+        </div>
+      )}
+
+      <StatsBlock items={stats} cols={stats.length} />
+      <ChipsBlock label={common.filters} items={chips} selected={chipSel} onPick={setChipSel} />
+      <TableBlock data={reqTable} lang={lang} view={view === 'error' ? 'error' : loading ? 'loading' : 'data'} common={common} onToast={showToast} onRetry={() => fetchData(false)} />
+      <TableBlock data={shipTable} lang={lang} view={view === 'error' ? 'error' : loading ? 'loading' : 'data'} common={common} onToast={showToast} onRetry={() => fetchData(false)} />
+      <NoteBlock text={d.live} />
 
       {toast && (
         <div role="status" style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 95, maxWidth: 380, display: 'flex', gap: 12, alignItems: 'flex-start', background: C.white, border: `1px solid ${C.border}`, borderLeft: '4px solid #137A45', borderRadius: 14, padding: '18px 20px', boxShadow: '0 24px 60px rgba(0,27,69,.22)' }}>
