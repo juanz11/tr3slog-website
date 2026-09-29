@@ -104,6 +104,14 @@ export const api = {
     body: JSON.stringify({ status }),
   }).then(handle),
 
+  getRoles: (token) => fetch(`${API_URL}/roles`, {
+    headers: headers(token),
+  }).then(handle),
+
+  getPermissions: (token) => fetch(`${API_URL}/permissions`, {
+    headers: headers(token),
+  }).then(handle),
+
   createDriver: (formData, token) => {
     const h = { 'Accept': 'application/json' }
     if (token) h['Authorization'] = `Bearer ${token}`

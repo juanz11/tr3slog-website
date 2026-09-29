@@ -12,6 +12,7 @@ import Dispatch from './Dispatch'
 import Drivers from './Drivers'
 import Incidents from './Incidents'
 import Users from './Users'
+import Roles from './Roles'
 import AdminConsole, { AdminDashboardScreen } from './AdminConsole'
 import adminDict from '../lib/adminDict'
 import Profile from './Profile'
@@ -41,7 +42,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isAdmin = isAdminRole || isOperations
   const isAdministrative = !isAdmin && userRoles.includes('administrative')
   const nav = isAdminRole
-    ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, users: app.navA.users, console: app.navA.console, profile: app.navA.profile }
+    ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, users: app.navA.users, roles: app.navA.roles, console: app.navA.console, profile: app.navA.profile }
     : isOperations
       ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => k !== 'console'))
       : isAdministrative
@@ -126,6 +127,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isDrivers = activeKey === 'drivers'
   const isIncidents = activeKey === 'incidents'
   const isUsers = activeKey === 'users'
+  const isRoles = activeKey === 'roles'
   const isAdash = activeKey === 'dashboard'
   const isConsole = activeKey === 'console'
   const isProfile = activeKey === 'profile'
@@ -268,6 +270,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             <Incidents app={app} lang={lang} token={token} />
           ) : isUsers ? (
             <Users app={app} lang={lang} token={token} currentUser={user} />
+          ) : isRoles ? (
+            <Roles lang={lang} token={token} />
           ) : isAdash ? (
             <AdminDashboardScreen dict={adminDict} lang={lang} token={token} statuses={app.ship?.statuses || []} />
           ) : isConsole ? (

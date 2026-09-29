@@ -62,7 +62,7 @@ export const PAGES = {
 
 export const NAV_GROUPS = [
   { key: 'platform', keys: ['integr', 'flags'] },
-  { key: 'access', keys: ['users', 'roles', 'audit'] },
+  { key: 'access', keys: ['users', 'audit'] },
   { key: 'system', keys: ['keys', 'maint'] }
 ];
 
