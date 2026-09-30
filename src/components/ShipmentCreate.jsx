@@ -174,12 +174,13 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
   const isServiceAvailable = section !== 'service' || data.service.service === 'Terrestre'
   const canContinue = isComplete && isServiceAvailable
   const today = new Date()
-  const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const minBase = isAfterHours ? new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1) : today
+  const minDate = `${minBase.getFullYear()}-${String(minBase.getMonth() + 1).padStart(2, '0')}-${String(minBase.getDate()).padStart(2, '0')}`
 
   return (
     <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 26 }}>
       {isAfterHours && (
-        <div style={{ marginBottom: 20, padding: 16, borderRadius: 12, background: '#FDECEC', color: '#B91C1C', fontSize: 14, lineHeight: 1.6 }}>
+        <div style={{ marginBottom: 20, padding: 16, borderRadius: 12, background: '#FEF3C7', color: '#92400E', fontSize: 14, lineHeight: 1.6 }}>
           {afterHoursMsg}
         </div>
       )}
@@ -525,13 +526,13 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
               onNext()
             }
           }}
-          disabled={!canContinue || submitting || isAfterHours}
+          disabled={!canContinue || submitting}
           style={{
             marginLeft: 'auto', padding: '14px 24px',
-            background: (canContinue && !submitting && !isAfterHours) ? '#087CF0' : '#8FC6F7',
+            background: (canContinue && !submitting) ? '#087CF0' : '#8FC6F7',
             border: 'none', borderRadius: 11,
             color: '#fff', fontSize: 14, fontWeight: 600,
-            cursor: (canContinue && !submitting && !isAfterHours) ? 'pointer' : 'not-allowed',
+            cursor: (canContinue && !submitting) ? 'pointer' : 'not-allowed',
           }}
         >{isLastStep ? (submitting ? 'Procesando…' : c.payment.submit) : c.continue}</button>
       </div>
@@ -665,7 +666,7 @@ function ShipmentCreateInner({ app, token }) {
   }, [])
 
   const [isAfterHours, setIsAfterHours] = React.useState(afterHours)
-  const afterHoursMsg = 'Los envíos se pueden recoger hasta las 8:00 p.m. (hora de República Dominicana). Estaremos abiertos de lunes a viernes, de 8:00 a.m. a 6:00 p.m. Si desea, puede programar su recogida para mañana.'
+  const afterHoursMsg = c.afterHours || 'Los envíos se pueden recoger hasta las 8:00 p.m. (hora de República Dominicana). Estaremos abiertos de lunes a viernes, de 8:00 a.m. a 6:00 p.m. Si desea, puede programar su recogida para mañana.'
 
   React.useEffect(() => {
     const id = setInterval(() => setIsAfterHours(afterHours()), 60000)
@@ -817,6 +818,9 @@ function ShipmentCreateInner({ app, token }) {
     const today = new Date()
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
     if (pickupDate < todayStr) return c.errPickupDate
+    if (pickupDate === todayStr && afterHours()) {
+      return c.errPickupAfterHours || c.errTimeWindow
+    }
     if (pickupDate === todayStr && timeWindow) {
       const end = timeWindow.split(' - ')[1]
       const [endHour, endMin] = end.split(':').map(Number)
@@ -878,10 +882,6 @@ function ShipmentCreateInner({ app, token }) {
     if (submitting) return
     if (!token) {
       setError('Inicie sesión para crear un envío.')
-      return
-    }
-    if (afterHours()) {
-      setError(afterHoursMsg)
       return
     }
     const err = validateAll()
