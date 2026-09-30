@@ -43,7 +43,7 @@ const CITY_COUNTRY = {
 
 
 const emptyAddress = () => ({
-  addressId: '', name: '', company: '', address: '', city: '', country: '', zip: '', phone: '', email: '',
+  addressId: '', name: '', company: '', address: '', city: '', country: '', zip: '', phone: '', phoneCountry: '', email: '',
 })
 
 const emptyPackage = () => ({
@@ -210,34 +210,21 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
             </span>
             {key === 'phone' && config.countryOptions ? (
               <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-                {data[section]?.addressId === 'manual' ? (
-                  <select
-                    value={section ? data[section].country : ''}
-                    onChange={(e) => onChange('country', e.target.value)}
-                    style={{
-                      flex: '0 0 130px', padding: '14px 15px',
-                      border: '1.5px solid #DCE6F5', borderRadius: 11,
-                      background: '#EEF4FC', font: 'inherit', color: '#001B45',
-                      outline: 'none', cursor: 'pointer',
-                    }}
-                  >
-                    <option value="">Código</option>
-                    {config.countryOptions.map((o) => (
-                      <option key={o.code} value={o.code}>{o.flag} {o.short}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <div style={{
+                <select
+                  value={section ? (data[section].phoneCountry || data[section].country || '') : ''}
+                  onChange={(e) => onChange('phoneCountry', e.target.value)}
+                  style={{
                     flex: '0 0 130px', padding: '14px 15px',
                     border: '1.5px solid #DCE6F5', borderRadius: 11,
-                    background: '#F6FAFF', font: 'inherit', color: '#001B45',
-                    display: 'flex', alignItems: 'center',
-                  }}>
-                    {data[section]?.country && PHONE_FORMATS[data[section].country]
-                      ? PHONE_FORMATS[data[section].country].code
-                      : '—'}
-                  </div>
-                )}
+                    background: '#EEF4FC', font: 'inherit', color: '#001B45',
+                    outline: 'none', cursor: 'pointer',
+                  }}
+                >
+                  <option value="">Código</option>
+                  {config.countryOptions.map((o) => (
+                    <option key={o.code} value={o.code}>{o.flag} {o.short}</option>
+                  ))}
+                </select>
                 <input
                   type="text"
                   inputMode="tel"
@@ -688,7 +675,7 @@ function ShipmentCreateInner({ app, token }) {
   const section = sectionMap[step]
 
   const getPhoneExample = (section) => {
-    const country = section ? data[section].country : ''
+    const country = section ? (data[section].phoneCountry || data[section].country) : ''
     return country && PHONE_FORMATS[country] ? PHONE_FORMATS[country].example : '+1 000 000 0000'
   }
 
@@ -781,7 +768,7 @@ function ShipmentCreateInner({ app, token }) {
 
   const validateAddress = (section) => {
     const addr = data[section]
-    const country = addr.country
+    const country = addr.phoneCountry || addr.country
     if (!addr.email.trim() || !/^\S+@\S+\.\S+$/.test(addr.email.trim())) {
       return c.errEmail
     }
@@ -1007,6 +994,7 @@ function ShipmentCreateInner({ app, token }) {
         country: found.country || '',
         zip: found.zip_code || '',
         phone: found.phone || '',
+        phoneCountry: found.country || '',
       },
     }))
   }, [savedAddresses])
