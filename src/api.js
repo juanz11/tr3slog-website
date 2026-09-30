@@ -206,4 +206,23 @@ export const api = {
     headers: headers(token),
     body: JSON.stringify(data),
   }).then(handle),
+
+  getAuditFiles: (token) => fetch(`${API_URL}/audit-files`, {
+    headers: headers(token),
+  }).then(handle),
+
+  uploadAuditFile: (formData, token) => {
+    const h = { 'Accept': 'application/json' }
+    if (token) h['Authorization'] = `Bearer ${token}`
+    return fetch(`${API_URL}/audit-files`, {
+      method: 'POST',
+      headers: h,
+      body: formData,
+    }).then(handle)
+  },
+
+  deleteAuditFile: (id, token) => fetch(`${API_URL}/audit-files/${id}`, {
+    method: 'DELETE',
+    headers: headers(token),
+  }).then(handle),
 }
