@@ -47,8 +47,23 @@ const emptyAddress = () => ({
 })
 
 const emptyPackage = () => ({
-  pieces: '', weight: '', weightUnit: 'kg', dimensions: '', declaredValue: '', content: '',
+  type: 'package', length: '', width: '', height: '', weight: '', weightUnit: 'kg',
+  pieces: '1', declaredValue: '', content: '',
 })
+
+const migratePackage = (pkg = {}) => {
+  const merged = { ...emptyPackage(), ...pkg }
+  if (!merged.length && pkg.dimensions) {
+    const m = String(pkg.dimensions).match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)/i)
+    if (m) {
+      merged.length = m[1]
+      merged.width = m[2]
+      merged.height = m[3]
+    }
+  }
+  merged.weightUnit = 'kg'
+  return merged
+}
 
 const emptyService = () => ({
   service: 'Terrestre', pickupDate: '', timeWindow: '', notes: '',
@@ -67,98 +82,188 @@ const getInitials = (text = '') => {
   return (first + second).toUpperCase()
 }
 
-function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePackage }) {
-  const label = { display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }
-  const input = { width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none', fontSize: 15 }
+const PKG_TYPES = ['package', 'box', 'envelope', 'pallet', 'other']
+
+function PkgIcon({ name, size = 22 }) {
+  const p = {
+    width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+    stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round',
+  }
+  switch (name) {
+    case 'package':
+      return <svg {...p}><path d="M12 2.6l8.5 4.8v9.2L12 21.4l-8.5-4.8V7.4L12 2.6z"/><path d="M3.6 7.4L12 12.1l8.4-4.7"/><path d="M12 12.1v9.2"/></svg>
+    case 'box':
+      return <svg {...p}><path d="M4 9h16v11H4V9z"/><path d="M4 9l2.6-4.5h10.8L20 9"/><path d="M10 9v4h4V9"/></svg>
+    case 'envelope':
+      return <svg {...p}><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>
+    case 'pallet':
+      return <svg {...p}><rect x="3" y="6.5" width="18" height="5" rx="1"/><path d="M4.5 11.5V18"/><path d="M12 11.5V18"/><path d="M19.5 11.5V18"/><path d="M3 18.5h18"/></svg>
+    case 'ruler':
+      return <svg {...p}><rect x="2.5" y="9" width="19" height="7" rx="1.5"/><path d="M7 9v3"/><path d="M11 9v4"/><path d="M15 9v3"/><path d="M18.5 9v4"/></svg>
+    case 'weight':
+      return <svg {...p}><circle cx="12" cy="5" r="2.2"/><path d="M12 7.2V9"/><path d="M5.2 21L6.8 9h10.4L18.8 21H5.2z"/></svg>
+    case 'volume':
+      return <svg {...p}><path d="M12 3l7.5 4.3v8.4L12 20l-7.5-4.3V7.3L12 3z"/><path d="M4.6 7.3L12 11.5l7.4-4.2"/><path d="M12 11.5V20"/></svg>
+    default:
+      return <svg {...p}><circle cx="5.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+  }
+}
+
+const fmtNum = (n) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 4 })
+
+function PackagePanel({ icon, title, subtitle, children }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {packages.map((pkg, i) => (
-        <div key={i} style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 13, color: '#001B45' }}>{`Paquete ${i + 1}`}</span>
+    <div style={{ background: '#F4F9FF', border: '1px solid #E2EDFB', borderRadius: 16, padding: '18px 20px 20px' }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 16 }}>
+        <span style={{ color: '#087CF0', display: 'flex', marginTop: 2 }}>{icon}</span>
+        <div>
+          <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 15, color: '#001B45' }}>{title}</div>
+          <div style={{ fontSize: 13, color: '#6C82A6', marginTop: 3 }}>{subtitle}</div>
+        </div>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePackage }) {
+  const p = c.package || {}
+  const types = p.types || {}
+  const num = (v) => v.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1')
+  const input = { width: '100%', padding: '13px 14px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#fff', font: 'inherit', fontSize: 15, color: '#001B45', outline: 'none' }
+  const fieldLabel = { fontSize: 13, fontWeight: 600, color: '#10233F' }
+  const unitTag = { marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: '#8B9DBA' }
+
+  const summary = (pkg) => {
+    const dims = ['length', 'width', 'height'].map((k) => parseFloat(pkg[k]))
+    const ok = dims.every((n) => Number.isFinite(n) && n > 0)
+    const vol = ok ? dims[0] * dims[1] * dims[2] : 0
+    return {
+      dims: ok ? `${fmtNum(dims[0])} × ${fmtNum(dims[1])} × ${fmtNum(dims[2])} cm` : '—',
+      dimsSub: ok ? (p.dimsCaption || '') : '',
+      vol: ok ? `${fmtNum(vol)} cm³` : '—',
+      volSub: ok ? `(${fmtNum(vol / 1e6)} m³)` : '',
+      weight: Number(pkg.weight) > 0 ? `${fmtNum(Number(pkg.weight))} ${pkg.weightUnit || 'kg'}` : '—',
+    }
+  }
+
+  const dimField = (pkg, i, key, label) => (
+    <div key={key}>
+      <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+        <span style={fieldLabel}>{label}</span>
+        <span style={unitTag}>cm</span>
+      </div>
+      <input
+        inputMode="decimal"
+        value={pkg[key]}
+        onChange={(e) => onPackageChange(i, key, num(e.target.value))}
+        placeholder="0"
+        style={input}
+      />
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        <span style={{ color: '#001B45', display: 'flex', marginTop: 2 }}><PkgIcon name="package" size={26} /></span>
+        <div>
+          <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 17, color: '#001B45' }}>{p.title || 'Datos del paquete'}</div>
+          <div style={{ fontSize: 13, color: '#6C82A6', marginTop: 3 }}>{p.subtitle || ''}</div>
+        </div>
+      </div>
+      {packages.map((pkg, i) => {
+        const s = summary(pkg)
+        return (
+          <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingTop: i ? 22 : 0, borderTop: i ? '1px solid #E2EDFB' : 'none' }}>
             {packages.length > 1 && (
-              <button
-                type="button"
-                onClick={() => onRemovePackage(i)}
-                style={{ width: 28, height: 28, border: '1.5px solid #C0392B', borderRadius: 8, background: '#fff', color: '#C0392B', fontSize: 18, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              >
-                −
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 13, color: '#001B45' }}>{(p.packageN || 'Paquete {n}').replace('{n}', i + 1)}</span>
+                <button
+                  type="button"
+                  onClick={() => onRemovePackage(i)}
+                  style={{ width: 28, height: 28, border: '1.5px solid #C0392B', borderRadius: 8, background: '#fff', color: '#C0392B', fontSize: 18, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  −
+                </button>
+              </div>
             )}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div>
-              <label style={label}>{c.package.fields.pieces}</label>
-              <input
-                value={pkg.pieces}
-                onChange={(e) => onPackageChange(i, 'pieces', e.target.value.replace(/\D/g, ''))}
-                placeholder={c.package.placeholders.pieces}
-                style={input}
-              />
-            </div>
-            <div>
-              <label style={label}>{c.package.fields.weight}</label>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-                <input
-                  value={pkg.weight}
-                  onChange={(e) => onPackageChange(i, 'weight', e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1'))}
-                  placeholder={c.package.placeholders.weight}
-                  style={{ ...input, flex: 1 }}
-                />
-                <div style={{ display: 'flex', flex: '0 0 auto', border: '1.5px solid #DCE6F5', borderRadius: 11, overflow: 'hidden' }}>
-                  {['kg','lb'].map((u) => {
-                    const active = (pkg.weightUnit || 'kg') === u
-                    return (
-                      <button
-                        key={u}
-                        type="button"
-                        onClick={() => onPackageChange(i, 'weightUnit', u)}
-                        style={{ padding: '0 14px', border: 'none', background: active ? '#087CF0' : '#fff', color: active ? '#fff' : '#10233F', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                      >
-                        {u}
-                      </button>
-                    )
-                  })}
-                </div>
+              <span style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 10 }}>{p.typeLabel || 'Tipo de paquete'}</span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+                {PKG_TYPES.map((t) => {
+                  const active = (pkg.type || 'package') === t
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => onPackageChange(i, 'type', t)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px',
+                        border: `1.5px solid ${active ? '#087CF0' : '#DCE6F5'}`, borderRadius: 13,
+                        background: active ? 'rgba(8,124,240,.07)' : '#fff',
+                        cursor: 'pointer', font: 'inherit', textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ color: active ? '#0768C9' : '#10233F', display: 'flex', flex: '0 0 auto' }}><PkgIcon name={t} /></span>
+                      <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#001B45' }}>{types[t] || t}</span>
+                      <span style={{ width: 18, height: 18, borderRadius: '50%', border: `1.5px solid ${active ? '#087CF0' : '#C4D4EA'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', flex: '0 0 auto' }}>
+                        {active && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#087CF0' }} />}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
-            <div>
-              <label style={label}>{c.package.fields.dimensions}</label>
-              <input
-                value={pkg.dimensions}
-                onChange={(e) => onPackageChange(i, 'dimensions', e.target.value)}
-                placeholder={c.package.placeholders.dimensions}
-                style={input}
-              />
-            </div>
-            <div>
-              <label style={label}>{c.package.fields.declaredValue}</label>
-              <input
-                value={pkg.declaredValue}
-                onChange={(e) => onPackageChange(i, 'declaredValue', e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1'))}
-                placeholder={c.package.placeholders.declaredValue}
-                style={input}
-              />
-            </div>
-            <div style={{ gridColumn: 'span 2' }}>
-              <label style={label}>{c.package.fields.content}</label>
-              <textarea
-                value={pkg.content}
-                onChange={(e) => onPackageChange(i, 'content', e.target.value)}
-                rows={3}
-                placeholder={c.package.placeholders.content}
-                style={{ ...input, resize: 'vertical' }}
-              />
+            <PackagePanel icon={<PkgIcon name="ruler" />} title={p.dimsTitle || 'Dimensiones del paquete'} subtitle={p.dimsSubtitle || ''}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                {dimField(pkg, i, 'length', p.length || 'Largo')}
+                {dimField(pkg, i, 'width', p.width || 'Ancho')}
+                {dimField(pkg, i, 'height', p.height || 'Alto')}
+              </div>
+            </PackagePanel>
+            <PackagePanel icon={<PkgIcon name="weight" />} title={p.weightTitle || 'Peso del paquete'} subtitle={p.weightSubtitle || ''}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+                    <span style={fieldLabel}>{(p.fields && p.fields.weight) || 'Peso'}</span>
+                    <span style={unitTag}>{pkg.weightUnit || 'kg'}</span>
+                  </div>
+                  <input
+                    inputMode="decimal"
+                    value={pkg.weight}
+                    onChange={(e) => onPackageChange(i, 'weight', num(e.target.value))}
+                    placeholder="0"
+                    style={input}
+                  />
+                </div>
+              </div>
+            </PackagePanel>
+            <div style={{ display: 'flex', alignItems: 'stretch', background: '#F0F7FF', border: '1px solid #DCE9FA', borderRadius: 14 }}>
+              {[
+                { icon: 'package', label: (p.summary && p.summary.dimensions) || 'Dimensiones', value: s.dims, sub: s.dimsSub },
+                { icon: 'volume', label: (p.summary && p.summary.volume) || 'Volumen', value: s.vol, sub: s.volSub },
+                { icon: 'weight', label: (p.summary && p.summary.weight) || 'Peso', value: s.weight, sub: '' },
+              ].map((col, ci) => (
+                <div key={ci} style={{ flex: 1, display: 'flex', gap: 12, alignItems: 'center', padding: '14px 20px', borderLeft: ci ? '1px solid #DCE6F5' : 'none' }}>
+                  <span style={{ color: '#087CF0', display: 'flex', flex: '0 0 auto' }}><PkgIcon name={col.icon} size={24} /></span>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#6C82A6' }}>{col.label}</div>
+                    <div style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 16, fontWeight: 700, color: '#001B45' }}>{col.value}</div>
+                    {col.sub ? <div style={{ fontSize: 12, color: '#8B9DBA' }}>{col.sub}</div> : null}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
       <button
         type="button"
         onClick={onAddPackage}
         style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', border: '1.5px solid #087CF0', borderRadius: 11, background: 'rgba(8,124,240,.08)', color: '#0768C9', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
       >
-        <span style={{ fontSize: 18 }}>+</span> Agregar paquete
+        <span style={{ fontSize: 18 }}>+</span> {p.addPackage || 'Agregar paquete'}
       </button>
     </div>
   )
@@ -491,19 +596,20 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 24, paddingTop: 20, borderTop: '1px solid #DCE6F5' }}>
+      <div style={{ display: 'flex', gap: 10, marginTop: 24, paddingTop: 20, borderTop: '1px solid #DCE6F5', alignItems: 'center' }}>
         {step > 0 && (
           <button
             onClick={onBack}
             disabled={submitting}
             style={{
-              padding: '14px 20px', background: '#fff',
-              border: '1.5px solid #DCE6F5', borderRadius: 11,
+              padding: '14px 8px', background: 'transparent',
+              border: 'none',
               color: '#001B45', fontSize: 14, fontWeight: 600,
               cursor: submitting ? 'not-allowed' : 'pointer',
               opacity: submitting ? .6 : 1,
+              display: 'flex', alignItems: 'center', gap: 6,
             }}
-          >{c.back}</button>
+          ><span style={{ fontSize: 15 }}>←</span> {c.back}</button>
         )}
         <button
           onClick={() => {
@@ -520,8 +626,9 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
             border: 'none', borderRadius: 11,
             color: '#fff', fontSize: 14, fontWeight: 600,
             cursor: (canContinue && !submitting) ? 'pointer' : 'not-allowed',
+            display: 'flex', alignItems: 'center', gap: 8,
           }}
-        >{isLastStep ? (submitting ? 'Procesando…' : c.payment.submit) : c.continue}</button>
+        >{isLastStep ? (submitting ? 'Procesando…' : c.payment.submit) : c.continue}{!isLastStep && <span style={{ fontSize: 15 }}>→</span>}</button>
       </div>
     </div>
   )
@@ -623,12 +730,13 @@ function ShipmentCreateInner({ app, token }) {
       const raw = localStorage.getItem(DRAFT_KEY)
       if (raw) {
         const parsed = JSON.parse(raw)
-        setData(parsed.data || {
-          sender: emptyAddress(),
-          recipient: emptyAddress(),
-          package: [emptyPackage()],
-          service: emptyService(),
-          payment: emptyPayment(),
+        const draft = parsed.data || {}
+        setData({
+          sender: { ...emptyAddress(), ...draft.sender },
+          recipient: { ...emptyAddress(), ...draft.recipient },
+          package: (Array.isArray(draft.package) && draft.package.length ? draft.package : [emptyPackage()]).map(migratePackage),
+          service: { ...emptyService(), ...draft.service },
+          payment: { ...emptyPayment(), ...draft.payment },
         })
         setStep(typeof parsed.step === 'number' ? parsed.step : 0)
       }
@@ -782,14 +890,12 @@ function ShipmentCreateInner({ app, token }) {
   }
 
   const validatePackage = () => {
+    const positive = (v) => /^\d+(\.\d+)?$/.test(String(v).trim()) && Number(v) > 0
     for (const pkg of data.package) {
-      if (!/^\d+$/.test(String(pkg.pieces).trim())) {
-        return c.errPieces
-      }
-      if (!/^\d+(\.\d+)?$/.test(String(pkg.weight).trim()) || Number(pkg.weight) <= 0) {
+      if (!positive(pkg.weight)) {
         return c.errWeight
       }
-      if (String(pkg.dimensions).trim() && !/^\d+(\.\d+)?\s*x\s*\d+(\.\d+)?\s*x\s*\d+(\.\d+)?(\s*(cm|in|m))?$/i.test(String(pkg.dimensions).trim())) {
+      if (!positive(pkg.length) || !positive(pkg.width) || !positive(pkg.height)) {
         return c.errDimensions
       }
     }
@@ -926,10 +1032,11 @@ function ShipmentCreateInner({ app, token }) {
         recipient_email: data.recipient.email,
         service_type: data.service.service,
         packages: data.package.map((pkg) => ({
-          pieces: pkg.pieces,
+          type: pkg.type,
+          pieces: pkg.pieces || '1',
           weight: pkg.weight,
-          weight_unit: pkg.weightUnit,
-          dimensions: pkg.dimensions,
+          weight_unit: pkg.weightUnit || 'kg',
+          dimensions: (pkg.length && pkg.width && pkg.height) ? `${pkg.length}x${pkg.width}x${pkg.height} cm` : '',
           declared_value: pkg.declaredValue,
           content: pkg.content,
         })),
