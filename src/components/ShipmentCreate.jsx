@@ -84,6 +84,17 @@ const getInitials = (text = '') => {
 
 const PKG_TYPES = ['package', 'box', 'envelope', 'pallet', 'other']
 
+/* Dimension fields per package type: envelopes are flat (no height). */
+const PKG_DIMS = {
+  package: ['length', 'width', 'height'],
+  box: ['length', 'width', 'height'],
+  envelope: ['length', 'width'],
+  pallet: ['length', 'width', 'height'],
+  other: ['length', 'width', 'height'],
+}
+const pkgDims = (type) => PKG_DIMS[type] || PKG_DIMS.package
+const pkgRequired = (pkg) => [...pkgDims(pkg.type), 'weight']
+
 function PkgIcon({ name, size = 22 }) {
   const p = {
     width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
@@ -135,14 +146,15 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
   const unitTag = { marginLeft: 'auto', fontSize: 12, fontWeight: 600, color: '#8B9DBA' }
 
   const summary = (pkg) => {
-    const dims = ['length', 'width', 'height'].map((k) => parseFloat(pkg[k]))
+    const keys = pkgDims(pkg.type)
+    const dims = keys.map((k) => parseFloat(pkg[k]))
     const ok = dims.every((n) => Number.isFinite(n) && n > 0)
-    const vol = ok ? dims[0] * dims[1] * dims[2] : 0
+    const vol = ok && keys.length === 3 ? dims[0] * dims[1] * dims[2] : 0
     return {
-      dims: ok ? `${fmtNum(dims[0])} × ${fmtNum(dims[1])} × ${fmtNum(dims[2])} cm` : '—',
-      dimsSub: ok ? (p.dimsCaption || '') : '',
-      vol: ok ? `${fmtNum(vol)} cm³` : '—',
-      volSub: ok ? `(${fmtNum(vol / 1e6)} m³)` : '',
+      dims: ok ? `${dims.map(fmtNum).join(' × ')} cm` : '—',
+      dimsSub: ok ? (keys.length === 3 ? (p.dimsCaption || '') : (p.dimsCaptionLw || '')) : '',
+      vol: vol ? `${fmtNum(vol)} cm³` : '—',
+      volSub: vol ? `(${fmtNum(vol / 1e6)} m³)` : '',
       weight: Number(pkg.weight) > 0 ? `${fmtNum(Number(pkg.weight))} ${pkg.weightUnit || 'kg'}` : '—',
     }
   }
@@ -216,11 +228,27 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
               </div>
             </div>
             <PackagePanel icon={<PkgIcon name="ruler" />} title={p.dimsTitle || 'Dimensiones del paquete'} subtitle={p.dimsSubtitle || ''}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-                {dimField(pkg, i, 'length', p.length || 'Largo')}
-                {dimField(pkg, i, 'width', p.width || 'Ancho')}
-                {dimField(pkg, i, 'height', p.height || 'Alto')}
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${pkgDims(pkg.type).length}, 1fr)`, gap: 16 }}>
+                {pkgDims(pkg.type).map((k) => dimField(pkg, i, k, p[k]))}
               </div>
+              {(p.measureHints || {})[pkg.type || 'package'] && (
+                <p style={{ margin: '12px 0 0', fontSize: 12, lineHeight: 1.6, color: '#6C82A6' }}>
+                  {(p.measureHints || {})[pkg.type || 'package']}
+                </p>
+              )}
+              {(pkg.type === 'other') && (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+                    <span style={fieldLabel}>{p.otherDesc || 'Descripción de la pieza'}</span>
+                  </div>
+                  <input
+                    value={pkg.content}
+                    onChange={(e) => onPackageChange(i, 'content', e.target.value)}
+                    placeholder={p.otherDescPh || ''}
+                    style={input}
+                  />
+                </div>
+              )}
             </PackagePanel>
             <PackagePanel icon={<PkgIcon name="weight" />} title={p.weightTitle || 'Peso del paquete'} subtitle={p.weightSubtitle || ''}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
@@ -273,7 +301,7 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
   const isLastStep = step === c.steps.length - 1
   const isComplete = section
     ? (section === 'package'
-      ? data[section].every((pkg) => config.required.every((k) => String(pkg[k] || '').trim() !== ''))
+      ? data[section].every((pkg) => pkgRequired(pkg).every((k) => String(pkg[k] || '').trim() !== ''))
       : config.required.every((k) => String(data[section][k] || '').trim() !== ''))
     : true
   const isServiceAvailable = section !== 'service' || data.service.service === 'Terrestre'
@@ -895,7 +923,7 @@ function ShipmentCreateInner({ app, token }) {
       if (!positive(pkg.weight)) {
         return c.errWeight
       }
-      if (!positive(pkg.length) || !positive(pkg.width) || !positive(pkg.height)) {
+      if (!pkgDims(pkg.type).every((k) => positive(pkg[k]))) {
         return c.errDimensions
       }
     }
@@ -1031,15 +1059,21 @@ function ShipmentCreateInner({ app, token }) {
         recipient_phone: data.recipient.phone,
         recipient_email: data.recipient.email,
         service_type: data.service.service,
-        packages: data.package.map((pkg) => ({
-          type: pkg.type,
-          pieces: pkg.pieces || '1',
-          weight: pkg.weight,
-          weight_unit: pkg.weightUnit || 'kg',
-          dimensions: (pkg.length && pkg.width && pkg.height) ? `${pkg.length}x${pkg.width}x${pkg.height} cm` : '',
-          declared_value: pkg.declaredValue,
-          content: pkg.content,
-        })),
+        packages: data.package.map((pkg) => {
+          const keys = pkgDims(pkg.type)
+          return {
+            type: pkg.type,
+            pieces: pkg.pieces || '1',
+            weight: pkg.weight,
+            weight_unit: pkg.weightUnit || 'kg',
+            length_cm: pkg.length || null,
+            width_cm: pkg.width || null,
+            height_cm: keys.includes('height') ? (pkg.height || null) : null,
+            dimensions: keys.every((k) => pkg[k]) ? `${keys.map((k) => pkg[k]).join('x')} cm` : '',
+            declared_value: pkg.declaredValue,
+            content: pkg.content,
+          }
+        }),
         notes: data.service.notes,
         payment_method: data.payment.method,
         payment_method_id,
