@@ -12,6 +12,7 @@ import Dispatch from './Dispatch'
 import Drivers from './Drivers'
 import Incidents from './Incidents'
 import Audits from './Audits'
+import PricingCalc from './PricingCalc'
 import Users from './Users'
 import Roles from './Roles'
 import { AdminDashboardScreen } from './AdminConsole'
@@ -43,7 +44,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isAdmin = isAdminRole || isOperations
   const isAdministrative = !isAdmin && userRoles.includes('administrative')
   const nav = isAdminRole
-    ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, audit: app.navA.audit, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
+    ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
     : isOperations
       ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => k !== 'console'))
       : isAdministrative
@@ -128,6 +129,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isDrivers = activeKey === 'drivers'
   const isIncidents = activeKey === 'incidents'
   const isAudit = activeKey === 'audit'
+  const isPricing = activeKey === 'pricing'
   const isUsers = activeKey === 'users'
   const isRoles = activeKey === 'roles'
   const isAdash = isAdminRole && activeKey === 'dashboard'
@@ -271,6 +273,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             <Incidents app={app} lang={lang} token={token} />
           ) : isAudit ? (
             <Audits app={app} lang={lang} token={token} />
+          ) : isPricing ? (
+            <PricingCalc app={app} lang={lang} token={token} />
           ) : isUsers ? (
             <Users app={app} lang={lang} token={token} currentUser={user} />
           ) : isRoles ? (

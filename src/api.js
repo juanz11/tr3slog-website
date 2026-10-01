@@ -225,4 +225,14 @@ export const api = {
     method: 'DELETE',
     headers: headers(token),
   }).then(handle),
+
+  getPricingConfig: (token) => fetch(`${API_URL}/pricing-config`, {
+    headers: headers(token),
+  }).then(handle),
+
+  updatePricingConfig: (data, token) => fetch(`${API_URL}/pricing-config`, {
+    method: 'PUT',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
 }
