@@ -8,6 +8,15 @@ const LB_PER_KG = 2.20462
 
 const fmt = (n, digits = 2) => Number.isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: digits }) : '—'
 
+const DELIVERY_MODES = ['standard', 'express', 'same_day']
+
+export function DeliveryIcon({ mode, color = 'currentColor', size = 22 }) {
+  const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' }
+  if (mode === 'express') return <svg {...p}><circle cx="12" cy="13" r="8" /><path d="M12 9.5V13l3 2" /><path d="M9 2.5h6" /></svg>
+  if (mode === 'same_day') return <svg {...p}><path d="M13 2L4.5 13.5H11L9.5 22 19 10h-6.5L13 2z" /></svg>
+  return <svg {...p}><path d="M4 16V7h9v9" /><path d="M13 10h4l3 3v3" /><circle cx="7" cy="17.5" r="1.8" /><circle cx="16.5" cy="17.5" r="1.8" /></svg>
+}
+
 export default function PricingCalc({ app, lang, token }) {
   const d = app.pricing
   const ENABLED = ['Terrestre']
@@ -17,7 +26,7 @@ export default function PricingCalc({ app, lang, token }) {
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState('')
   const [notice, setNoticeRaw] = React.useState('')
-  const [calc, setCalc] = React.useState({ service: services[0], length: '', width: '', height: '', dimUnit: 'in', weight: '', weightUnit: 'lb' })
+  const [calc, setCalc] = React.useState({ service: services[0], delivery: 'standard', length: '', width: '', height: '', dimUnit: 'in', weight: '', weightUnit: 'lb' })
 
   const setNotice = (msg) => {
     setNoticeRaw(msg)
@@ -31,6 +40,7 @@ export default function PricingCalc({ app, lang, token }) {
         dim_divisor: res.dim_divisor ?? 166,
         service_limits: res.service_limits || {},
         service_rates: res.service_rates || {},
+        surcharges: res.surcharges || {},
       }))
       .catch((e) => setError(e.message || d.error))
       .finally(() => setLoading(false))
@@ -38,6 +48,7 @@ export default function PricingCalc({ app, lang, token }) {
 
   const setLimit = (svc, v) => setCfg((c) => ({ ...c, service_limits: { ...c.service_limits, [svc]: v } }))
   const setRate = (svc, key, v) => setCfg((c) => ({ ...c, service_rates: { ...c.service_rates, [svc]: { ...(c.service_rates[svc] || {}), [key]: v } } }))
+  const setSur = (mode, key, v) => setCfg((c) => ({ ...c, surcharges: { ...c.surcharges, [mode]: { ...(c.surcharges[mode] || {}), [key]: v } } }))
 
   const num = (v) => v.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1')
   const numVal = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0 }
@@ -66,6 +77,9 @@ export default function PricingCalc({ app, lang, token }) {
   const oversized = totalSize > 0 && limit > 0 && totalSize > limit
   const rate = cfg.service_rates?.[calc.service] || {}
   const price = billableLb > 0 ? numVal(rate.base) + billableLb * numVal(rate.per_lb) : 0
+  const sur = cfg.surcharges?.[calc.delivery] || {}
+  const surchargeAmt = price > 0 ? (sur.type === 'fixed' ? numVal(sur.value) : price * numVal(sur.value) / 100) : 0
+  const totalPrice = price + surchargeAmt
   const hasInput = volIn3 > 0 || actualLb > 0
 
   const save = async () => {
@@ -78,6 +92,7 @@ export default function PricingCalc({ app, lang, token }) {
         dim_divisor: res.dim_divisor ?? cfg.dim_divisor,
         service_limits: res.service_limits || cfg.service_limits,
         service_rates: res.service_rates || cfg.service_rates,
+        surcharges: res.surcharges || cfg.surcharges,
       })
       setNotice(d.saved)
     } catch (e) {
@@ -118,6 +133,43 @@ export default function PricingCalc({ app, lang, token }) {
         <button className="app-primary" onClick={save} disabled={saving || loading} style={{ marginLeft: 'auto' }}>
           {saving ? d.saving : d.save}
         </button>
+      </div>
+
+      {/* Delivery speed surcharge selector */}
+      <div className="app-card" style={{ padding: 20, marginBottom: 20 }}>
+        <div style={cardTitle}>{d.deliveryT}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          {DELIVERY_MODES.map((m) => {
+            const s = cfg.surcharges?.[m] || {}
+            const active = calc.delivery === m
+            const badge = s.type === 'fixed' ? `+$${fmt(numVal(s.value), 0)}` : `+${fmt(numVal(s.value), 0)}%`
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setCalc({ ...calc, delivery: m })}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '16px 18px',
+                  border: `1.5px solid ${active ? '#087CF0' : '#DCE6F5'}`, borderRadius: 14,
+                  background: active ? 'rgba(8,124,240,.07)' : '#fff',
+                  cursor: 'pointer', font: 'inherit', textAlign: 'left',
+                }}
+              >
+                <span style={{ color: active ? '#0768C9' : '#6C82A6', display: 'flex', flex: '0 0 auto' }}>
+                  <DeliveryIcon mode={m} color="currentColor" size={26} />
+                </span>
+                <span style={{ flex: 1 }}>
+                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#001B45' }}>{d.delivery[m]}</span>
+                  <span style={{ display: 'block', fontSize: 12, color: '#8B9DBA', marginTop: 2 }}>{d.deliverySub?.[m] || ''}</span>
+                </span>
+                <span style={{
+                  fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 100,
+                  background: active ? '#087CF0' : '#EEF4FC', color: active ? '#fff' : '#6C82A6', flex: '0 0 auto',
+                }}>{badge}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Calculator */}
@@ -168,6 +220,8 @@ export default function PricingCalc({ app, lang, token }) {
             <Result label={d.r.total} value={totalSize > 0 ? `${fmt(totalSize)} in` : '—'} sub={limit ? `${d.r.limit} ${fmt(limit, 0)} in` : ''} tone={totalSize > 0 && limit ? (oversized ? '#A93226' : '#0F5F36') : '#001B45'} />
             <Result label={d.r.status} value={totalSize > 0 && limit ? (oversized ? d.r.oversized : d.r.accepted) : '—'} tone={totalSize > 0 && limit ? (oversized ? '#A93226' : '#0F5F36') : '#6C82A6'} />
             <Result label={d.r.price} value={price > 0 ? `$${fmt(price)}` : '—'} sub={price > 0 ? `${fmt(numVal(rate.base))} + ${fmt(billableLb)} × ${fmt(numVal(rate.per_lb))}` : ''} />
+            <Result label={d.r.surcharge} value={price > 0 ? (surchargeAmt > 0 ? `+$${fmt(surchargeAmt)}` : '$0') : '—'} sub={d.delivery[calc.delivery]} />
+            <Result label={d.r.totalPrice} value={totalPrice > 0 ? `$${fmt(totalPrice)}` : '—'} tone="#0F5F36" />
           </div>
         )}
       </div>
@@ -195,6 +249,32 @@ export default function PricingCalc({ app, lang, token }) {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Delivery surcharges */}
+        <div className="app-card" style={{ padding: 20 }}>
+          <div style={cardTitle}>{d.surT}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {DELIVERY_MODES.map((m) => {
+              const s = cfg.surcharges?.[m] || {}
+              return (
+                <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 140, fontSize: 14, fontWeight: 500, color: '#10233F' }}>
+                    <span style={{ color: '#6C82A6', display: 'flex' }}><DeliveryIcon mode={m} size={18} /></span>
+                    {d.delivery[m]}
+                  </span>
+                  <select value={s.type || 'percent'} onChange={(e) => setSur(m, 'type', e.target.value)}
+                    style={{ ...inputSm, width: 90, cursor: 'pointer' }}>
+                    <option value="percent">%</option>
+                    <option value="fixed">$</option>
+                  </select>
+                  <input inputMode="decimal" value={s.value ?? ''} placeholder="0"
+                    onChange={(e) => setSur(m, 'value', num(e.target.value))} style={{ ...inputSm, width: 90, textAlign: 'right' }} />
+                </div>
+              )
+            })}
+          </div>
+          <p style={{ margin: '12px 0 0', fontSize: 12, color: '#8B9DBA', lineHeight: 1.6 }}>{d.surHint}</p>
         </div>
 
         {/* Rates per service */}

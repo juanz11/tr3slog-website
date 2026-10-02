@@ -3,6 +3,7 @@ import { api } from '../api'
 import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
+import { DeliveryIcon } from './PricingCalc'
 
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   || 'pk_test_51U9oCHLy571aG6WWmqNdtAiM9E7ZVDjTeB2Qs62VvLjOhv0Y253OGaFztaJseVBUhhkiZ3Q3CxaY8Fy9S2VHOg8L00mmeKsQQK'
@@ -66,7 +67,7 @@ const migratePackage = (pkg = {}) => {
 }
 
 const emptyService = () => ({
-  service: 'Terrestre', pickupDate: '', timeWindow: '', notes: '',
+  service: 'Terrestre', delivery: 'standard', pickupDate: '', timeWindow: '', notes: '',
 })
 
 const emptyPayment = () => ({
@@ -297,7 +298,7 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
   )
 }
 
-function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, isAfterHours, afterHoursMsg, onBack, onNext, onFinish }) {
+function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharges, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, isAfterHours, afterHoursMsg, onBack, onNext, onFinish }) {
   const isLastStep = step === c.steps.length - 1
   const isComplete = section
     ? (section === 'package'
@@ -326,6 +327,46 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, onSelect
           onAddPackage={onAddPackage}
           onRemovePackage={onRemovePackage}
         />
+      )}
+      {section === 'service' && (
+        <div style={{ marginBottom: 20 }}>
+          <span style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 10 }}>{c.deliveryT}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
+            {['standard', 'express', 'same_day'].map((m) => {
+              const s = (surcharges || {})[m] || {}
+              const active = (data.service.delivery || 'standard') === m
+              const val = parseFloat(s.value) || 0
+              const badge = s.type === 'fixed' ? `+$${val}` : `+${val}%`
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => onChange('delivery', m)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
+                    border: `1.5px solid ${active ? '#087CF0' : '#DCE6F5'}`, borderRadius: 13,
+                    background: active ? 'rgba(8,124,240,.07)' : '#fff',
+                    cursor: 'pointer', font: 'inherit', textAlign: 'left',
+                  }}
+                >
+                  <span style={{ color: active ? '#0768C9' : '#6C82A6', display: 'flex', flex: '0 0 auto' }}>
+                    <DeliveryIcon mode={m} color="currentColor" size={24} />
+                  </span>
+                  <span style={{ flex: 1 }}>
+                    <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: '#001B45' }}>{c.delivery[m]}</span>
+                    <span style={{ display: 'block', fontSize: 12, color: '#8B9DBA', marginTop: 2 }}>{(c.deliverySub || {})[m] || ''}</span>
+                  </span>
+                  {val > 0 && (
+                    <span style={{
+                      fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 100,
+                      background: active ? '#087CF0' : '#EEF4FC', color: active ? '#fff' : '#6C82A6', flex: '0 0 auto',
+                    }}>{badge}</span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {config.keys.map((key) => (
@@ -743,6 +784,7 @@ function ShipmentCreateInner({ app, token }) {
   const [error, setError] = React.useState('')
   const [result, setResult] = React.useState(null)
   const [savedAddresses, setSavedAddresses] = React.useState([])
+  const [surcharges, setSurcharges] = React.useState({})
   const [data, setData] = React.useState({
     sender: emptyAddress(),
     recipient: emptyAddress(),
@@ -805,6 +847,9 @@ function ShipmentCreateInner({ app, token }) {
     api.getAddresses(token)
       .then((res) => setSavedAddresses(Array.isArray(res) ? res : res.addresses || []))
       .catch(() => setSavedAddresses([]))
+    api.getPricingConfig(token)
+      .then((res) => setSurcharges(res?.surcharges || {}))
+      .catch(() => {})
   }, [token])
 
   const sectionMap = { 0: 'sender', 1: 'recipient', 2: 'package', 3: 'service', 4: 'payment' }
@@ -1059,6 +1104,7 @@ function ShipmentCreateInner({ app, token }) {
         recipient_phone: data.recipient.phone,
         recipient_email: data.recipient.email,
         service_type: data.service.service,
+        delivery_mode: data.service.delivery || 'standard',
         packages: data.package.map((pkg) => {
           const keys = pkgDims(pkg.type)
           return {
@@ -1226,6 +1272,7 @@ function ShipmentCreateInner({ app, token }) {
             config={config}
             data={data}
             savedAddresses={savedAddresses}
+            surcharges={surcharges}
             onSelectAddress={onSelectAddress}
             submitted={submitted}
             error={error}
