@@ -203,7 +203,7 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
             )}
             <div>
               <span style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 10 }}>{p.typeLabel || 'Tipo de paquete'}</span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
+              <div className='pkg-type-grid'>
                 {PKG_TYPES.map((t) => {
                   const active = (pkg.type || 'package') === t
                   return (
@@ -229,7 +229,7 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
               </div>
             </div>
             <PackagePanel icon={<PkgIcon name="ruler" />} title={p.dimsTitle || 'Dimensiones del paquete'} subtitle={p.dimsSubtitle || ''}>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${pkgDims(pkg.type).length}, 1fr)`, gap: 16 }}>
+              <div className='pkg-dims-grid' style={{ display: 'grid', gridTemplateColumns: `repeat(${pkgDims(pkg.type).length}, 1fr)`, gap: 16 }}>
                 {pkgDims(pkg.type).map((k) => dimField(pkg, i, k, p[k]))}
               </div>
               {(p.measureHints || {})[pkg.type || 'package'] && (
@@ -252,7 +252,7 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
               )}
             </PackagePanel>
             <PackagePanel icon={<PkgIcon name="weight" />} title={p.weightTitle || 'Peso del paquete'} subtitle={p.weightSubtitle || ''}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+              <div className='pkg-weight-grid'>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
                     <span style={fieldLabel}>{(p.fields && p.fields.weight) || 'Peso'}</span>
@@ -268,13 +268,13 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
                 </div>
               </div>
             </PackagePanel>
-            <div style={{ display: 'flex', alignItems: 'stretch', background: '#F0F7FF', border: '1px solid #DCE9FA', borderRadius: 14 }}>
+            <div className='pkg-summary'>
               {[
                 { icon: 'package', label: (p.summary && p.summary.dimensions) || 'Dimensiones', value: s.dims, sub: s.dimsSub },
                 { icon: 'volume', label: (p.summary && p.summary.volume) || 'Volumen', value: s.vol, sub: s.volSub },
                 { icon: 'weight', label: (p.summary && p.summary.weight) || 'Peso', value: s.weight, sub: '' },
               ].map((col, ci) => (
-                <div key={ci} style={{ flex: 1, display: 'flex', gap: 12, alignItems: 'center', padding: '14px 20px', borderLeft: ci ? '1px solid #DCE6F5' : 'none' }}>
+                <div key={ci} className='pkg-summary-item'>
                   <span style={{ color: '#087CF0', display: 'flex', flex: '0 0 auto' }}><PkgIcon name={col.icon} size={24} /></span>
                   <div>
                     <div style={{ fontSize: 12, fontWeight: 600, color: '#6C82A6' }}>{col.label}</div>
