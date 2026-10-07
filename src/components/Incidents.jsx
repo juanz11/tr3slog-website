@@ -44,6 +44,7 @@ export default function Incidents({ app, lang, token }) {
   const [updating, setUpdating] = React.useState(null)
   const [showForm, setShowForm] = React.useState(false)
   const [form, setForm] = React.useState({ ship: '', title: '', severity: 'medium', description: '' })
+  const [detailIncident, setDetailIncident] = React.useState(null)
 
   const fetchIncidents = React.useCallback(async (isPoll) => {
     if (!token) return
@@ -238,7 +239,7 @@ export default function Incidents({ app, lang, token }) {
                     ))}
                   </select>
                   <span>
-                    <button style={{ justifySelf: 'end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>{d.viewCase}</button>
+                    <button onClick={() => setDetailIncident(incident)} style={{ justifySelf: 'end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>{d.viewCase}</button>
                   </span>
                 </div>
               )
@@ -256,6 +257,40 @@ export default function Incidents({ app, lang, token }) {
         </svg>
         <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: '#25456E', textWrap: 'pretty' }}>{d.note}</p>
       </div>
+
+      {detailIncident && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+          <div className="app-card" style={{ maxWidth: 600, width: '100%', maxHeight: '90vh', overflow: 'auto', padding: 0 }}>
+            <div style={{ padding: '20px 22px', borderBottom: '1px solid #DCE6F5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="app-card-title">{detailIncident.id}</div>
+              <button onClick={() => setDetailIncident(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6C82A6', padding: 4 }}>×</button>
+            </div>
+            <div style={{ padding: '20px 22px' }}>
+              {detailIncident.photo_url && (
+                <div style={{ marginBottom: 20, textAlign: 'center' }}>
+                  <img src={detailIncident.photo_url} alt="Foto del incidente" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 10, border: '1px solid #DCE6F5' }} />
+                </div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, fontSize: 14 }}>
+                <div><span style={{ color: '#6C82A6', fontSize: 12, fontWeight: 600 }}>Envío</span><br />{detailIncident.ship}</div>
+                <div><span style={{ color: '#6C82A6', fontSize: 12, fontWeight: 600 }}>Tipo / Título</span><br />{detailIncident.type}</div>
+                <div><span style={{ color: '#6C82A6', fontSize: 12, fontWeight: 600 }}>Severidad</span><br />{d.sev[detailIncident.sev] || detailIncident.sev}</div>
+                <div><span style={{ color: '#6C82A6', fontSize: 12, fontWeight: 600 }}>Estado</span><br />{d.statuses[detailIncident.st] || detailIncident.st}</div>
+                <div><span style={{ color: '#6C82A6', fontSize: 12, fontWeight: 600 }}>Conductor</span><br />{detailIncident.owner}</div>
+                <div><span style={{ color: '#6C82A6', fontSize: 12, fontWeight: 600 }}>Fecha</span><br />{detailIncident.when}</div>
+                {detailIncident.category && <div><span style={{ color: '#6C82A6', fontSize: 12, fontWeight: 600 }}>Categoría</span><br />{detailIncident.category}</div>}
+                {detailIncident.created_at && <div><span style={{ color: '#6C82A6', fontSize: 12, fontWeight: 600 }}>Creado</span><br />{detailIncident.created_at}</div>}
+              </div>
+              {detailIncident.description && (
+                <div style={{ marginTop: 18 }}>
+                  <span style={{ color: '#6C82A6', fontSize: 12, fontWeight: 600 }}>Descripción</span>
+                  <p style={{ margin: '6px 0 0', lineHeight: 1.6, fontSize: 14, color: '#10233F' }}>{detailIncident.description}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
