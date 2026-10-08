@@ -252,7 +252,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
 
         <main className="app-content">
           {isCreate ? (
-            <ShipmentCreate app={app} token={token} />
+            <ShipmentCreate app={app} token={token} onTrack={(code) => { setHquery(code); setActiveKey('shipments') }} />
           ) : isShipments ? (
             <ShipmentsList app={app} token={token} query={hquery} onQueryChange={setHquery} />
           ) : isPayments ? (

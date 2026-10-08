@@ -703,7 +703,7 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
   )
 }
 
-function ShipmentSuccess({ app, result, onNew }) {
+function ShipmentSuccess({ app, result, onNew, onTrack }) {
   const [copied, setCopied] = React.useState(false)
   const guide = result.tracking_number || result.id || result.guide || ''
   const copy = async () => {
@@ -753,15 +753,17 @@ function ShipmentSuccess({ app, result, onNew }) {
             cursor: 'pointer',
           }}
         >{copied ? 'Copiado' : 'Copiar guía'}</button>
-        <button
-          type="button"
-          onClick={() => app.go('track?code=' + encodeURIComponent(guide))}
-          style={{
-            padding: '12px 20px', borderRadius: 11, border: 'none',
-            background: '#087CF0', color: '#fff', fontSize: 14, fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >Rastrear envío</button>
+        {onTrack && (
+          <button
+            type="button"
+            onClick={() => onTrack(guide)}
+            style={{
+              padding: '12px 20px', borderRadius: 11, border: 'none',
+              background: '#087CF0', color: '#fff', fontSize: 14, fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >Rastrear envío</button>
+        )}
         <button
           type="button"
           onClick={onNew}
@@ -776,7 +778,7 @@ function ShipmentSuccess({ app, result, onNew }) {
   )
 }
 
-function ShipmentCreateInner({ app, token }) {
+function ShipmentCreateInner({ app, token, onTrack }) {
   const c = app.create
   const [step, setStep] = React.useState(0)
   const [submitted, setSubmitted] = React.useState(false)
@@ -1262,7 +1264,7 @@ function ShipmentCreateInner({ app, token }) {
       </div>)}
 
       {submitted && result ? (
-        <ShipmentSuccess app={app} result={result} onNew={onNew} />
+        <ShipmentSuccess app={app} result={result} onNew={onNew} onTrack={onTrack} />
       ) : (
         section ? (
           <ShipmentForm
