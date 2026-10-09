@@ -22,6 +22,9 @@ const I18N = {
       reports: 'Reportes',
       pricing: 'Precios',
       audit: 'Auditoría',
+      incidents: 'Incidencias',
+      finance: 'Finanzas',
+      hub: 'Hub / Almacén',
     },
   },
   en: {
@@ -43,6 +46,9 @@ const I18N = {
       reports: 'Reports',
       pricing: 'Pricing',
       audit: 'Audit',
+      incidents: 'Incidents',
+      finance: 'Finance',
+      hub: 'Hub / Warehouse',
     },
   },
   'zh-CN': {
@@ -64,6 +70,9 @@ const I18N = {
       reports: '报表',
       pricing: '定价',
       audit: '审计',
+      incidents: '事故',
+      finance: '财务',
+      hub: '枢纽/仓库',
     },
   },
 }

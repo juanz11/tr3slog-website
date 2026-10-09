@@ -40,16 +40,34 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const app = appI18n[lang] || appI18n.es
   const userRoles = user?.roles?.map((r) => r.name) || []
   const isAdminRole = userRoles.includes('admin')
-  const isOperations = !isAdminRole && userRoles.includes('operations')
-  const isAdmin = isAdminRole || isOperations
-  const isAdministrative = !isAdmin && userRoles.includes('administrative')
+  const isOperations = userRoles.includes('operations')
+  const isOpsSupervisor = userRoles.includes('ops_supervisor')
+  const isCustomerSupport = userRoles.includes('customer_support')
+  const isHubOperation = userRoles.includes('hub_operation')
+  const isHubSupervisor = userRoles.includes('hub_supervisor')
+  const isFinance = userRoles.includes('finance')
+  const isExecutiveClient = userRoles.includes('executive_client')
+  const isAdministrative = userRoles.includes('administrative')
+  const isCompany = userRoles.includes('company')
+  const isStaff = isAdminRole || isOperations || isOpsSupervisor || isCustomerSupport || isHubOperation || isHubSupervisor || isFinance || isAdministrative
+  const isCustomer = !isStaff
+  const isAdmin = isStaff
+
   const nav = isAdminRole
     ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
-    : isOperations
+    : isOperations || isOpsSupervisor
       ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => k !== 'console'))
-      : isAdministrative
-        ? { users: app.navA.users, profile: app.navA.profile }
-        : app.navC
+      : isCustomerSupport
+        ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, support: app.navC.support, profile: app.navA.profile }
+        : isHubOperation || isHubSupervisor
+          ? { dashboard: app.navA.dashboard, dispatch: app.navA.dispatch, requests: app.navA.requests, drivers: app.navA.drivers, incidents: app.navA.incidents, profile: app.navA.profile }
+          : isFinance
+            ? { dashboard: app.navA.dashboard, payments: app.navC.payments, audit: app.navA.audit, pricing: app.navA.pricing, profile: app.navA.profile }
+            : isExecutiveClient || isCompany
+              ? { dashboard: app.navC.dashboard, shipments: app.navC.shipments, create: app.navC.create, payments: app.navC.payments, addresses: app.navC.addresses, quotes: app.navA.quotes, support: app.navC.support, profile: app.navC.profile }
+              : isAdministrative
+                ? { users: app.navA.users, profile: app.navA.profile }
+                : app.navC
   const navKeys = Object.keys(nav)
   const [activeKey, setActiveKey] = React.useState(navKeys[0])
   const [hquery, setHquery] = React.useState('')
@@ -73,7 +91,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
         const data = await api.getPendingQuotesCount(token)
         setPendingQuotes(data?.count ?? 0)
       } catch (e) {}
-      if (!isOperations) return
+      if (!isOperations && !isOpsSupervisor && !isHubSupervisor) return
       try {
         let count = 0
         try {
@@ -93,7 +111,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
     fetchCount()
     const interval = setInterval(fetchCount, 30000)
     return () => clearInterval(interval)
-  }, [token, isOperations])
+  }, [token, isOperations, isOpsSupervisor, isHubSupervisor])
 
   React.useEffect(() => {
     if (!requestToast) return
@@ -103,7 +121,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
 
   const accountInitials = (user?.name || 'US').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
   const accountName = user?.name || user?.email || 'Usuario'
-  const accountRole = isAdmin ? app.shell.admin : app.shell.portal
+  const accountRole = userRoles.map((r) => app.shell.roleLabels[r]).filter(Boolean)[0] || app.shell.portal
 
   const [shipments, setShipments] = React.useState([])
 
@@ -230,7 +248,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             />
             <button onClick={() => { setActiveKey('shipments') }} className="app-search-btn">{app.shell.searchHint}</button>
           </div>
-          {!isCreate && !isAdmin && (
+          {!isCreate && isCustomer && (
             <button onClick={() => setActiveKey('create')} style={{ marginLeft: 'auto', padding: '12px 18px', background: '#087CF0', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {app.dash.newShipment}
             </button>
