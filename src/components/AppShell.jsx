@@ -20,6 +20,7 @@ import { AdminDashboardScreen } from './AdminConsole'
 import adminDict from '../lib/adminDict'
 import Profile from './Profile'
 import BusinessPortalEntry from '../business-portal/portalEntry'
+import FinancePortalEntry from '../finance-portal/portalEntry'
 import { Pagination, usePagination, usePolling } from './Shared'
 import { api } from '../api'
 
@@ -46,7 +47,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isOpsSupervisor = !isAdminRole && userRoles.includes('ops_supervisor')
   const isAdmin = isAdminRole || isOperations || isOpsSupervisor
   const isAdministrative = !isAdmin && userRoles.includes('administrative')
-  const isExecutiveClient = !isAdmin && userRoles.includes('executive_client')
+  const isFinance = !isAdmin && !isAdministrative && userRoles.includes('finance')
+  const isExecutiveClient = !isAdmin && !isAdministrative && !isFinance && userRoles.includes('executive_client')
   const nav = isAdminRole
     ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
     : isOpsSupervisor
@@ -244,6 +246,10 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
       </div>
     </>
   )
+
+  if (isFinance) {
+    return <FinancePortalEntry lang={lang} setLang={setLang} user={user} onLogout={onLogout} />
+  }
 
   if (isExecutiveClient) {
     return <BusinessPortalEntry lang={lang} user={user} onLogout={onLogout} />
