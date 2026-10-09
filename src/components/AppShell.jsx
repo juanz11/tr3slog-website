@@ -15,9 +15,11 @@ import Audits from './Audits'
 import PricingCalc from './PricingCalc'
 import Users from './Users'
 import Roles from './Roles'
+import Manifest from './Manifest'
 import { AdminDashboardScreen } from './AdminConsole'
 import adminDict from '../lib/adminDict'
 import Profile from './Profile'
+import BusinessPortalEntry from '../business-portal/portalEntry'
 import { Pagination, usePagination, usePolling } from './Shared'
 import { api } from '../api'
 
@@ -41,15 +43,20 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const userRoles = user?.roles?.map((r) => r.name) || []
   const isAdminRole = userRoles.includes('admin')
   const isOperations = !isAdminRole && userRoles.includes('operations')
-  const isAdmin = isAdminRole || isOperations
+  const isOpsSupervisor = !isAdminRole && userRoles.includes('ops_supervisor')
+  const isAdmin = isAdminRole || isOperations || isOpsSupervisor
   const isAdministrative = !isAdmin && userRoles.includes('administrative')
+  const isExecutiveClient = !isAdmin && userRoles.includes('executive_client')
   const nav = isAdminRole
     ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
-    : isOperations
-      ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => k !== 'console'))
-      : isAdministrative
-        ? { users: app.navA.users, profile: app.navA.profile }
-        : app.navC
+    : isOpsSupervisor
+      ? { ...app.navOps, profile: app.navA.profile }
+      : isOperations
+        ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => k !== 'console'))
+        : isAdministrative
+          ? { users: app.navA.users, profile: app.navA.profile }
+          : app.navC
+  const navGroups = isOpsSupervisor ? app.navOpsGroups : null
   const navKeys = Object.keys(nav)
   const [activeKey, setActiveKey] = React.useState(navKeys[0])
   const [hquery, setHquery] = React.useState('')
@@ -73,7 +80,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
         const data = await api.getPendingQuotesCount(token)
         setPendingQuotes(data?.count ?? 0)
       } catch (e) {}
-      if (!isOperations) return
+      if (!isOperations && !isOpsSupervisor) return
       try {
         let count = 0
         try {
@@ -93,7 +100,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
     fetchCount()
     const interval = setInterval(fetchCount, 30000)
     return () => clearInterval(interval)
-  }, [token, isOperations])
+  }, [token, isOperations, isOpsSupervisor])
 
   React.useEffect(() => {
     if (!requestToast) return
@@ -117,7 +124,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
 
   usePolling(fetchShipments, 30000)
 
-  const isDash = activeKey === navKeys[0]
+  const isDash = activeKey === 'dashboard'
   const isCreate = activeKey === 'create'
   const isShipments = activeKey === 'shipments'
   const isPayments = activeKey === 'payments'
@@ -132,12 +139,42 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isPricing = activeKey === 'pricing'
   const isUsers = activeKey === 'users'
   const isRoles = activeKey === 'roles'
+  const isManifest = activeKey === 'manifest'
   const isAdash = isAdminRole && activeKey === 'dashboard'
   const isProfile = activeKey === 'profile'
 
   const Nav = ({ compact = false }) => (
-    <nav className="app-nav">
-      {navKeys.map((k) => {
+    <nav className="app-nav" style={{ gap: compact ? 12 : 18 }}>
+      {navGroups ? navGroups.map((g) => (
+        <div key={g.key} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{
+            fontSize: 10, fontWeight: 600, letterSpacing: '.16em', textTransform: 'uppercase',
+            color: '#8B9DBA', margin: compact ? '0 0 8px' : '0 6px 8px',
+          }}>
+            {g.title}
+          </div>
+          {g.keys.map((k) => nav[k] && (
+            <button
+              key={k}
+              onClick={() => { setActiveKey(k); setMobileOpen(false) }}
+              className={`app-nav-item ${k === activeKey ? 'on' : ''}`}
+            >
+              <NavIcon name={k} color={k === activeKey ? '#fff' : '#6C82A6'} />
+              <span>{nav[k]}</span>
+              {k === 'requests' && pendingRequests > 0 && (
+                <span style={{
+                  marginLeft: 'auto', minWidth: 20, height: 20, padding: '0 6px',
+                  borderRadius: 100, background: '#C0392B', color: '#fff',
+                  fontSize: 11, fontWeight: 700, display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {pendingRequests}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )) : navKeys.map((k) => {
         const on = k === activeKey
         return (
           <button
@@ -207,6 +244,10 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
       </div>
     </>
   )
+
+  if (isExecutiveClient) {
+    return <BusinessPortalEntry lang={lang} user={user} onLogout={onLogout} />
+  }
 
   return (
     <div className="app-shell">
@@ -279,6 +320,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             <Users app={app} lang={lang} token={token} currentUser={user} />
           ) : isRoles ? (
             <Roles lang={lang} token={token} />
+          ) : isManifest ? (
+            <Manifest app={app} />
           ) : isAdash ? (
             <AdminDashboardScreen dict={adminDict} lang={lang} token={token} statuses={app.ship?.statuses || []} />
           ) : isProfile ? (
