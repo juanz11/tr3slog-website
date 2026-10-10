@@ -11,25 +11,21 @@ export const NAV_ICONS = {
   refunds: 'M4 12a8 8 0 1114 5|M4 12V7M4 12h5',
   recon: 'M4 6h7v12H4zM13 6h7v12h-7|M8 12h8',
   finrep: 'M6 3h9l4 4v14H6zM15 3v4h4|M9 13h7M9 17h5',
-  claims: 'M12 3l8 4v6c0 5-3.4 7.6-8 8-4.6-.4-8-3-8-8V7z|M9.5 12.5l2 2 3.5-4',
-  claim: 'M6 3h8l4 4v14H6zM14 3v4h4|M9 12h6M9 16h4',
-  claimpol: 'M5 4h11l3 3v13H5zM8 10h8M8 14h6|M8 18h4'
+  claims: 'M12 3l8 4v6c0 5-3.4 7.6-8 8-4.6-.4-8-3-8-8V7z|M9.5 12.5l2 2 3.5-4'
 };
 
 export const PAGES = {
-  fin: { roles: ['super', 'finance'], sensitive: true, blocks: [['stats', 'stats', { cols: 3 }], ['chips', 'filters'], ['table', 'svc'], ['table', 'mkt'], ['table', 'fails'], ['note', 'note']] },
+  fin: { roles: ['super', 'finance'], sensitive: true, blocks: [['stats', 'stats', { cols: 3 }], ['chips', 'filters'], ['table', 'svc'], ['table', 'track'], ['table', 'mkt'], ['table', 'fails'], ['note', 'note']] },
   tx: { roles: ['super', 'finance', 'support'], sensitive: true, blocks: [['stats', 'stats', { cols: 4 }], ['chips', 'filters'], ['table', 'list'], ['note', 'note']] },
   refunds: { roles: ['super', 'finance'], sensitive: true, blocks: [['stats', 'stats', { cols: 4 }], ['form', 'form'], ['panels', 'panels', { cols: 2 }], ['steps', 'steps'], ['table', 'hist'], ['note', 'note']] },
   recon: { roles: ['super', 'finance'], sensitive: true, blocks: [['stats', 'stats', { cols: 4 }], ['chips', 'filters'], ['table', 'diff'], ['panels', 'panels', { cols: 2 }], ['steps', 'closure'], ['note', 'note']] },
   finrep: { roles: ['super', 'finance'], sensitive: true, blocks: [['chips', 'filters'], ['cards', 'cards'], ['note', 'note']] },
-  claims: { roles: ['super', 'support', 'compliance', 'ops', 'finance'], blocks: [['stats', 'stats', { cols: 5 }], ['chips', 'filters'], ['table', 'list'], ['note', 'note']] },
-  claim: { roles: ['super', 'support', 'compliance', 'ops'], blocks: [['panels', 'panels', { cols: 3 }], ['timeline', 'timeline'], ['cards', 'cards', { actions: 'view' }], ['form', 'notes'], ['steps', 'steps'], ['table', 'hist'], ['note', 'note']] },
-  claimpol: { roles: ['super', 'compliance'], blocks: [['form', 'form'], ['toggles', 'toggles'], ['panels', 'panels', { cols: 1 }], ['table', 'hist'], ['note', 'note']] }
+  claims: { roles: ['super', 'support', 'compliance', 'ops', 'finance'], blocks: [['stats', 'stats', { cols: 5 }], ['chips', 'filters'], ['table', 'list'], ['note', 'note']] }
 };
 
 export const NAV_GROUPS = [
   { key: 'finance', keys: ['fin', 'tx', 'refunds', 'recon', 'finrep'] },
-  { key: 'claims', keys: ['claims', 'claim', 'claimpol'] }
+  { key: 'claims', keys: ['claims'] }
 ];
 
 const finConfig = {
@@ -41,7 +37,7 @@ const finConfig = {
   navIcons: NAV_ICONS,
   defaultRole: 'finance',
   defaultScreen: 'fin',
-  defaultStage: { refunds: 1, claim: 2 },
+  defaultStage: { refunds: 1 },
   geo: null
 };
 

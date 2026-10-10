@@ -200,8 +200,8 @@ function CardsBlock({ data = {}, actions, common, lang, onToast, onOpenRow }) {
                 </>
               ) : (
                 <>
-                  <button type="button" style={ghostBtn} onClick={() => exportPdf({ title: c.t, cols: [data.t || '', ''], rows: [{ c: [c.t, c.s] }], lang, toast: onToast })}>PDF</button>
-                  <button type="button" style={ghostBtn} onClick={() => exportCsv({ title: c.t, cols: [data.t || '', ''], rows: [{ c: [c.t, c.s] }], lang, toast: onToast })}>Excel</button>
+                  <button type="button" style={ghostBtn} onClick={() => exportPdf({ title: c.t, cols: c.cols || [data.t || '', ''], rows: c.rows || [{ c: [c.t, c.s] }], lang, toast: onToast })}>PDF</button>
+                  <button type="button" style={ghostBtn} onClick={() => exportCsv({ title: c.t, cols: c.cols || [data.t || '', ''], rows: c.rows || [{ c: [c.t, c.s] }], lang, toast: onToast })}>Excel</button>
                 </>
               )}
             </div>
@@ -225,8 +225,22 @@ function FormBlock({ data = {}, common, base, invalid, badIndex, values = {}, re
         {fields.map((f, i) => (
           <label key={i} style={{ gridColumn: `span ${f.span || 1}`, display: 'block' }}>
             <span style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: C.textSecondary, marginBottom: 8 }}>{f.l}</span>
-            <input value={values[i] || ''} onChange={e => onChange(i, e.target.value)} placeholder={f.ph}
-              style={{ width: '100%', padding: '14px 15px', border: `1.5px solid ${invalid && i === badIndex ? '#E0A0A0' : C.border}`, borderRadius: 11, background: C.bg, fontSize: 15, color: C.navy, outline: 'none', font: 'inherit' }} />
+            {f.file ? (
+              <input type="file" onChange={e => onChange(i, e.target.files && e.target.files[0] ? e.target.files[0].name : '')} aria-label={f.l}
+                style={{ width: '100%', padding: '12px 15px', border: `1.5px solid ${invalid && i === badIndex ? '#E0A0A0' : C.border}`, borderRadius: 11, background: C.bg, fontSize: 14, color: C.navy, outline: 'none', font: 'inherit' }} />
+            ) : f.opts ? (
+              <select value={values[i] || ''} onChange={e => onChange(i, e.target.value)}
+                style={{ width: '100%', padding: '14px 15px', border: `1.5px solid ${invalid && i === badIndex ? '#E0A0A0' : C.border}`, borderRadius: 11, background: C.bg, fontSize: 15, color: C.navy, outline: 'none', font: 'inherit', cursor: 'pointer' }}>
+                <option value="">{f.ph}</option>
+                {(f.opts || []).map((o, oi) => {
+                  const v = typeof o === 'string' ? o : o.v;
+                  return <option key={oi} value={v}>{typeof o === 'string' ? o : (o.l || o.v)}</option>;
+                })}
+              </select>
+            ) : (
+              <input value={values[i] || ''} onChange={e => onChange(i, e.target.value)} placeholder={f.ph}
+                style={{ width: '100%', padding: '14px 15px', border: `1.5px solid ${invalid && i === badIndex ? '#E0A0A0' : C.border}`, borderRadius: 11, background: C.bg, fontSize: 15, color: C.navy, outline: 'none', font: 'inherit' }} />
+            )}
           </label>
         ))}
       </div>

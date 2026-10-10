@@ -28,7 +28,15 @@
       fails:{t:'Payment failures requiring attention',cols:['Account','Invoice','Amount','Attempts','Status'],rows:[
         {c:['Distribuidora Caribe','INV-20418','$ ——','3'],st:'bad',pill:'Card declined'},
         {c:['Almacén Bayamón','INV-20402','$ ——','2'],st:'warn',pill:'Retry scheduled'}]},
-      note:'Figures shown are placeholders until the accounting integration is authorized. No real financial data is displayed.'
+      note:'Figures shown are placeholders until the accounting integration is authorized. No real financial data is displayed.',
+      live:{stats:['Payments processed','Pending payments','Registered shipments','Quotes received','Reported incidents','Payroll transactions'],d:'Live data',
+        trackT:'Shipments by service',trackCols:['Tracking','Service','Origin','Destination','Date'],
+        none:'No type',pills:{pending:'Pending',in_transit:'In transit',delivered:'Delivered',cancelled:'Cancelled'},
+        mktCols:['Market','Shipments','Revenue','Status'],
+        markets:{PR:'Puerto Rico',DO:'Dominican Republic',VE:'Venezuela',US:'United States'},
+        mktPills:{active:'Active',future:'In preparation'},other:'Other',
+        failT:'Incidents requiring attention',failCols:['Code','Type','Reported by','Severity','Date','Status'],
+        incPills:{open:'Open',in_progress:'In review',resolved:'Resolved',closed:'Closed'}}
     },
     tx: {
       title:'Payment transactions', sub:'Every payment attempt with its processor reference and refund status.',
@@ -41,15 +49,18 @@
         {c:['TRX-77088','Retail Miami LLC','INV-20388','TR3-260729-EUAL-83712','ACH','$ ——','USD','2026-07-22','po_ph_0004'],st:'warn',pill:'Partially refunded'},
         {c:['TRX-77061','Cliente individual','INV-20377','TR3-260729-PRSJ-83540','Card ····9002','$ ——','USD','2026-07-21','ch_ph_0005'],st:'neutral',pill:'Pending'},
         {c:['TRX-77040','Textiles Santiago','INV-20361','TR3-260729-PRSJ-83411','Card ····7710','$ ——','USD','2026-07-20','ch_ph_0006'],st:'info',pill:'Disputed'}]},
-      note:'Amounts and processor references are placeholders. Card numbers are always stored masked.'
+      note:'Amounts and processor references are placeholders. Card numbers are always stored masked.',
+      live:{cols:['Reference','Payee','Period','Base','Bonuses','Deductions','Total','Paid on','Status'],
+        stats:['Payments recorded','Completed','Pending','Total paid'],d:'Live data',
+        pills:{Paid:'Paid',Pending:'Pending'}}
     },
     refunds: {
       title:'Refunds & adjustments', sub:'Refund requests above the configured limit require finance approval before processing.',
       stats:[{k:'Open requests',v:'——',d:'Awaiting review'},{k:'Awaiting approval',v:'——',d:'Above limit'},{k:'Processed (month)',v:'$ ——',d:'Placeholder'},{k:'Approval limit',v:'$ ——',d:'Configurable'}],
       form:{t:'New refund request',fields:[
-        {l:'Original transaction',ph:'TRX-77120',span:1},{l:'Refund amount',ph:'$0.00',span:1},
+        {l:'Pending shipment (tracking)',ph:'Select the shipment to refund',span:1},{l:'Refund amount',ph:'$0.00',span:1},
         {l:'Refund reason',ph:'Service not rendered, duplicate charge, billing correction…',span:2},
-        {l:'Supporting documentation',ph:'Attach invoice, evidence or authorization',span:2}],
+        {l:'Supporting documentation',ph:'Attach invoice, evidence or authorization',file:true,span:2}],
         submit:'Submit request',ok:'Refund request submitted for approval.'},
       panels:[{t:'Original transaction',items:[{k:'Transaction',v:'TRX-77120'},{k:'Account',v:'Distribuidora Caribe'},{k:'Invoice',v:'INV-20418'},{k:'Method',v:'Card ····4242'},{k:'Original amount',v:'$ ——'},{k:'Payment date',v:'2026-07-24'}]},
         {t:'Approval & processing',items:[{k:'Approval status',v:'Awaiting finance manager'},{k:'Approved by',v:'—'},{k:'Processing status',v:'Not started'},{k:'Customer notification',v:'On approval'},{k:'Expected credit',v:'3–5 business days'}]}],
@@ -83,7 +94,8 @@
         {t:'Refund report',s:'Refunds issued, reasons and approvals'},{t:'Credits & adjustments',s:'Credit notes and manual corrections'},
         {t:'Revenue by service',s:'Comparison across service lines'},{t:'Revenue by customer',s:'Ranking by billed volume'},
         {t:'Revenue by country',s:'Active markets only'},{t:'Tax transaction summary',s:'Taxable transactions by jurisdiction'}]},
-      note:'Exports are logged with the requesting user, report and period. Only roles with export permission can download financial data.'
+      note:'Exports are logged with the requesting user, report and period. Only roles with export permission can download financial data.',
+      live:{suffix:'· {n} real records'}
     },
     claims: {
       title:'Claims center', sub:'Claims by state, value and assignment, with resolution targets.',
@@ -95,7 +107,10 @@
         {c:['CLM-1035','TR3-260729-EUAL-83712','Missing items','$ ——','M. Solano','Medium','2026-08-02'],st:'warn',pill:'Under review'},
         {c:['CLM-1028','TR3-260729-PRSJ-83540','Delayed delivery','$ ——','L. Duarte','Low','2026-08-05'],st:'ok',pill:'Approved'},
         {c:['CLM-1021','TR3-260729-PRSJ-83411','Billing dispute','$ ——','A. Peralta','Medium','2026-07-31'],st:'neutral',pill:'Closed'}]},
-      note:'Every state change is recorded with user, timestamp and previous value.'
+      note:'Every state change is recorded with user, timestamp and previous value.',
+      live:{cols:['Code','Reference','Type','Reported by','Severity','Date','Photo','Status'],
+        stats:['Open','In review','Resolved','Closed','Total reported'],d:'Live data',
+        pills:{open:'Open',in_progress:'In review',resolved:'Resolved',closed:'Closed'}}
     },
     claim: {
       title:'Claim CLM-1042 · Damaged shipment', sub:'Investigation with evidence, decision and complete audit history.',

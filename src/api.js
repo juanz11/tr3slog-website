@@ -235,4 +235,8 @@ export const api = {
     headers: headers(token),
     body: JSON.stringify(data),
   }).then(handle),
+
+  getFinanceOverview: (token) => fetch(`${API_URL}/finance/overview`, {
+    headers: headers(token),
+  }).then(handle),
 }

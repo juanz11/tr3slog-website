@@ -28,7 +28,15 @@
       fails:{t:'Fallas de pago que requieren atención',cols:['Cuenta','Factura','Monto','Intentos','Estado'],rows:[
         {c:['Distribuidora Caribe','INV-20418','$ ——','3'],st:'bad',pill:'Tarjeta rechazada'},
         {c:['Almacén Bayamón','INV-20402','$ ——','2'],st:'warn',pill:'Reintento programado'}]},
-      note:'Las cifras mostradas son de referencia hasta autorizar la integración contable. No se muestran datos financieros reales.'
+      note:'Las cifras mostradas son de referencia hasta autorizar la integración contable. No se muestran datos financieros reales.',
+      live:{stats:['Pagos procesados','Pagos pendientes','Envíos registrados','Cotizaciones recibidas','Incidencias reportadas','Transacciones de nómina'],d:'Datos reales',
+        trackT:'Envíos por servicio',trackCols:['Tracking','Servicio','Origen','Destino','Fecha'],
+        none:'Sin tipo',pills:{pending:'Pendiente',in_transit:'En tránsito',delivered:'Entregado',cancelled:'Cancelado'},
+        mktCols:['Mercado','Envíos','Ingresos','Estado'],
+        markets:{PR:'Puerto Rico',DO:'República Dominicana',VE:'Venezuela',US:'Estados Unidos'},
+        mktPills:{active:'Activo',future:'En preparación'},other:'Otro',
+        failT:'Incidencias que requieren atención',failCols:['Código','Tipo','Reportado por','Severidad','Fecha','Estado'],
+        incPills:{open:'Abierto',in_progress:'En revisión',resolved:'Resuelto',closed:'Cerrado'}}
     },
     tx: {
       title:'Transacciones de pago', sub:'Cada intento de pago con su referencia del procesador y estado de reembolso.',
@@ -41,15 +49,18 @@
         {c:['TRX-77088','Retail Miami LLC','INV-20388','TR3-260729-EUAL-83712','ACH','$ ——','USD','2026-07-22','po_ph_0004'],st:'warn',pill:'Reembolso parcial'},
         {c:['TRX-77061','Cliente individual','INV-20377','TR3-260729-PRSJ-83540','Tarjeta ····9002','$ ——','USD','2026-07-21','ch_ph_0005'],st:'neutral',pill:'Pendiente'},
         {c:['TRX-77040','Textiles Santiago','INV-20361','TR3-260729-PRSJ-83411','Tarjeta ····7710','$ ——','USD','2026-07-20','ch_ph_0006'],st:'info',pill:'En disputa'}]},
-      note:'Los montos y referencias del procesador son de referencia. Los números de tarjeta se almacenan siempre enmascarados.'
+      note:'Los montos y referencias del procesador son de referencia. Los números de tarjeta se almacenan siempre enmascarados.',
+      live:{cols:['Referencia','Beneficiario','Período','Base','Bonos','Deducciones','Total','Pagado','Estado'],
+        stats:['Pagos registrados','Completados','Pendientes','Total pagado'],d:'Datos reales',
+        pills:{Paid:'Pagado',Pending:'Pendiente'}}
     },
     refunds: {
       title:'Reembolsos y ajustes', sub:'Los reembolsos por encima del límite configurado requieren aprobación de finanzas antes de procesarse.',
       stats:[{k:'Solicitudes abiertas',v:'——',d:'Por revisar'},{k:'En espera de aprobación',v:'——',d:'Sobre el límite'},{k:'Procesados (mes)',v:'$ ——',d:'Referencia'},{k:'Límite de aprobación',v:'$ ——',d:'Configurable'}],
       form:{t:'Nueva solicitud de reembolso',fields:[
-        {l:'Transacción original',ph:'TRX-77120',span:1},{l:'Monto a reembolsar',ph:'$0.00',span:1},
+        {l:'Envío pendiente (tracking)',ph:'Seleccione el envío a reembolsar',span:1},{l:'Monto a reembolsar',ph:'$0.00',span:1},
         {l:'Motivo del reembolso',ph:'Servicio no prestado, cargo duplicado, corrección de factura…',span:2},
-        {l:'Documentación de respaldo',ph:'Adjunte factura, evidencia o autorización',span:2}],
+        {l:'Documentación de respaldo',ph:'Adjunte factura, evidencia o autorización',file:true,span:2}],
         submit:'Enviar solicitud',ok:'Solicitud de reembolso enviada para aprobación.'},
       panels:[{t:'Transacción original',items:[{k:'Transacción',v:'TRX-77120'},{k:'Cuenta',v:'Distribuidora Caribe'},{k:'Factura',v:'INV-20418'},{k:'Método',v:'Tarjeta ····4242'},{k:'Monto original',v:'$ ——'},{k:'Fecha de pago',v:'2026-07-24'}]},
         {t:'Aprobación y procesamiento',items:[{k:'Estado de aprobación',v:'En espera del gerente de finanzas'},{k:'Aprobado por',v:'—'},{k:'Estado de procesamiento',v:'Sin iniciar'},{k:'Notificación al cliente',v:'Al aprobar'},{k:'Acreditación estimada',v:'3–5 días hábiles'}]}],
@@ -83,7 +94,8 @@
         {t:'Reporte de reembolsos',s:'Reembolsos emitidos, motivos y aprobaciones'},{t:'Créditos y ajustes',s:'Notas de crédito y correcciones manuales'},
         {t:'Ingresos por servicio',s:'Comparación entre líneas de servicio'},{t:'Ingresos por cliente',s:'Ranking por volumen facturado'},
         {t:'Ingresos por país',s:'Solo mercados activos'},{t:'Resumen de transacciones fiscales',s:'Transacciones gravables por jurisdicción'}]},
-      note:'Las exportaciones se registran con el usuario solicitante, el reporte y el período. Solo los roles con permiso de exportación pueden descargar datos financieros.'
+      note:'Las exportaciones se registran con el usuario solicitante, el reporte y el período. Solo los roles con permiso de exportación pueden descargar datos financieros.',
+      live:{suffix:'· {n} registros reales'}
     },
     claims: {
       title:'Centro de reclamos', sub:'Reclamos por estado, valor y asignación, con objetivos de resolución.',
@@ -95,7 +107,10 @@
         {c:['CLM-1035','TR3-260729-EUAL-83712','Artículos faltantes','$ ——','M. Solano','Media','2026-08-02'],st:'warn',pill:'En revisión'},
         {c:['CLM-1028','TR3-260729-PRSJ-83540','Entrega retrasada','$ ——','L. Duarte','Baja','2026-08-05'],st:'ok',pill:'Aprobado'},
         {c:['CLM-1021','TR3-260729-PRSJ-83411','Disputa de facturación','$ ——','A. Peralta','Media','2026-07-31'],st:'neutral',pill:'Cerrado'}]},
-      note:'Cada cambio de estado se registra con usuario, fecha y valor anterior.'
+      note:'Cada cambio de estado se registra con usuario, fecha y valor anterior.',
+      live:{cols:['Código','Referencia','Tipo','Reportado por','Severidad','Fecha','Foto','Estado'],
+        stats:['Abiertos','En revisión','Resueltos','Cerrados','Total reportados'],d:'Datos reales',
+        pills:{open:'Abierto',in_progress:'En revisión',resolved:'Resuelto',closed:'Cerrado'}}
     },
     claim: {
       title:'Reclamo CLM-1042 · Envío dañado', sub:'Investigación con evidencia, decisión e historial de auditoría completo.',
