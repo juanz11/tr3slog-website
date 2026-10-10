@@ -11,12 +11,13 @@ import { loadStore, saveStore, knownCodes, stampClock, stampMinute } from '../bu
 
 const SUPER_ROLES = ['sysadmin', 'super'];
 
-export default function FinancePortal({ config, dict = null, lang: langProp = null, onLogout = null, onLangChange = null, account = null }) {
+export default function FinancePortal({ config, dict = null, lang: langProp = null, defaultRole: defaultRoleProp = null, onLogout = null, onLangChange = null, account = null }) {
   const { pack, badge, roles: ROLES, pages: PAGES, navGroups: NAV_GROUPS, navIcons: NAV_ICONS } = config;
 
+  const startRole = defaultRoleProp || config.defaultRole;
   const [lang, setLang] = useState(langProp || 'es');
   const [screen, setScreen] = useState(PAGES[config.defaultScreen] ? config.defaultScreen : Object.keys(PAGES)[0]);
-  const [role, setRole] = useState(ROLES.indexOf(config.defaultRole) >= 0 ? config.defaultRole : ROLES[0]);
+  const [role, setRole] = useState(ROLES.indexOf(startRole) >= 0 ? startRole : ROLES[0]);
   const [view, setView] = useState('data');
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);

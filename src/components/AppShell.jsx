@@ -21,6 +21,7 @@ import adminDict from '../lib/adminDict'
 import Profile from './Profile'
 import BusinessPortalEntry from '../business-portal/portalEntry'
 import FinancePortalEntry from '../finance-portal/portalEntry'
+import AdvancedOpsPortalEntry from '../advanced-ops-portal/portalEntry'
 import { Pagination, usePagination, usePolling } from './Shared'
 import { api } from '../api'
 
@@ -54,7 +55,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
     : isOpsSupervisor
       ? { ...app.navOps, profile: app.navA.profile }
       : isOperations
-        ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => k !== 'console'))
+        ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => !['console', 'ops', 'users', 'roles'].includes(k)))
         : isAdministrative
           ? { users: app.navA.users, profile: app.navA.profile }
           : app.navC
@@ -246,6 +247,10 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
       </div>
     </>
   )
+
+  if (isOpsSupervisor) {
+    return <AdvancedOpsPortalEntry lang={lang} setLang={setLang} user={user} onLogout={onLogout} />
+  }
 
   if (isFinance) {
     return <FinancePortalEntry lang={lang} setLang={setLang} user={user} onLogout={onLogout} />

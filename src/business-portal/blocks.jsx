@@ -12,6 +12,7 @@ import React from 'react';
 import { C, FONT_HEAD, FONT_MONO, TONE, PILL_HDR, card, sectionTitle, ghostBtn, primaryBtn, outlineBtn } from './tokens.js';
 import { chipCount, exportCsv, exportPdf, filterRows, downloadBlob, slug } from './engine.js';
 import GeoMap from './GeoMap.jsx';
+import { ManifestBlock, OptimizerBlock } from '../advanced-ops-portal/OpsBlocks.jsx';
 
 /* Brand motif: paired skewed bars (gold + blue). Accent use only. */
 export function Motif({ w = 24, h = 5, gap = 4, mb = 14 }) {
@@ -592,6 +593,10 @@ export function renderBlock(def, ctx) {
       return <MarkersBlock key={ctx.key} data={data} set={opts.set} styles={ctx.geo || {}} />;
     case 'lines':
       return <LinesBlock key={ctx.key} data={data} styles={ctx.geo || {}} />;
+    case 'manifest':
+      return <ManifestBlock key={ctx.key} data={data} onToast={ctx.toast} />;
+    case 'optimizer':
+      return <OptimizerBlock key={ctx.key} data={data} common={ctx.common} view={ctx.view} lang={ctx.lang} onToast={ctx.toast} />;
     case 'note':
       return <NoteBlock key={ctx.key} text={typeof data === 'string' ? data : ctx.page.note} />;
     default:
