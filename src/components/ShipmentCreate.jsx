@@ -74,8 +74,6 @@ const emptyPayment = () => ({
   method: '', paymentMethod: '', chargeToAccount: '', cardholderName: '', billingZip: '', bank: '', reference: '',
 })
 
-const DRAFT_KEY = 'tr3slog-shipment-draft'
-
 const getInitials = (text = '') => {
   const words = text.trim().split(/\s+/).filter(Boolean)
   const first = words[0]?.[0] || ''
@@ -778,7 +776,7 @@ function ShipmentSuccess({ app, result, onNew, onTrack }) {
   )
 }
 
-function ShipmentCreateInner({ app, token, onTrack }) {
+function ShipmentCreateInner({ app, token, onTrack, user }) {
   const c = app.create
   const [step, setStep] = React.useState(0)
   const [submitted, setSubmitted] = React.useState(false)
@@ -794,12 +792,24 @@ function ShipmentCreateInner({ app, token, onTrack }) {
     service: emptyService(),
     payment: emptyPayment(),
   })
-  const draftLoaded = React.useRef(false)
+  const [draftLoaded, setDraftLoaded] = React.useState(false)
+  const draftKey = React.useMemo(
+    () => (user?.id ? `tr3slog-shipment-draft-${user.id}` : 'tr3slog-shipment-draft'),
+    [user?.id]
+  )
+
+  const emptyData = React.useCallback(() => ({
+    sender: emptyAddress(),
+    recipient: emptyAddress(),
+    package: [emptyPackage()],
+    service: emptyService(),
+    payment: emptyPayment(),
+  }), [])
 
   React.useEffect(() => {
-    if (draftLoaded.current) return
+    setDraftLoaded(false)
     try {
-      const raw = localStorage.getItem(DRAFT_KEY)
+      const raw = localStorage.getItem(draftKey)
       if (raw) {
         const parsed = JSON.parse(raw)
         const draft = parsed.data || {}
@@ -811,21 +821,27 @@ function ShipmentCreateInner({ app, token, onTrack }) {
           payment: { ...emptyPayment(), ...draft.payment },
         })
         setStep(typeof parsed.step === 'number' ? parsed.step : 0)
+      } else {
+        setData(emptyData())
+        setStep(0)
       }
-    } catch (e) {}
-    draftLoaded.current = true
-  }, [])
+    } catch (e) {
+      setData(emptyData())
+      setStep(0)
+    }
+    setDraftLoaded(true)
+  }, [draftKey, emptyData])
 
   React.useEffect(() => {
-    if (!draftLoaded.current) return
+    if (!draftLoaded) return
     if (submitted) {
-      try { localStorage.removeItem(DRAFT_KEY) } catch (e) {}
+      try { localStorage.removeItem(draftKey) } catch (e) {}
       return
     }
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ data, step }))
+      localStorage.setItem(draftKey, JSON.stringify({ data, step }))
     } catch (e) {}
-  }, [data, step, submitted])
+  }, [data, step, submitted, draftKey, draftLoaded])
 
   const afterHours = React.useCallback(() => {
     const hour = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Santo_Domingo', hour: 'numeric', hour12: false }))
@@ -927,7 +943,7 @@ function ShipmentCreateInner({ app, token, onTrack }) {
       keys: ADDRESS_KEYS.filter((k) => !isHiddenIfSaved(k) || isManual),
       fields: c.fields,
       placeholders: c.placeholders,
-      required: ADDRESS_REQUIRED,
+      required: section === 'recipient' ? ADDRESS_REQUIRED.filter((k) => k !== 'email') : ADDRESS_REQUIRED,
       span2: ADDRESS_SPAN2,
       datalist: {
         city: CITIES,
@@ -952,8 +968,10 @@ function ShipmentCreateInner({ app, token, onTrack }) {
   const validateAddress = (section) => {
     const addr = data[section]
     const country = addr.phoneCountry || addr.country
-    if (!addr.email.trim() || !/^\S+@\S+\.\S+$/.test(addr.email.trim())) {
-      return c.errEmail
+    if (section !== 'recipient') {
+      if (!addr.email.trim() || !/^\S+@\S+\.\S+$/.test(addr.email.trim())) {
+        return c.errEmail
+      }
     }
     if (!addr.phone.trim()) {
       return c.errPhone
