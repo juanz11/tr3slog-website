@@ -275,7 +275,7 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                           style={{ flex: '0 0 90px', padding: '14px 12px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', color: '#001B45', font: 'inherit', fontSize: 13, cursor: 'pointer' }}
                         >
                           <option value="">{a.country}</option>
-                          {Object.keys(PHONE_FORMATS).map((k) => (
+                          {Object.keys(PHONE_FORMATS).filter((k) => k === 'DO' || k === 'CR').map((k) => (
                             <option key={k} value={k}>
                               {PHONE_FORMATS[k].code} {k}
                             </option>

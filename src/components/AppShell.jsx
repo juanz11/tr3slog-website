@@ -56,9 +56,11 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
       ? { ...app.navOps, profile: app.navA.profile }
       : isOperations
         ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => !['console', 'ops', 'users', 'roles'].includes(k)))
-        : isAdministrative
-          ? { users: app.navA.users, profile: app.navA.profile }
-          : app.navC
+        : isFinance
+          ? { pricing: app.navA.pricing, profile: app.navA.profile }
+          : isAdministrative
+            ? { users: app.navA.users, profile: app.navA.profile }
+            : app.navC
   const navGroups = isOpsSupervisor ? app.navOpsGroups : null
   const navKeys = Object.keys(nav)
   const [activeKey, setActiveKey] = React.useState(navKeys[0])
