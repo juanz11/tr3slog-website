@@ -55,7 +55,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
     : isOpsSupervisor
       ? { ...app.navOps, profile: app.navA.profile }
       : isOperations
-        ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => !['console', 'ops', 'users', 'roles'].includes(k)))
+        ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => !['console', 'ops', 'users', 'roles', 'pricing'].includes(k)))
         : isFinance
           ? { pricing: app.navA.pricing, profile: app.navA.profile }
           : isAdministrative
