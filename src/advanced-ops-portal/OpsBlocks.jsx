@@ -332,7 +332,7 @@ export function OptimizerBlock({ data = {}, common = {}, view = 'data', lang = '
   const save = () => { const nv = pushVer(users.mgr, ver.save); setVers({ log, list: nv }); toast(fill(ok.save, { v: nv[nv.length - 1].v })); };
   const revert = () => { if (locked) return toast(ok.locked); setVers({ log, list: pushVer(users.mgr, fill(ver.revert, { v: 'V2' })) }); toast(fill(ok.revert, { v: 'V2' })); };
   const compare = () => { setRecalc(true); setTimeout(() => { setRecalc(false); toast(ok.compare); }, 600); };
-  const exRows = me.rows.filter(w => w.r.stops.length).map(w => ({ c: [w.r.id, OPT_VANS[w.r.van], OPT_DRIVERS[w.r.van], String(w.r.stops.length), optClock(OPT_START), optClock(w.x.end), String(Math.round(w.x.km)), optHM(w.x.t), '$' + Math.round(w.x.cost)] }));
+  const exRows = me.rows.filter(w => w.r.stops.length).map(w => ({ c: [w.r.id, OPT_VANS[w.r.van], OPT_DRIVERS[w.r.van], String(w.r.stops.length), optClock(OPT_START), optClock(w.end), String(Math.round(w.km)), optHM(w.t), '$' + Math.round(w.cost)] }));
   const exportX = () => exportCsv({ title: d.tableT, cols: d.cols || [], rows: exRows, lang, toast });
   const exportP = () => exportPdf({ title: d.tableT, cols: d.cols || [], rows: exRows, lang, toast });
   const notImpl = label => () => toast(label + ' · ' + d.notImpl);

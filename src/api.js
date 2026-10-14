@@ -239,4 +239,116 @@ export const api = {
   getFinanceOverview: (token) => fetch(`${API_URL}/finance/overview`, {
     headers: headers(token),
   }).then(handle),
+
+  /* ---- Manifiestos — mesa de operaciones (Gestión de Manifiestos) ---- */
+
+  getManifests: (token, status) => fetch(`${API_URL}/manifests${status ? `?status=${status}` : ''}`, {
+    headers: headers(token),
+  }).then(handle),
+
+  getManifest: (id, token) => fetch(`${API_URL}/manifests/${id}`, {
+    headers: headers(token),
+  }).then(handle),
+
+  createManifest: (data, token) => fetch(`${API_URL}/manifests`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data), // { codigo?, stops: [{tracking_code, shipment_id?}] }
+  }).then(handle),
+
+  /* Asignar chofer + vehículo (CREADO → ASIGNADO). */
+  assignManifest: (id, data, token) => fetch(`${API_URL}/manifests/${id}/assignment`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify(data), // { driver_id, vehicle_id }
+  }).then(handle),
+
+  /* Traspasos */
+  getTransferRequests: (token, status) => fetch(`${API_URL}/transfer-requests${status ? `?status=${status}` : ''}`, {
+    headers: headers(token),
+  }).then(handle),
+
+  /* Operaciones aprueba o rechaza (rechazo: manifiesto vuelve a EN_RUTA). */
+  resolveTransferRequest: (id, data, token) => fetch(`${API_URL}/transfer-requests/${id}/resolve`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data), // { approve, replacement_driver_id, replacement_vehicle_id, reject_reason }
+  }).then(handle),
+
+  /* ---- Manifiestos — Driver App (/driver/*) ---- */
+
+  getDriverManifests: (token) => fetch(`${API_URL}/driver/manifests`, {
+    headers: headers(token),
+  }).then(handle),
+
+  getDriverManifest: (id, token) => fetch(`${API_URL}/driver/manifests/${id}`, {
+    headers: headers(token),
+  }).then(handle),
+
+  /* Chofer acepta o rechaza la asignación (rechazo: ASIGNADO → CREADO). */
+  respondManifestAssignment: (id, accept, reason, token) => fetch(`${API_URL}/driver/manifests/${id}/assignment-response`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify({ accept, reason }),
+  }).then(handle),
+
+  startManifestRoute: (id, token) => fetch(`${API_URL}/driver/manifests/${id}/start`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
+  finalizeManifest: (id, token) => fetch(`${API_URL}/driver/manifests/${id}/finalize`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
+  /* POD: entrega exitosa por QR o ingreso manual (via: 'QR' | 'MANUAL').
+     `data` puede ser JSON o FormData con archivo `evidence`. */
+  registerManifestDelivery: (id, data, token) => {
+    const isForm = typeof FormData !== 'undefined' && data instanceof FormData
+    const h = { 'Accept': 'application/json' }
+    if (token) h['Authorization'] = `Bearer ${token}`
+    if (!isForm) h['Content-Type'] = 'application/json'
+    return fetch(`${API_URL}/driver/manifests/${id}/deliveries`, {
+      method: 'POST',
+      headers: h,
+      body: isForm ? data : JSON.stringify(data), // { detail_id?, code, via, evidence_url|foto_data_url, lat, lng, gps_accuracy, strict }
+    }).then(handle)
+  },
+
+  /* Incidencia de entrega: motivo obligatorio (NO_ENTREGADO). */
+  registerManifestFailure: (id, data, token) => fetch(`${API_URL}/driver/manifests/${id}/failures`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data), // { detail_id, reason, lat, lng }
+  }).then(handle),
+
+  /* Solicitud de traspaso (selección parcial vía detail_ids). */
+  createTransferRequest: (manifestId, data, token) => fetch(`${API_URL}/driver/manifests/${manifestId}/transfer-requests`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data), // { reason, detail_ids }
+  }).then(handle),
+
+  /* El chofer confirma que llegó la asistencia vial tras un rechazo. */
+  resolveManifestAssistance: (id, token) => fetch(`${API_URL}/driver/manifests/${id}/assistance-resolved`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
+  /* Handover físico (doble escaneo en punto de avería). */
+  getHandoverStatus: (derivadoId, token) => fetch(`${API_URL}/driver/manifests/${derivadoId}/handover`, {
+    headers: headers(token),
+  }).then(handle),
+
+  scanHandover: (derivadoId, data, token) => fetch(`${API_URL}/driver/manifests/${derivadoId}/handover/scan`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data), // { code, phase: 'out' | 'in', lat, lng }
+  }).then(handle),
+
+  closeHandover: (derivadoId, token) => fetch(`${API_URL}/driver/manifests/${derivadoId}/handover/close`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
 }
