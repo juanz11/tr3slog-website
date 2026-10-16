@@ -62,6 +62,54 @@ function FileInput({ label, placeholder, file, onChange, accept = 'image/*,.heic
   )
 }
 
+function DocRow({ doc, d, busy, rejecting, reason, onApprove, onRejectToggle, onReasonChange, onRejectConfirm, onRejectCancel }) {
+  const expired = doc.expires_at && new Date(doc.expires_at) < new Date()
+  const stStyle = doc.status === 'rejected' ? DOC_COLORS.rejected
+    : doc.status === 'approved' ? DOC_COLORS.ok
+    : DOC_COLORS.pending
+  const isImage = doc.file_path && !doc.file_path.toLowerCase().endsWith('.pdf')
+  return (
+    <div style={{ border: '1px solid #DCE6F5', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+      {isImage && (
+        <a href={`${MEDIA_URL}/${doc.file_path}`} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+          <img src={`${MEDIA_URL}/${doc.file_path}`} alt={(d.docTypes && d.docTypes[doc.type]) || doc.type} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block', background: '#EEF4FC' }} />
+        </a>
+      )}
+      <div style={{ padding: '12px 14px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700, fontSize: 13, color: '#001B45' }}>{(d.docTypes && d.docTypes[doc.type]) || doc.type}</span>
+          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100, background: stStyle.bg, color: stStyle.fg }}>{d.docStates[doc.status] || doc.status}</span>
+        </div>
+        {doc.number && <div style={{ fontSize: 12, color: '#10233F', marginTop: 4 }}>{doc.number}</div>}
+        {doc.expires_at && <div style={{ fontSize: 12, color: expired ? '#A93226' : '#6C82A6', marginTop: 2 }}>{d.expires} {doc.expires_at}</div>}
+        {doc.status === 'rejected' && doc.rejection_reason && (
+          <div style={{ marginTop: 6, fontSize: 12, color: '#A93226' }}>{doc.rejection_reason}</div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          {doc.file_path && !isImage && (
+            <a href={`${MEDIA_URL}/${doc.file_path}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 600, color: '#087CF0' }}>{d.viewFile}</a>
+          )}
+          {doc.status === 'pending' && (
+            <span style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+              <button type="button" disabled={busy} onClick={onApprove} style={{ padding: '6px 14px', border: 'none', borderRadius: 100, background: 'rgba(19,122,69,.12)', color: '#0F5F36', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{d.review.approve}</button>
+              <button type="button" disabled={busy} onClick={onRejectToggle} style={{ padding: '6px 14px', border: 'none', borderRadius: 100, background: 'rgba(192,57,43,.1)', color: '#A93226', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{d.review.reject}</button>
+            </span>
+          )}
+        </div>
+        {rejecting && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+            <textarea value={reason} onChange={(e) => onReasonChange(e.target.value)} placeholder={d.review.rejectPh} rows={2} style={{ width: '100%', padding: '8px 10px', border: '1.5px solid #DCE6F5', borderRadius: 7, background: '#fff', font: 'inherit', fontSize: 12, color: '#001B45', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" disabled={busy || !reason.trim()} onClick={onRejectConfirm} style={{ flex: 1, padding: '8px 12px', border: 'none', borderRadius: 7, background: '#A93226', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{d.review.confirmReject}</button>
+              <button type="button" onClick={onRejectCancel} style={{ padding: '8px 12px', border: '1.5px solid #DCE6F5', borderRadius: 7, background: '#fff', color: '#10233F', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>{d.review.cancel}</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function matchesFilter(driver, key) {
   if (key === 'all') return true
   if (key === 'active') return driver.st === 'active' || driver.st === 'route'
@@ -90,10 +138,12 @@ export default function Drivers({ app, lang, token }) {
   const [newId, setNewId] = React.useState('')
   const [clients, setClients] = React.useState([])
   const [selected, setSelected] = React.useState(null)
-  const [pendingDocs, setPendingDocs] = React.useState([])
   const [rejectingId, setRejectingId] = React.useState(null)
   const [rejectReason, setRejectReason] = React.useState('')
   const [reviewBusy, setReviewBusy] = React.useState(false)
+  const [editForm, setEditForm] = React.useState(null)
+  const [editBusy, setEditBusy] = React.useState(false)
+  const [editMsg, setEditMsg] = React.useState('')
 
   const fetchDrivers = React.useCallback(async (isPoll) => {
     if (!token) return
@@ -101,8 +151,6 @@ export default function Drivers({ app, lang, token }) {
     try {
       const data = await api.getDrivers(token)
       setDrivers(Array.isArray(data) ? data : data.data || [])
-      const pending = await api.getPendingDocuments(token).catch(() => [])
-      setPendingDocs(Array.isArray(pending) ? pending : [])
       setError('')
     } catch (e) {
       if (!isPoll) setError(e.message || d.error)
@@ -266,15 +314,182 @@ export default function Drivers({ app, lang, token }) {
     setReviewBusy(true)
     try {
       await api.reviewDocument(docId, { status, reason }, token)
-      setPendingDocs((prev) => prev.filter((x) => x.id !== docId))
       setRejectingId(null)
       setRejectReason('')
-      fetchDrivers(true)
+      const data = await api.getDrivers(token)
+      const list = Array.isArray(data) ? data : data.data || []
+      setDrivers(list)
+      setSelected((prev) => prev ? (list.find((x) => x.user_id === prev.user_id) || prev) : prev)
     } catch (e) {
       setError(e.message || 'Error')
     } finally {
       setReviewBusy(false)
     }
+  }
+
+  const openDriver = (driver) => {
+    setSelected(driver)
+    setEditForm({
+      name: driver.name || '',
+      email: driver.email || '',
+      phone: driver.phone === '—' ? '' : driver.phone || '',
+      vehicle: driver.v === '—' ? '' : driver.v || '',
+      hub: driver.hub === '—' ? '' : driver.hub || '',
+      shift: driver.shift === '—' ? '' : driver.shift || '',
+      available: driver.st === 'available',
+    })
+    setEditMsg('')
+    setRejectingId(null)
+    setRejectReason('')
+  }
+
+  const closeDriver = () => {
+    setSelected(null)
+    setEditForm(null)
+    setEditMsg('')
+  }
+
+  const saveDriver = async (e) => {
+    e.preventDefault()
+    if (editBusy || !selected) return
+    setEditBusy(true)
+    setEditMsg('')
+    try {
+      const updated = await api.updateDriver(selected.user_id, {
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone || null,
+        vehicle: editForm.vehicle || null,
+        hub: editForm.hub || null,
+        shift: editForm.shift || null,
+        available: editForm.available,
+      }, token)
+      setDrivers((prev) => prev.map((x) => (x.user_id === updated.user_id ? updated : x)))
+      setSelected(updated)
+      setEditMsg(d.saved)
+    } catch (err) {
+      setEditMsg(err.message || 'Error')
+    } finally {
+      setEditBusy(false)
+    }
+  }
+
+  const renderDoc = (doc) => (
+    <DocRow
+      key={doc.id}
+      doc={doc}
+      d={d}
+      busy={reviewBusy}
+      rejecting={rejectingId === doc.id}
+      reason={rejectReason}
+      onApprove={() => reviewDoc(doc.id, 'approved')}
+      onRejectToggle={() => { setRejectingId(rejectingId === doc.id ? null : doc.id); setRejectReason('') }}
+      onReasonChange={setRejectReason}
+      onRejectConfirm={() => reviewDoc(doc.id, 'rejected', rejectReason.trim())}
+      onRejectCancel={() => { setRejectingId(null); setRejectReason('') }}
+    />
+  )
+
+  if (selected && editForm) {
+    const sdocs = selected.documents || []
+    const photoDoc = sdocs.find((x) => x.type === 'photo' && x.file_path)
+    const rest = sdocs.filter((x) => x.type !== 'photo')
+    const vehs = selected.vehicles || []
+    const docStyle = DOC_COLORS[selected.doc] || DOC_COLORS.ok
+    const stStyle = STATUS_COLORS[selected.st] || STATUS_COLORS.available
+    const verifyLabel = (d.verifyStates && d.verifyStates[selected.verification_status]) || selected.verification_status
+    const inputSt = { width: '100%', padding: '12px 14px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#EEF4FC', font: 'inherit', fontSize: 14, color: '#001B45', outline: 'none', boxSizing: 'border-box' }
+    const labelSt = { display: 'flex', flexDirection: 'column', gap: 6 }
+    const spanSt = { fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }
+    return (
+      <div>
+        <div className="app-motif" aria-hidden="true">
+          <span style={{ background: '#D99A00' }}></span>
+          <span style={{ background: '#087CF0', width: 9 }}></span>
+        </div>
+        <div className="app-greeting">{d.greeting}</div>
+
+        <button onClick={closeDriver} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 14, fontWeight: 600, color: '#087CF0', marginBottom: 16 }}>{d.back}</button>
+
+        {error && (
+          <div style={{ padding: 14, background: 'rgba(192,57,43,.08)', color: '#A93226', borderRadius: 11, marginBottom: 20, fontSize: 14 }}>{error}</div>
+        )}
+
+        <div className="app-card" style={{ marginBottom: 20 }}>
+          <div style={{ padding: '22px 26px', display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+            {photoDoc ? (
+              <img src={`${MEDIA_URL}/${photoDoc.file_path}`} alt={selected.name} style={{ width: 88, height: 88, borderRadius: '50%', objectFit: 'cover', border: '3px solid #DCE6F5', flex: '0 0 auto' }} />
+            ) : (
+              <span style={{ width: 88, height: 88, borderRadius: '50%', background: '#001B45', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 28, flex: '0 0 auto' }}>{selected.n}</span>
+            )}
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <h1 className="app-h1" style={{ marginBottom: 6 }}>{selected.name || selected.n}</h1>
+              <div style={{ fontSize: 13, color: '#6C82A6', marginBottom: 10 }}>{selected.id} · {selected.email}</div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <span className="app-status" style={{ background: stStyle.bg, color: stStyle.fg }}>{d.statuses[selected.st]}</span>
+                <span className="app-status" style={{ background: docStyle.bg, color: docStyle.fg }}>{d.docStates[selected.doc]}</span>
+                {selected.verification_status && (
+                  <span className="app-status" style={{ background: selected.verification_status === 'verified' ? DOC_COLORS.ok.bg : selected.verification_status === 'rejected' ? DOC_COLORS.rejected.bg : DOC_COLORS.pending.bg, color: selected.verification_status === 'verified' ? DOC_COLORS.ok.fg : selected.verification_status === 'rejected' ? DOC_COLORS.rejected.fg : DOC_COLORS.pending.fg }}>{verifyLabel}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="app-card" style={{ marginBottom: 20 }}>
+          <div className="app-card-head"><span className="app-card-title">{d.dataTitle}</span></div>
+          <form onSubmit={saveDriver} style={{ padding: '18px 26px 24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '18px 22px' }}>
+              <label style={labelSt}><span style={spanSt}>{a.name}</span><input required value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} style={inputSt} /></label>
+              <label style={labelSt}><span style={spanSt}>{a.email}</span><input type="email" required value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} style={inputSt} /></label>
+              <label style={labelSt}><span style={spanSt}>{a.phone}</span><input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputSt} /></label>
+              <label style={labelSt}><span style={spanSt}>{d.cols[2]}</span><input value={editForm.vehicle} onChange={(e) => setEditForm({ ...editForm, vehicle: e.target.value })} style={inputSt} /></label>
+              <label style={labelSt}><span style={spanSt}>{d.cols[3]}</span><input value={editForm.hub} onChange={(e) => setEditForm({ ...editForm, hub: e.target.value })} style={inputSt} /></label>
+              <label style={labelSt}><span style={spanSt}>{d.cols[4]}</span><input value={editForm.shift} onChange={(e) => setEditForm({ ...editForm, shift: e.target.value })} placeholder={SHIFT_PLACEHOLDERS[lang] || SHIFT_PLACEHOLDERS.es} style={inputSt} /></label>
+              <label style={labelSt}>
+                <span style={spanSt}>{d.availability}</span>
+                <select value={editForm.available ? '1' : '0'} onChange={(e) => setEditForm({ ...editForm, available: e.target.value === '1' })} style={{ ...inputSt, cursor: 'pointer' }}>
+                  <option value="1">{d.statuses.available}</option>
+                  <option value="0">{d.statuses.offduty}</option>
+                </select>
+              </label>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 20 }}>
+              <button type="submit" disabled={editBusy} className="app-primary">{editBusy ? 'Procesando…' : d.save}</button>
+              {editMsg && <span style={{ fontSize: 13, color: editMsg === d.saved ? '#0F5F36' : '#A93226' }}>{editMsg}</span>}
+            </div>
+          </form>
+        </div>
+
+        {rest.length > 0 && (
+          <div className="app-card" style={{ marginBottom: 20 }}>
+            <div className="app-card-head"><span className="app-card-title">{d.docs.title}</span></div>
+            <div style={{ padding: '18px 26px 24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16 }}>
+              {rest.map(renderDoc)}
+            </div>
+          </div>
+        )}
+
+        {vehs.length > 0 && (
+          <div className="app-card" style={{ marginBottom: 20 }}>
+            <div className="app-card-head"><span className="app-card-title">{d.vehicles.title}</span></div>
+            <div style={{ padding: '18px 26px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {vehs.map((v, i) => (
+                <div key={i} style={{ border: '1px solid #DCE6F5', borderRadius: 12, padding: 18, background: '#F6F9FD' }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#001B45' }}>{[v.label, v.plate].filter(Boolean).join(' · ')}</div>
+                  {v.cargo_capacity && <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>{d.vehicles.capacity}: {v.cargo_capacity}</div>}
+                  {(v.documents || []).length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16, marginTop: 14 }}>
+                      {v.documents.map(renderDoc)}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -436,51 +651,6 @@ export default function Drivers({ app, lang, token }) {
         </form>
       )}
 
-      <div className="app-card" style={{ marginBottom: 20 }}>
-        <div className="app-card-head" style={{ gap: 12 }}>
-          <span className="app-card-title">{d.review.title}</span>
-          {pendingDocs.length > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: 'rgba(8,124,240,.1)', color: '#0768C9' }}>{pendingDocs.length}</span>
-          )}
-        </div>
-        <div style={{ padding: '16px 22px 20px' }}>
-          <p style={{ margin: '0 0 14px', fontSize: 13, color: '#6C82A6' }}>{d.review.sub}</p>
-          {pendingDocs.length === 0 ? (
-            <div style={{ padding: '14px 0', textAlign: 'center', color: '#6C82A6', fontSize: 14 }}>{d.review.empty}</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {pendingDocs.map((doc) => (
-                <div key={doc.id} style={{ border: '1px solid #DCE6F5', borderRadius: 10, padding: '12px 14px', background: '#F6F9FD' }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: '#001B45' }}>
-                      {(d.docTypes && d.docTypes[doc.type]) || doc.type}
-                      {doc.subject === 'vehicle' && doc.vehicle ? ` · ${d.review.vehicleDoc}: ${doc.vehicle}` : ''}
-                    </span>
-                    <span style={{ fontSize: 12, color: '#10233F' }}>{doc.driver_name} {doc.driver_id ? `(${doc.driver_id})` : ''}</span>
-                    {doc.number && <span style={{ fontSize: 12, color: '#6C82A6' }}>{doc.number}</span>}
-                    {doc.expires_at && <span style={{ fontSize: 12, color: '#6C82A6' }}>{d.expires} {doc.expires_at}</span>}
-                    {doc.file_path && (
-                      <a href={`${MEDIA_URL}/${doc.file_path}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 600, color: '#087CF0' }}>{d.viewFile}</a>
-                    )}
-                    <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-                      <button type="button" disabled={reviewBusy} onClick={() => reviewDoc(doc.id, 'approved')} style={{ padding: '7px 14px', border: 'none', borderRadius: 100, background: 'rgba(19,122,69,.12)', color: '#0F5F36', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{d.review.approve}</button>
-                      <button type="button" disabled={reviewBusy} onClick={() => { setRejectingId(rejectingId === doc.id ? null : doc.id); setRejectReason('') }} style={{ padding: '7px 14px', border: 'none', borderRadius: 100, background: 'rgba(192,57,43,.1)', color: '#A93226', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{d.review.reject}</button>
-                    </span>
-                  </div>
-                  {rejectingId === doc.id && (
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                      <input type="text" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder={d.review.rejectPh} style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #DCE6F5', borderRadius: 8, background: '#fff', font: 'inherit', fontSize: 13, color: '#001B45', outline: 'none' }} />
-                      <button type="button" disabled={reviewBusy || !rejectReason.trim()} onClick={() => reviewDoc(doc.id, 'rejected', rejectReason.trim())} style={{ padding: '9px 16px', border: 'none', borderRadius: 8, background: '#A93226', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{d.review.confirmReject}</button>
-                      <button type="button" onClick={() => { setRejectingId(null); setRejectReason('') }} style={{ padding: '9px 16px', border: '1.5px solid #DCE6F5', borderRadius: 8, background: '#fff', color: '#10233F', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{d.review.cancel}</button>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
       <div className="app-card">
         <div className="app-card-head" style={{ flexWrap: 'wrap', gap: 12 }}>
           <span className="app-card-title">{d.listTitle}</span>
@@ -543,7 +713,7 @@ export default function Drivers({ app, lang, token }) {
                   <span className="app-status" style={{ background: docStyle.bg, color: docStyle.fg }}>{d.docStates[driver.doc]}</span>
                   <span className="app-status" style={{ background: stStyle.bg, color: stStyle.fg }}>{d.statuses[driver.st]}</span>
                   <span>
-                    <button onClick={() => setSelected(driver)} style={{ justifySelf: 'end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>{d.viewProfile}</button>
+                    <button onClick={() => openDriver(driver)} style={{ justifySelf: 'end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>{d.viewProfile}</button>
                   </span>
                 </div>
               )
@@ -553,91 +723,6 @@ export default function Drivers({ app, lang, token }) {
 
         <Pagination pager={pager} labels={app.pager} />
       </div>
-
-      {selected && (
-        <div onClick={() => setSelected(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(16,35,63,.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', padding: 26, boxShadow: '0 20px 60px rgba(0,27,69,.18)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <h2 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 20, margin: 0, color: '#001B45' }}>{selected.n}</h2>
-              <button onClick={() => setSelected(null)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 20, color: '#6C82A6' }}>×</button>
-            </div>
-            <div style={{ display: 'grid', gap: 14 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[1]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.id}</div></div>
-                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.userId}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.user_id || '—'}</div></div>
-              </div>
-              <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{a.name}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.name || selected.n}</div></div>
-              <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{a.email}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.email}</div></div>
-              <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{a.phone}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.phone}</div></div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[2]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.v}</div></div>
-                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[3]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.hub}</div></div>
-              </div>
-              <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[4]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{selected.shift}</div></div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[6]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{d.statuses[selected.st]}</div></div>
-                <div><span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.cols[5]}</span><div style={{ fontSize: 14, color: '#001B45' }}>{d.docStates[selected.doc]}</div></div>
-              </div>
-              {(() => {
-                const sdocs = selected.documents || []
-                const photoDoc = sdocs.find((x) => x.type === 'photo' && x.file_path)
-                const rest = sdocs.filter((x) => x.type !== 'photo')
-                const vehs = selected.vehicles || []
-                if (!photoDoc && !rest.length && !vehs.length) return null
-                const DocRow = ({ doc }) => {
-                  const expired = doc.expires_at && new Date(doc.expires_at) < new Date()
-                  const stStyle = doc.status === 'rejected' ? DOC_COLORS.rejected
-                    : doc.status === 'approved' ? DOC_COLORS.ok
-                    : DOC_COLORS.pending
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid #DCE6F5', borderRadius: 8, fontSize: 12 }}>
-                      <span style={{ fontWeight: 600, color: '#001B45' }}>{(d.docTypes && d.docTypes[doc.type]) || doc.type}</span>
-                      {doc.number && <span style={{ color: '#10233F' }}>{doc.number}</span>}
-                      {doc.expires_at && <span style={{ color: expired ? '#A93226' : '#6C82A6' }}>{d.expires} {doc.expires_at}</span>}
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100, background: stStyle.bg, color: stStyle.fg }}>{d.docStates[doc.status] || doc.status}</span>
-                      {doc.status === 'rejected' && doc.rejection_reason && <span style={{ color: '#A93226' }}>{doc.rejection_reason}</span>}
-                      {doc.file_path && <a href={`${MEDIA_URL}/${doc.file_path}`} target="_blank" rel="noreferrer" style={{ marginLeft: 'auto', color: '#087CF0', fontWeight: 600 }}>{d.viewFile}</a>}
-                    </div>
-                  )
-                }
-                return (
-                  <>
-                    {photoDoc && (
-                      <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <img src={`${MEDIA_URL}/${photoDoc.file_path}`} alt={d.docTypes.photo} style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', border: '2px solid #DCE6F5' }} />
-                      </div>
-                    )}
-                    {rest.length > 0 && (
-                      <div>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.docs.title}</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>{rest.map((doc, j) => <DocRow key={j} doc={doc} />)}</div>
-                      </div>
-                    )}
-                    {vehs.length > 0 && (
-                      <div>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{d.vehicles.title}</span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6 }}>
-                          {vehs.map((v, i) => (
-                            <div key={i} style={{ border: '1px solid #DCE6F5', borderRadius: 10, padding: 12 }}>
-                              <div style={{ fontWeight: 700, fontSize: 13, color: '#001B45' }}>{[v.label, v.plate].filter(Boolean).join(' · ')}</div>
-                              {v.cargo_capacity && <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>{d.vehicles.capacity}: {v.cargo_capacity}</div>}
-                              {(v.documents || []).length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-                                  {v.documents.map((doc, j) => <DocRow key={j} doc={doc} />)}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', border: '1px dashed #DCE6F5', background: '#EEF4FC', borderRadius: 14, padding: '16px 18px', marginTop: 16 }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0768C9" strokeWidth="1.8" style={{ flex: '0 0 auto', marginTop: 1 }}>

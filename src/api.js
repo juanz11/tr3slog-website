@@ -123,6 +123,12 @@ export const api = {
     body: JSON.stringify(data),
   }).then(handle),
 
+  updateDriver: (userId, data, token) => fetch(`${API_URL}/drivers/${userId}`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
   createDriver: (formData, token) => {
     const h = { 'Accept': 'application/json' }
     if (token) h['Authorization'] = `Bearer ${token}`
