@@ -26,6 +26,7 @@ const NAV_ICONS = {
   addrchg: 'M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z|M9 10h6M13 8l2 2-2 2',
   notify: 'M6 16v-5a6 6 0 0112 0v5l2 2H4z|M10 20a2 2 0 004 0',
   manifest: 'M6 3h12v18H6z|M9 7h6M9 11h6M9 15h3|M15 15h2v2h-2z',
+  hub: 'M3 21V8l9-5 9 5v13|M3 21h18|M9 21v-6h6v6|M7 11h2M15 11h2',
   breakdown: 'M3 7h11v9H3z|M14 10h4l3 3v3h-7|circle:7,18,1.8|circle:17,18,1.8',
   handover: 'M4 8h13l-3-3|M20 16H7l3 3',
   mantransfer: 'M5 4h9l4 4v12H5z|M14 4v4h4|M8 13h7l-2-2M15 17H8l2 2',

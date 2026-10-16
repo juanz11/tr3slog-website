@@ -608,7 +608,7 @@ export function renderBlock(def, ctx) {
     case 'lines':
       return <LinesBlock key={ctx.key} data={data} styles={ctx.geo || {}} />;
     case 'manifest':
-      return <ManifestBlock key={ctx.key} data={data} onToast={ctx.toast} />;
+      return <ManifestBlock key={ctx.key} data={data} token={ctx.token} lang={ctx.lang} onToast={ctx.toast} />;
     case 'optimizer':
       return <OptimizerBlock key={ctx.key} data={data} common={ctx.common} view={ctx.view} lang={ctx.lang} onToast={ctx.toast} />;
     case 'note':

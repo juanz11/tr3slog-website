@@ -17,7 +17,8 @@ function headers(token) {
 async function handle(res) {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
-    throw new Error(data.message || Object.values(data.errors || {}).flat().join(', ') || 'Error del servidor')
+    const details = Object.values(data.errors || {}).flat().join(' · ')
+    throw new Error(details || data.message || 'Error del servidor')
   }
   return res.status === 204 ? null : res.json()
 }
@@ -110,6 +111,16 @@ export const api = {
 
   getPermissions: (token) => fetch(`${API_URL}/permissions`, {
     headers: headers(token),
+  }).then(handle),
+
+  getPendingDocuments: (token) => fetch(`${API_URL}/documents/pending`, {
+    headers: headers(token),
+  }).then(handle),
+
+  reviewDocument: (id, data, token) => fetch(`${API_URL}/documents/${id}/review`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
   }).then(handle),
 
   createDriver: (formData, token) => {
@@ -350,5 +361,49 @@ export const api = {
   closeHandover: (derivadoId, token) => fetch(`${API_URL}/driver/manifests/${derivadoId}/handover/close`, {
     method: 'POST',
     headers: headers(token),
+  }).then(handle),
+
+  /* ---- Hub / almacén (DCU-08) ---- */
+
+  getHubManifests: (token) => fetch(`${API_URL}/hub/manifests`, {
+    headers: headers(token),
+  }).then(handle),
+
+  /* Manifiesto + conciliación + escaneos. */
+  getHubManifest: (id, token) => fetch(`${API_URL}/hub/manifests/${id}`, {
+    headers: headers(token),
+  }).then(handle),
+
+  /* Escaneo de entrada (in) o salida (out) por paquete. */
+  scanHubManifest: (id, data, token) => fetch(`${API_URL}/hub/manifests/${id}/scan`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data), // { codigo, phase: 'in' | 'out', notes? }
+  }).then(handle),
+
+  /* Marca la recepción del manifiesto en el hub. */
+  receiveHubManifest: (id, token) => fetch(`${API_URL}/hub/manifests/${id}/receive`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
+  /* Despacho con escaneo de salida — bloqueado por diferencias sin ajuste. */
+  dispatchHubManifest: (id, token) => fetch(`${API_URL}/hub/manifests/${id}/dispatch`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
+  /* Ajuste de inventario (solo anexado). type: FALTANTE|SOBRANTE|AVERIADO|OTRO */
+  createHubAdjustment: (id, data, token) => fetch(`${API_URL}/hub/manifests/${id}/adjustments`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data), // { codigo, type, reason }
+  }).then(handle),
+
+  /* Supervisor aprueba/rechaza el ajuste pendiente. */
+  resolveHubAdjustment: (id, data, token) => fetch(`${API_URL}/hub/adjustments/${id}/resolve`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data), // { approve, reason? }
   }).then(handle),
 }

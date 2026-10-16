@@ -10,7 +10,7 @@ const labels = {
   'zh-CN': 'ZH'
 }
 
-export default function AdvancedOpsPortalEntry({ lang, setLang, user, onLogout }) {
+export default function AdvancedOpsPortalEntry({ lang, setLang, user, token, onLogout }) {
   const [ready, setReady] = React.useState(false)
 
   React.useEffect(() => {
@@ -48,6 +48,7 @@ export default function AdvancedOpsPortalEntry({ lang, setLang, user, onLogout }
       onLogout={onLogout}
       onLangChange={setLang}
       account={account}
+      token={token}
     />
   )
 }

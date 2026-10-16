@@ -1,67 +1,85 @@
 import React from 'react'
+import { api } from '../api'
 
-const DEFAULT = {
+const T = {
   title: 'Manifiestos de ruta',
-  subtitle: 'Generar el manifiesto de cada ruta aceptada, entregarlo en digital a la app del chofer e imprimir la copia física con códigos QR.',
-  stats: [
-    { k: 'Rutas sin manifiesto', v: '——', d: 'Con órdenes aceptadas' },
-    { k: 'Emitidos hoy', v: '——', d: 'Referencia' },
-    { k: 'Reimpresiones', v: '——', d: 'Registradas en auditoría' },
-    { k: 'Versiones reemplazadas', v: '——', d: 'Hoy' },
-  ],
-  brand: 'TR3SLOG',
+  subtitle: 'Crear manifiestos, asignar chofer y vehículo, y seguir el estado real de cada bulto.',
   manifestTitle: 'Manifiesto de carga',
   manifestLabel: 'Manifiesto',
-  routeLabel: 'Ruta',
   driverLabel: 'Chofer',
   vehicleLabel: 'Vehículo',
-  hubLabel: 'Hub',
-  dateLabel: 'Fecha',
-  badge: 'Sin generar',
-  generate: 'Generar manifiesto',
-  send: 'Emitir y enviar a la app',
+  createdLabel: 'Creado',
+  startedLabel: 'Inicio de ruta',
+  closedLabel: 'Cierre',
+  packagesLabel: 'Bultos',
+  progressLabel: 'Progreso',
+  statusLabel: 'Estado',
+  newManifest: 'Nuevo manifiesto',
+  assign: 'Asignar chofer y vehículo',
+  assignShort: 'Asignar',
+  create: 'Crear',
+  cancel: 'Cancelar',
   print: 'Imprimir',
   tabDigital: 'Vista digital',
   tabPrinted: 'Vista impresa',
-  draftNote: 'Borrador. Solo entran las órdenes que el chofer ya aceptó.',
-  tableHeaders: ['#', 'Tracking ID', 'QR', 'Destino', 'Ventana', 'Piezas', 'Escaneo de carga'],
-  rows: [
-    { n: 1, tracking: 'TR3-260729-PRSJ-00131', dest: 'Guaynabo', window: '09:00–12:00', pieces: 2, status: 'Por cargar' },
-    { n: 2, tracking: 'TR3-260729-PRSJ-00136', dest: 'San Juan', window: '09:00–12:00', pieces: 1, status: 'Por cargar' },
-    { n: 3, tracking: 'TR3-260729-PRSJ-00139', dest: 'Bayamón', window: '10:00–13:00', pieces: 3, status: 'Por cargar' },
-    { n: 4, tracking: 'TR3-260729-PRSJ-00142', dest: 'Bayamón', window: '13:00–16:00', pieces: 3, status: 'Por cargar' },
-    { n: 5, tracking: 'TR3-260729-PRSJ-00147', dest: 'Bayamón', window: '13:00–16:00', pieces: 1, status: 'Por cargar' },
-    { n: 6, tracking: 'TR3-260729-PRSJ-00153', dest: 'Guaynabo', window: '14:00–17:00', pieces: 2, status: 'Por cargar' },
-  ],
-  manifestId: 'MAN-RT-2607-A-v1',
-  route: 'RT-2607-A',
-  driver: 'E. Rivera',
-  vehicle: 'Van 04',
-  hub: 'Hub San Juan',
-  date: '29 jul 2026 · 07:40',
-  qrDemo: 'QR de demostración · no escaneable. Representa el tracking ID; el sistema real lo genera al emitir.',
+  loading: 'Cargando manifiestos…',
+  empty: 'No hay manifiestos. Cree el primero con "Nuevo manifiesto".',
+  codeHint: 'Código (opcional, se genera automático)',
+  stopsHint: 'Un tracking por línea',
+  stopsRequired: 'Agregue al menos un código de seguimiento.',
+  pickBoth: 'Seleccione chofer y vehículo.',
+  driverPh: 'Chofer…',
+  vehiclePh: 'Vehículo…',
+  created: c => `Manifiesto ${c} creado.`,
+  assigned: 'Manifiesto asignado al chofer.',
+  derivedBanner: id => `Manifiesto derivado del traspaso del manifiesto #${id}.`,
+  assistanceBanner: 'Aguardando asistencia vial: el traspaso fue rechazado y el manifiesto volvió a ruta.',
+  detailCols: ['#', 'Tracking', 'QR', 'Estado', 'Hora visita', 'Motivo / GPS'],
+  requestsTitle: 'Solicitudes de traspaso',
+  derivedTitle: 'Manifiestos derivados',
+  pkgUnit: 'bultos',
+  qrDemo: 'QR representa el tracking ID real registrado en el manifiesto.',
   qrCopy: 'Copia impresa válida solo para la versión indicada en el QR.',
-  stepsTitle: 'Del inicio al cierre',
-  steps: ['Chofer acepta', 'Generar manifiesto', 'Revisar paradas', 'Emitir digital e imprimir', 'Carga con escaneo', 'En ruta', 'Cierre y archivo'],
-  advance: 'Avanzar',
-  digitalTitle: 'Manifiesto digital',
-  digitalRows: [
-    { k: 'Dónde se ve', v: 'App del chofer y Operaciones' },
-    { k: 'Se actualiza', v: 'Con cada versión emitida' },
-    { k: 'Escaneo', v: 'QR o tracking ID, validado contra la versión vigente' },
-    { k: 'Fuente de verdad', v: 'Sí' },
-  ],
-  printedTitle: 'Manifiesto impreso',
-  printedRows: [
-    { k: 'Para qué', v: 'Respaldo sin señal y firma física de salida' },
-    { k: 'Contiene', v: 'QR del manifiesto y QR por paquete' },
-    { k: 'Versión', v: 'Va en el QR; una copia vieja se detecta al escanear' },
-    { k: 'Reimpresión', v: 'Queda registrada en la auditoría' },
-  ],
-  versionsTitle: 'Versiones',
-  versionsEmpty: 'No hay versiones registradas.',
-  note: 'El manifiesto solo incluye órdenes aceptadas. Ninguna versión se borra: una nueva emisión reemplaza a la anterior y ambas quedan en la auditoría.',
+  statsTotal: { k: 'Manifiestos', d: 'Todos los estados' },
+  statsActive: { k: 'En ruta / asignados', d: 'Operación activa' },
+  statsPending: { k: 'Bultos pendientes', d: 'Del manifiesto seleccionado' },
+  statsIssues: { k: 'Con incidencias', d: 'Fallos o traspasos' },
 }
+
+const ESTADOS = {
+  CREADO: 'Creado',
+  ASIGNADO: 'Asignado',
+  EN_RUTA: 'En ruta',
+  EN_SOLICITUD_TRASPASO: 'Traspaso solicitado',
+  COMPLETADO: 'Completado',
+  COMPLETADO_CON_INCIDENCIAS: 'Completado con incidencias',
+  TRANSFERIDO: 'Transferido',
+}
+const DETALLES = {
+  PENDIENTE: 'Pendiente',
+  ENTREGADO: 'Entregado',
+  NO_ENTREGADO: 'No entregado',
+  TRANSFERIDO: 'Transferido',
+}
+const SOLICITUD = { PENDIENTE: 'Pendiente', APROBADA: 'Aprobada', RECHAZADA: 'Rechazada' }
+
+const TONE = {
+  neutral: { bg: '#EEF4FC', fg: '#10233F' },
+  info: { bg: 'rgba(8,124,240,.1)', fg: '#0768C9' },
+  ok: { bg: 'rgba(19,122,69,.12)', fg: '#0F5F36' },
+  warn: { bg: 'rgba(217,154,0,.16)', fg: '#6C5220' },
+  bad: { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
+}
+const MANIFEST_TONE = {
+  CREADO: 'neutral', ASIGNADO: 'info', EN_RUTA: 'info',
+  EN_SOLICITUD_TRASPASO: 'warn', COMPLETADO: 'ok',
+  COMPLETADO_CON_INCIDENCIAS: 'warn', TRANSFERIDO: 'neutral',
+}
+const DETAIL_TONE = { PENDIENTE: 'warn', ENTREGADO: 'ok', NO_ENTREGADO: 'bad', TRANSFERIDO: 'neutral' }
+const REQ_TONE = { PENDIENTE: 'warn', APROBADA: 'ok', RECHAZADA: 'bad' }
+
+const fmtDT = iso =>
+  iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '—'
 
 function qrPath(value) {
   const N = 29
@@ -121,10 +139,142 @@ function Qr({ value, size = 44, label }) {
   )
 }
 
-export default function Manifest({ app }) {
-  const t = app?.manifest || DEFAULT
+const chip = (label, tone) => (
+  <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, background: tone.bg, color: tone.fg }}>
+    {label}
+  </span>
+)
+
+const btn = (label, primary, off, run) => (
+  <button type="button" aria-disabled={off} onClick={run}
+    style={{ minHeight: 44, padding: '11px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600, cursor: off ? 'not-allowed' : 'pointer', background: primary ? '#087CF0' : '#fff', color: primary ? '#fff' : '#001B45', border: `1.5px solid ${primary ? '#087CF0' : '#DCE6F5'}`, opacity: off ? 0.45 : 1, font: 'inherit' }}>
+    {label}
+  </button>
+)
+
+const inputStyle = { padding: '10px 12px', borderRadius: 9, border: '1.5px solid #DCE6F5', font: 'inherit', fontSize: 13, background: '#fff', color: '#10233F', minWidth: 0 }
+
+export default function Manifest({ token }) {
   const [view, setView] = React.useState('digital')
-  const [step, setStep] = React.useState(0)
+  const [list, setList] = React.useState([])
+  const [sel, setSel] = React.useState(null)
+  const [loading, setLoading] = React.useState(true)
+  const [err, setErr] = React.useState('')
+  const [toast, setToast] = React.useState('')
+  const [drivers, setDrivers] = React.useState(null)
+  const [assign, setAssign] = React.useState({ open: false, driverId: '', vehicleId: '', busy: false })
+  const [create, setCreate] = React.useState({ open: false, code: '', stops: '', busy: false })
+  const toastRef = React.useRef(null)
+
+  const notify = (m) => {
+    setToast(m)
+    clearTimeout(toastRef.current)
+    toastRef.current = setTimeout(() => setToast(''), 4500)
+  }
+  React.useEffect(() => () => clearTimeout(toastRef.current), [])
+
+  const load = React.useCallback(async (keepSel = true) => {
+    try {
+      const rows = await api.getManifests(token)
+      const arr = Array.isArray(rows) ? rows : []
+      setList(arr)
+      setSel(prev => (keepSel && arr.some(r => r.id === prev)) ? prev : (arr[0] ? arr[0].id : null))
+      setErr('')
+    } catch (e) {
+      setErr(e.message || 'Error')
+    } finally {
+      setLoading(false)
+    }
+  }, [token])
+
+  React.useEffect(() => { if (token) load(); else setLoading(false) }, [token, load])
+
+  const loadDrivers = async () => {
+    if (drivers) return
+    try {
+      const rows = await api.getDrivers(token)
+      setDrivers(Array.isArray(rows) ? rows : (rows && rows.data) || [])
+    } catch (e) {
+      notify(e.message)
+      setDrivers([])
+    }
+  }
+
+  const m = list.find(x => x.id === sel) || null
+  const driverName = (id) => {
+    const d = (drivers || []).find(x => x.user_id === id)
+    return d ? d.name : (id ? `#${id}` : '—')
+  }
+  const vehicleName = (id) => {
+    const all = (drivers || []).flatMap(d => d.vehicles || [])
+    const v = all.find(x => x.id === id)
+    return v ? `${v.label || ''}${v.plate ? ' · ' + v.plate : ''}` : (id ? `#${id}` : '—')
+  }
+  const selectedDriver = (drivers || []).find(d => String(d.user_id) === String(assign.driverId))
+  const pendingCount = m ? (m.detalles || []).filter(d => d.estado === 'PENDIENTE').length : 0
+  const issuesCount = list.filter(x =>
+    x.estado === 'COMPLETADO_CON_INCIDENCIAS' ||
+    x.estado === 'EN_SOLICITUD_TRASPASO' ||
+    (x.detalles || []).some(d => d.estado === 'NO_ENTREGADO')
+  ).length
+  const stats = [
+    { ...T.statsTotal, v: String(list.length) },
+    { ...T.statsActive, v: String(list.filter(x => ['ASIGNADO', 'EN_RUTA', 'EN_SOLICITUD_TRASPASO'].includes(x.estado)).length) },
+    { ...T.statsPending, v: String(pendingCount) },
+    { ...T.statsIssues, v: String(issuesCount) },
+  ]
+
+  const doCreate = async () => {
+    const stops = create.stops.split('\n').map(s => s.trim()).filter(Boolean).map(code => ({ tracking_code: code }))
+    if (!stops.length) { notify(T.stopsRequired); return }
+    setCreate(c => ({ ...c, busy: true }))
+    try {
+      const created = await api.createManifest({ codigo: create.code.trim() || undefined, stops }, token)
+      notify(T.created(created.codigo))
+      setCreate({ open: false, code: '', stops: '', busy: false })
+      await load(false)
+      setSel(created.id)
+    } catch (e) { notify(e.message) }
+    setCreate(c => ({ ...c, busy: false }))
+  }
+
+  const doAssign = async () => {
+    if (!assign.driverId || !assign.vehicleId) { notify(T.pickBoth); return }
+    setAssign(a => ({ ...a, busy: true }))
+    try {
+      await api.assignManifest(m.id, { driver_id: Number(assign.driverId), vehicle_id: Number(assign.vehicleId) }, token)
+      notify(T.assigned)
+      setAssign({ open: false, driverId: '', vehicleId: '', busy: false })
+      await load()
+    } catch (e) { notify(e.message) }
+    setAssign(a => ({ ...a, busy: false }))
+  }
+
+  const printManifest = () => {
+    if (!m) return
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+    const qrSvgString = (text, size) =>
+      '<svg width="' + size + '" height="' + size + '" viewBox="0 0 29 29" shape-rendering="crispEdges"><rect width="29" height="29" fill="#fff"/><path fill="#001B45" d="' + qrPath(text) + '"/></svg>'
+    const meta = [
+      [T.manifestLabel, m.codigo],
+      [T.statusLabel, ESTADOS[m.estado] || m.estado],
+      [T.driverLabel, driverName(m.choferId)],
+      [T.vehicleLabel, vehicleName(m.vehiculoId)],
+      [T.createdLabel, fmtDT(m.fechaCreacion)],
+      [T.startedLabel, fmtDT(m.fechaInicioRuta)],
+    ].map(([k, v]) => '<div><small>' + esc(k) + '</small><b>' + esc(v) + '</b></div>').join('')
+    const head = T.detailCols.map(c => '<th>' + esc(c) + '</th>').join('')
+    const body = (m.detalles || []).map((d, i) =>
+      '<tr><td>' + (d.secuenciaVisita || i + 1) + '</td><td class="m">' + esc(d.codigoSeguimiento) + '</td><td>' + qrSvgString(d.codigoSeguimiento, 54) + '</td><td>' + esc(DETALLES[d.estado] || d.estado) + '</td><td>' + esc(fmtDT(d.horaVisita)) + '</td><td>' + esc(d.motivoFallo || '') + '</td></tr>'
+    ).join('')
+    const doc = '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(m.codigo) + '</title><style>body{font-family:Inter,Arial,sans-serif;color:#10233F;margin:28px}h1{font:800 22px Montserrat,Arial;color:#001B45;margin:2px 0 14px}.top{display:flex;gap:24px;justify-content:space-between}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 18px}small{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#6C82A6}b{font-size:13px}table{width:100%;border-collapse:collapse;margin-top:18px;font-size:12px}th{background:#001B45;color:#fff;text-align:left;padding:7px 8px;font-size:10px;text-transform:uppercase}td{border-top:1px solid #DCE6F5;padding:6px 8px;vertical-align:middle}.m{font-family:Menlo,monospace}.f{margin-top:18px;font-size:10px;color:#6C82A6;display:flex;justify-content:space-between}</style></head><body>'
+      + '<div class="top"><div><b style="letter-spacing:.08em;color:#001B45">TR3SLOG</b><h1>' + esc(T.manifestTitle) + '</h1><div class="g">' + meta + '</div></div><div style="text-align:center">' + qrSvgString(m.codigo, 120) + '<div class="m" style="font-size:10px">' + esc(m.codigo) + '</div></div></div>'
+      + '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table><div class="f"><span>' + esc(T.qrDemo) + '</span><span>' + esc(T.qrCopy) + '</span></div></body></html>'
+    const w = window.open('', '_blank')
+    if (!w) { notify('Popup bloqueado'); return }
+    w.document.write(doc); w.document.close()
+    setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 350)
+  }
 
   return (
     <div style={{ maxWidth: 1220, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -134,20 +284,16 @@ export default function Manifest({ app }) {
           <span style={{ width: 9, height: 5, background: '#087CF0', transform: 'skewX(-24deg)' }} />
         </div>
         <h1 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 800, fontSize: 30, letterSpacing: '-.02em', margin: '0 0 8px', textWrap: 'pretty', color: '#001B45' }}>
-          {t.title}
+          {T.title}
         </h1>
         <p style={{ margin: 0, fontSize: 15, color: '#10233F', maxWidth: '70ch', lineHeight: 1.6, textWrap: 'pretty' }}>
-          {t.subtitle}
+          {T.subtitle}
         </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-        {t.stats.map((s, i) => (
+        {stats.map((s, i) => (
           <div key={i} style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 14, padding: 20 }}>
-            <div aria-hidden="true" style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
-              <span style={{ width: 20, height: 4, background: '#D99A00', transform: 'skewX(-24deg)' }} />
-              <span style={{ width: 8, height: 4, background: '#087CF0', transform: 'skewX(-24deg)' }} />
-            </div>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#6C82A6', lineHeight: 1.4, minHeight: 34 }}>{s.k}</div>
             <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 800, fontSize: 28, letterSpacing: '-.02em', color: '#001B45', margin: '6px 0 4px' }}>{s.v}</div>
             <div style={{ fontSize: 11, color: '#8B9DBA', marginTop: 10, paddingTop: 10, borderTop: '1px solid #E3EBF7' }}>{s.d}</div>
@@ -158,173 +304,168 @@ export default function Manifest({ app }) {
       <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, overflow: 'hidden' }}>
         <div style={{ padding: '16px 22px', borderBottom: '1px solid #DCE6F5', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
           <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-            {t.manifestLabel} · {t.route}
+            {T.manifestLabel}
           </div>
-          <span style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: '#EEF4FC', color: '#10233F' }}>
-            {t.badge}
-          </span>
+          <select value={sel ?? ''} onChange={e => setSel(Number(e.target.value))} style={{ ...inputStyle, maxWidth: 260 }} aria-label={T.manifestLabel}>
+            {list.map(x => <option key={x.id} value={x.id}>{x.codigo}</option>)}
+            {!list.length && <option value="">—</option>}
+          </select>
+          {m && chip(ESTADOS[m.estado] || m.estado, TONE[MANIFEST_TONE[m.estado]] || TONE.neutral)}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button style={{ minHeight: 44, padding: '11px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#087CF0', color: '#fff', border: '1.5px solid #087CF0', opacity: 1 }}>
-              {t.generate}
-            </button>
-            <button disabled style={{ minHeight: 44, padding: '11px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600, cursor: 'not-allowed', background: '#fff', color: '#001B45', border: '1.5px solid #DCE6F5', opacity: 0.45 }}>
-              {t.send}
-            </button>
-            <button disabled style={{ minHeight: 44, padding: '11px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600, cursor: 'not-allowed', background: '#fff', color: '#001B45', border: '1.5px solid #DCE6F5', opacity: 0.45 }}>
-              {t.print}
-            </button>
+            {btn(T.newManifest, false, false, () => setCreate(c => ({ ...c, open: !c.open })))}
+            {btn(T.assign, true, !m || m.estado !== 'CREADO', () => { setAssign(a => ({ ...a, open: !a.open })); loadDrivers() })}
+            {btn(T.print, false, !m, printManifest)}
           </div>
         </div>
 
+        {create.open && (
+          <div style={{ padding: '14px 22px', borderBottom: '1px solid #E3EBF7', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <input style={inputStyle} placeholder={T.codeHint} value={create.code} onChange={e => setCreate(c => ({ ...c, code: e.target.value }))} />
+            <textarea style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }} placeholder={T.stopsHint} value={create.stops} onChange={e => setCreate(c => ({ ...c, stops: e.target.value }))} />
+            <div style={{ display: 'flex', gap: 10 }}>
+              {btn(T.create, true, create.busy, doCreate)}
+              {btn(T.cancel, false, false, () => setCreate({ open: false, code: '', stops: '', busy: false }))}
+            </div>
+          </div>
+        )}
+
+        {assign.open && m && m.estado === 'CREADO' && (
+          <div style={{ padding: '14px 22px', borderBottom: '1px solid #E3EBF7', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+            <select style={{ ...inputStyle, flex: '1 1 200px' }} value={assign.driverId} onChange={e => setAssign(a => ({ ...a, driverId: e.target.value, vehicleId: '' }))}>
+              <option value="">{T.driverPh}</option>
+              {(drivers || []).map(d => <option key={d.user_id} value={d.user_id}>{d.name} · {d.v}</option>)}
+            </select>
+            <select style={{ ...inputStyle, flex: '1 1 200px' }} value={assign.vehicleId} onChange={e => setAssign(a => ({ ...a, vehicleId: e.target.value }))}>
+              <option value="">{T.vehiclePh}</option>
+              {(selectedDriver?.vehicles || []).map(v => <option key={v.id} value={v.id}>{v.label || `#${v.id}`}{v.plate ? ` · ${v.plate}` : ''}</option>)}
+            </select>
+            {btn(T.assignShort, true, assign.busy || !assign.driverId || !assign.vehicleId, doAssign)}
+          </div>
+        )}
+
         <div role="tablist" style={{ display: 'flex', gap: 6, padding: '12px 22px', borderBottom: '1px solid #E3EBF7' }}>
-          <button
-            role="tab"
-            aria-selected={view === 'digital'}
-            onClick={() => setView('digital')}
-            style={{ minHeight: 36, padding: '8px 14px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: view === 'digital' ? '#001B45' : '#fff', color: view === 'digital' ? '#fff' : '#10233F', border: `1.5px solid ${view === 'digital' ? '#001B45' : '#DCE6F5'}` }}
-          >
-            {t.tabDigital}
-          </button>
-          <button
-            role="tab"
-            aria-selected={view === 'printed'}
-            onClick={() => setView('printed')}
-            style={{ minHeight: 36, padding: '8px 14px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: view === 'printed' ? '#001B45' : '#fff', color: view === 'printed' ? '#fff' : '#10233F', border: `1.5px solid ${view === 'printed' ? '#001B45' : '#DCE6F5'}` }}
-          >
-            {t.tabPrinted}
-          </button>
+          {['digital', 'printed'].map(k => (
+            <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)}
+              style={{ minHeight: 36, padding: '8px 14px', borderRadius: 100, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: view === k ? '#001B45' : '#fff', color: view === k ? '#fff' : '#10233F', border: `1.5px solid ${view === k ? '#001B45' : '#DCE6F5'}` }}>
+              {k === 'digital' ? T.tabDigital : T.tabPrinted}
+            </button>
+          ))}
         </div>
 
         <div style={{ padding: 22, background: '#EEF4FC', overflowX: 'auto' }}>
-          {view === 'digital' ? (
+          {loading && <div style={{ padding: 40, textAlign: 'center', color: '#6C82A6' }}>{T.loading}</div>}
+          {!loading && err && <div style={{ padding: 40, textAlign: 'center', color: '#A93226' }}>{err}</div>}
+          {!loading && !err && !m && <div style={{ padding: 40, textAlign: 'center', color: '#6C82A6' }}>{T.empty}</div>}
+          {!loading && !err && m && view === 'digital' && (
             <div style={{ background: '#fff', border: '1px solid #DCE6F5', maxWidth: 960, minWidth: 720, margin: '0 auto', padding: '28px 30px', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 10px 30px rgba(0,27,69,.08)' }}>
-              <div style={{ fontSize: 13, lineHeight: 1.55, padding: '10px 14px', borderRadius: 10, background: '#EEF4FC', color: '#25456E' }}>
-                {t.draftNote}
-              </div>
+              {m.asistenciaVialPendiente && (
+                <div style={{ fontSize: 13, lineHeight: 1.55, padding: '10px 14px', borderRadius: 10, background: 'rgba(217,154,0,.12)', color: '#6C5220' }}>
+                  {T.assistanceBanner}
+                </div>
+              )}
+              {m.idManifiestoOrigen && (
+                <div style={{ fontSize: 13, lineHeight: 1.55, padding: '10px 14px', borderRadius: 10, background: 'rgba(8,124,240,.1)', color: '#0768C9' }}>
+                  {T.derivedBanner(m.idManifiestoOrigen)}
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
                 <div style={{ flex: '1 1 0%', minWidth: 0 }}>
                   <div aria-hidden="true" style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
                     <span style={{ width: 20, height: 4, background: '#D99A00', transform: 'skewX(-24deg)' }} />
                     <span style={{ width: 8, height: 4, background: '#087CF0', transform: 'skewX(-24deg)' }} />
                   </div>
-                  <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 15, letterSpacing: '.08em', color: '#001B45' }}>{t.brand}</div>
-                  <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 800, fontSize: 22, color: '#001B45', margin: '4px 0 16px' }}>{t.manifestTitle}</div>
+                  <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 15, letterSpacing: '.08em', color: '#001B45' }}>TR3SLOG</div>
+                  <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 800, fontSize: 22, color: '#001B45', margin: '4px 0 16px' }}>{T.manifestTitle}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px 20px' }}>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{t.manifestLabel}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#10233F', marginTop: 3 }}>{t.manifestId}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{t.routeLabel}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#10233F', marginTop: 3 }}>{t.route}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{t.driverLabel}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#10233F', marginTop: 3 }}>{t.driver}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{t.vehicleLabel}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#10233F', marginTop: 3 }}>{t.vehicle}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{t.hubLabel}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#10233F', marginTop: 3 }}>{t.hub}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{t.dateLabel}</div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#10233F', marginTop: 3 }}>{t.date}</div>
-                    </div>
+                    {[
+                      [T.manifestLabel, m.codigo],
+                      [T.statusLabel, ESTADOS[m.estado] || m.estado],
+                      [T.driverLabel, driverName(m.choferId)],
+                      [T.vehicleLabel, vehicleName(m.vehiculoId)],
+                      [T.createdLabel, fmtDT(m.fechaCreacion)],
+                      [T.startedLabel, fmtDT(m.fechaInicioRuta)],
+                      [T.closedLabel, fmtDT(m.fechaCierre)],
+                      [T.packagesLabel, `${(m.detalles || []).length}`],
+                      [T.progressLabel, `${Math.round((m.progreso || 0) * 100)}%`],
+                    ].map(([k, v], i) => (
+                      <div key={i}>
+                        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{k}</div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: '#10233F', marginTop: 3 }}>{v}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <Qr value={t.manifestId} size={112} label={t.manifestId} />
+                <Qr value={m.codigo} size={112} label={m.codigo} />
               </div>
 
               <div style={{ border: '1px solid #DCE6F5', borderRadius: 8, overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '36px minmax(190px, 1.5fr) 60px minmax(120px, 1fr) 110px 56px minmax(130px, 1fr)', gap: 12, alignItems: 'center', padding: '10px 14px', background: '#001B45', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-                  {t.tableHeaders.map((h, i) => <span key={i} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{h}</span>)}
+                <div style={{ display: 'grid', gridTemplateColumns: '36px minmax(170px, 1.4fr) 60px minmax(110px, 1fr) minmax(120px, 1fr) minmax(140px, 1.2fr)', gap: 12, alignItems: 'center', padding: '10px 14px', background: '#001B45', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                  {T.detailCols.map((h, i) => <span key={i} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{h}</span>)}
                 </div>
-                {t.rows.map((r) => (
-                  <div key={r.n} style={{ display: 'grid', gridTemplateColumns: '36px minmax(190px, 1.5fr) 60px minmax(120px, 1fr) 110px 56px minmax(130px, 1fr)', gap: 12, alignItems: 'center', padding: '10px 14px', borderTop: '1px solid #E3EBF7', fontSize: 13 }}>
-                    <span style={{ fontWeight: 700, color: '#001B45' }}>{r.n}</span>
-                    <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12.5, color: '#10233F' }}>{r.tracking}</span>
-                    <span><Qr value={r.tracking} size={44} /></span>
-                    <span>{r.dest}</span>
-                    <span style={{ color: '#6C82A6' }}>{r.window}</span>
-                    <span>{r.pieces}</span>
-                    <span style={{ justifySelf: 'start', display: 'inline-flex', padding: '4px 10px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, background: 'rgba(8,124,240,.1)', color: '#0768C9' }}>{r.status}</span>
+                {(m.detalles || []).map((d, i) => (
+                  <div key={d.id || i} style={{ display: 'grid', gridTemplateColumns: '36px minmax(170px, 1.4fr) 60px minmax(110px, 1fr) minmax(120px, 1fr) minmax(140px, 1.2fr)', gap: 12, alignItems: 'center', padding: '10px 14px', borderTop: '1px solid #E3EBF7', fontSize: 13 }}>
+                    <span style={{ fontWeight: 700, color: '#001B45' }}>{d.secuenciaVisita || i + 1}</span>
+                    <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12.5, color: '#10233F' }}>{d.codigoSeguimiento}</span>
+                    <span><Qr value={d.codigoSeguimiento} size={44} /></span>
+                    <span>{chip(DETALLES[d.estado] || d.estado, TONE[DETAIL_TONE[d.estado]] || TONE.neutral)}</span>
+                    <span style={{ color: '#6C82A6', fontSize: 12 }}>{fmtDT(d.horaVisita)}</span>
+                    <span style={{ fontSize: 12, color: '#6C82A6' }}>
+                      {d.motivoFallo || ''}
+                      {d.lat != null && d.lng != null ? `${d.motivoFallo ? ' · ' : ''}GPS ${Number(d.lat).toFixed(4)},${Number(d.lng).toFixed(4)}` : ''}
+                    </span>
                   </div>
                 ))}
               </div>
 
+              {(m.solicitudes || []).length > 0 && (
+                <div>
+                  <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>{T.requestsTitle}</div>
+                  <div style={{ border: '1px solid #DCE6F5', borderRadius: 8, overflow: 'hidden' }}>
+                    {(m.solicitudes || []).map((s, i) => (
+                      <div key={s.id || i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 14px', borderTop: i ? '1px solid #E3EBF7' : 'none', fontSize: 13 }}>
+                        <span style={{ flex: 1, minWidth: 0 }}>{s.motivoIncidencia}</span>
+                        <span style={{ color: '#6C82A6', fontSize: 12 }}>{(s.items || []).length} {T.pkgUnit}</span>
+                        {chip(SOLICITUD[s.estado] || s.estado, TONE[REQ_TONE[s.estado]] || TONE.neutral)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(m.derivados || []).length > 0 && (
+                <div>
+                  <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>{T.derivedTitle}</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {m.derivados.map(d => (
+                      <button key={d.id} type="button" onClick={() => setSel(d.id)}
+                        style={{ padding: '9px 14px', border: '1.5px solid #DCE6F5', borderRadius: 9, background: '#fff', color: '#0768C9', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'ui-monospace, Menlo, monospace' }}>
+                        {d.codigo}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', justifyContent: 'space-between', borderTop: '1px solid #E3EBF7', paddingTop: 12, fontSize: 11.5, color: '#6C82A6' }}>
-                <span>{t.qrDemo}</span>
-                <span>{t.qrCopy}</span>
+                <span>{T.qrDemo}</span>
+                <span>{T.qrCopy}</span>
               </div>
             </div>
-          ) : (
+          )}
+          {!loading && !err && m && view === 'printed' && (
             <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 14, padding: 40, textAlign: 'center', color: '#6C82A6' }}>
-              Vista impresa no implementada
+              {T.print} → {m.codigo}
             </div>
           )}
         </div>
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.stepsTitle}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18 }}>
-          {t.steps.map((s, i) => {
-            const active = i <= step
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ width: 28, height: 28, borderRadius: '50%', background: active ? '#D99A00' : '#EEF4FC', color: active ? '#fff' : '#8B9DBA', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flex: '0 0 auto' }}>{i + 1}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: active ? '#001B45' : '#8B9DBA' }}>{s}</span>
-              </div>
-            )
-          })}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#001B45', color: '#fff', padding: '12px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,27,69,.25)', zIndex: 50 }}>
+          {toast}
         </div>
-        <div>
-          <button
-            onClick={() => setStep(Math.min(step + 1, t.steps.length - 1))}
-            style={{ padding: '13px 20px', border: '1.5px solid #001B45', borderRadius: 11, background: '#fff', color: '#001B45', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-          >
-            {t.advance}
-          </button>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, alignItems: 'start' }}>
-        <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #DCE6F5', fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.digitalTitle}</div>
-          {t.digitalRows.map((r, i) => (
-            <div key={i} style={{ padding: '13px 20px', borderTop: '1px solid #E3EBF7', display: 'flex', gap: 14, alignItems: 'baseline' }}>
-              <span style={{ flex: 1, fontSize: 12, color: '#6C82A6' }}>{r.k}</span>
-              <span style={{ fontSize: 13, fontWeight: 600, textAlign: 'right' }}>{r.v}</span>
-            </div>
-          ))}
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #DCE6F5', fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.printedTitle}</div>
-          {t.printedRows.map((r, i) => (
-            <div key={i} style={{ padding: '13px 20px', borderTop: '1px solid #E3EBF7', display: 'flex', gap: 14, alignItems: 'baseline' }}>
-              <span style={{ flex: 1, fontSize: 12, color: '#6C82A6' }}>{r.k}</span>
-              <span style={{ fontSize: 13, fontWeight: 600, textAlign: 'right' }}>{r.v}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 22px', borderBottom: '1px solid #DCE6F5', fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t.versionsTitle}</div>
-        <div style={{ padding: 24, color: '#6C82A6', fontSize: 14 }}>{t.versionsEmpty}</div>
-      </div>
-
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', border: '1px dashed #DCE6F5', background: '#EEF4FC', borderRadius: 14, padding: '16px 18px' }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0768C9" strokeWidth="1.8" style={{ flex: '0 0 auto', marginTop: 1 }}>
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 11v5M12 7.8v.1" />
-        </svg>
-        <p style={{ margin: 0, fontSize: 13, lineHeight: 1.65, color: '#25456E', textWrap: 'pretty' }}>{t.note}</p>
-      </div>
+      )}
     </div>
   )
 }

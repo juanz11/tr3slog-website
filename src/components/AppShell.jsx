@@ -16,6 +16,7 @@ import PricingCalc from './PricingCalc'
 import Users from './Users'
 import Roles from './Roles'
 import Manifest from './Manifest'
+import Hub from './Hub'
 import { AdminDashboardScreen } from './AdminConsole'
 import adminDict from '../lib/adminDict'
 import Profile from './Profile'
@@ -48,7 +49,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isOpsSupervisor = !isAdminRole && userRoles.includes('ops_supervisor')
   const isAdmin = isAdminRole || isOperations || isOpsSupervisor
   const isAdministrative = !isAdmin && userRoles.includes('administrative')
-  const isFinance = !isAdmin && !isAdministrative && userRoles.includes('finance')
+  const isHubStaff = !isAdmin && !isAdministrative && (userRoles.includes('hub_operation') || userRoles.includes('hub_supervisor'))
+  const isFinance = !isAdmin && !isAdministrative && !isHubStaff && userRoles.includes('finance')
   const isExecutiveClient = !isAdmin && !isAdministrative && !isFinance && userRoles.includes('executive_client')
   const nav = isAdminRole
     ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
@@ -56,8 +58,10 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
       ? { ...app.navOps, profile: app.navA.profile }
       : isOperations
         ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => !['console', 'ops', 'users', 'roles', 'pricing'].includes(k)))
-        : isFinance
-          ? { pricing: app.navA.pricing, profile: app.navA.profile }
+        : isHubStaff
+          ? { hub: app.navA.hub, profile: app.navA.profile }
+          : isFinance
+            ? { pricing: app.navA.pricing, profile: app.navA.profile }
           : isAdministrative
             ? { users: app.navA.users, profile: app.navA.profile }
             : app.navC
@@ -145,6 +149,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isUsers = activeKey === 'users'
   const isRoles = activeKey === 'roles'
   const isManifest = activeKey === 'manifest'
+  const isHub = activeKey === 'hub'
   const isAdash = isAdminRole && activeKey === 'dashboard'
   const isProfile = activeKey === 'profile'
 
@@ -251,7 +256,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   )
 
   if (isOpsSupervisor) {
-    return <AdvancedOpsPortalEntry lang={lang} setLang={setLang} user={user} onLogout={onLogout} />
+    return <AdvancedOpsPortalEntry lang={lang} setLang={setLang} user={user} token={token} onLogout={onLogout} />
   }
 
   if (isFinance) {
@@ -334,7 +339,9 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isRoles ? (
             <Roles lang={lang} token={token} />
           ) : isManifest ? (
-            <Manifest app={app} />
+            <Manifest app={app} token={token} />
+          ) : isHub ? (
+            <Hub token={token} />
           ) : isAdash ? (
             <AdminDashboardScreen dict={adminDict} lang={lang} token={token} statuses={app.ship?.statuses || []} />
           ) : isProfile ? (

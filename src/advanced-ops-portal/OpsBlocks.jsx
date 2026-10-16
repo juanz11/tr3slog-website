@@ -9,6 +9,7 @@
 import React from 'react';
 import { C, FONT_HEAD, FONT_MONO, TONE, card, sectionTitle, ghostBtn } from '../business-portal/tokens.js';
 import { exportCsv, exportPdf } from '../business-portal/engine.js';
+import { api } from '../api.js';
 
 /* Brand motif: paired skewed bars (gold + blue). */
 function Motif({ w = 20, h = 4, mb = 8 }) {
@@ -61,30 +62,92 @@ function qrSvgString(text, size) {
   return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 29 29" shape-rendering="crispEdges"><rect width="29" height="29" fill="#fff"/><path fill="#001B45" d="' + qrPath(text) + '"/></svg>';
 }
 
-const MAN_ROWS = [
-  ['TR3-260729-PRSJ-00131', 'Guaynabo', '09:00–12:00', '2'],
-  ['TR3-260729-PRSJ-00136', 'San Juan', '09:00–12:00', '1'],
-  ['TR3-260729-PRSJ-00139', 'Bayamón', '10:00–13:00', '3'],
-  ['TR3-260729-PRSJ-00142', 'Bayamón', '13:00–16:00', '3'],
-  ['TR3-260729-PRSJ-00147', 'Bayamón', '13:00–16:00', '1'],
-  ['TR3-260729-PRSJ-00153', 'Guaynabo', '14:00–17:00', '2']
-];
-
-const STAGE_TONE = { draft: TONE.neutral, generated: TONE.warn, issued: TONE.ok };
-const STAGE_BANNER = {
-  draft: { bg: '#EEF4FC', fg: '#25456E' },
-  generated: { bg: 'rgba(217,154,0,.12)', fg: '#6C5220' },
-  issued: { bg: 'rgba(19,122,69,.1)', fg: '#0F5F36' }
+const MANIFEST_TONE = {
+  CREADO: TONE.neutral,
+  ASIGNADO: TONE.info,
+  EN_RUTA: TONE.info,
+  EN_SOLICITUD_TRASPASO: TONE.warn,
+  COMPLETADO: TONE.ok,
+  COMPLETADO_CON_INCIDENCIAS: TONE.warn,
+  TRANSFERIDO: TONE.neutral
 };
+const DETAIL_TONE = {
+  PENDIENTE: TONE.warn,
+  ENTREGADO: TONE.ok,
+  NO_ENTREGADO: TONE.bad,
+  TRANSFERIDO: TONE.neutral
+};
+const REQ_TONE = { PENDIENTE: TONE.warn, APROBADA: TONE.ok, RECHAZADA: TONE.bad };
 
-export function ManifestBlock({ data = {}, onToast }) {
-  const [stage, setStage] = React.useState('draft');
+const fmtDT = iso => iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : '—';
+
+export function ManifestBlock({ data = {}, token, lang = 'es', onToast }) {
+  const V = (es, en, zh) => (lang === 'en' ? en : lang === 'zh-CN' ? zh : es);
   const [mode, setMode] = React.useState('digital');
-  const manId = ((data.meta || [])[0] || {}).v || '';
-  const S = STAGE_TONE[stage];
-  const B = STAGE_BANNER[stage];
-  const cols = (data.cols || []).slice(0, 6).concat([mode === 'print' ? (data.cols || [])[6] : data.colDigital]);
-  const scanned = 3;
+  const [list, setList] = React.useState([]);
+  const [sel, setSel] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [err, setErr] = React.useState('');
+  const [drivers, setDrivers] = React.useState(null);
+  const [assign, setAssign] = React.useState({ open: false, driverId: '', vehicleId: '', busy: false });
+  const [create, setCreate] = React.useState({ open: false, code: '', stops: '', busy: false });
+  const toast = m => onToast && onToast(m);
+
+  const load = React.useCallback(async (keepSel = true) => {
+    try {
+      const rows = await api.getManifests(token);
+      const arr = Array.isArray(rows) ? rows : [];
+      setList(arr);
+      setSel(prev => (keepSel && arr.some(r => r.id === prev)) ? prev : (arr[0] ? arr[0].id : null));
+      setErr('');
+    } catch (e) {
+      setErr(e.message || 'Error');
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  React.useEffect(() => { if (token) load(); else setLoading(false); }, [token, load]);
+
+  const loadDrivers = async () => {
+    if (drivers) return;
+    try {
+      const rows = await api.getDrivers(token);
+      setDrivers(Array.isArray(rows) ? rows : (rows && rows.data) || []);
+    } catch (e) {
+      toast(e.message);
+      setDrivers([]);
+    }
+  };
+
+  const m = list.find(x => x.id === sel) || null;
+  const manId = m ? m.codigo : '';
+  const estadoLabel = V(
+    { CREADO: 'Creado', ASIGNADO: 'Asignado', EN_RUTA: 'En ruta', EN_SOLICITUD_TRASPASO: 'Traspaso solicitado', COMPLETADO: 'Completado', COMPLETADO_CON_INCIDENCIAS: 'Completado con incidencias', TRANSFERIDO: 'Transferido' }[m?.estado] || m?.estado || '—',
+    { CREADO: 'Created', ASIGNADO: 'Assigned', EN_RUTA: 'On route', EN_SOLICITUD_TRASPASO: 'Transfer requested', COMPLETADO: 'Completed', COMPLETADO_CON_INCIDENCIAS: 'Completed with issues', TRANSFERIDO: 'Transferred' }[m?.estado] || m?.estado || '—',
+    { CREADO: '已创建', ASIGNADO: '已分配', EN_RUTA: '运输中', EN_SOLICITUD_TRASPASO: '转移申请中', COMPLETADO: '已完成', COMPLETADO_CON_INCIDENCIAS: '已完成但有异常', TRANSFERIDO: '已转移' }[m?.estado] || m?.estado || '—'
+  );
+  const detailLabel = st => V(
+    { PENDIENTE: 'Pendiente', ENTREGADO: 'Entregado', NO_ENTREGADO: 'No entregado', TRANSFERIDO: 'Transferido' }[st] || st,
+    { PENDIENTE: 'Pending', ENTREGADO: 'Delivered', NO_ENTREGADO: 'Not delivered', TRANSFERIDO: 'Transferred' }[st] || st,
+    { PENDIENTE: '待处理', ENTREGADO: '已交付', NO_ENTREGADO: '未交付', TRANSFERIDO: '已转移' }[st] || st
+  );
+  const reqLabel = st => V(
+    { PENDIENTE: 'Pendiente', APROBADA: 'Aprobada', RECHAZADA: 'Rechazada' }[st] || st,
+    { PENDIENTE: 'Pending', APROBADA: 'Approved', RECHAZADA: 'Rejected' }[st] || st,
+    { PENDIENTE: '待审核', APROBADA: '已批准', RECHAZADA: '已拒绝' }[st] || st
+  );
+  const driverName = id => {
+    const d = (drivers || []).find(x => x.user_id === id);
+    return d ? d.name : (id ? `#${id}` : '—');
+  };
+  const vehicleName = id => {
+    const all = (drivers || []).flatMap(d => d.vehicles || []);
+    const v = all.find(x => x.id === id);
+    return v ? `${v.label || ''}${v.plate ? ' · ' + v.plate : ''}` : (id ? `#${id}` : '—');
+  };
+  const tone = (map, k) => map[k] || TONE.neutral;
+  const S = m ? tone(MANIFEST_TONE, m.estado) : TONE.neutral;
 
   const btn = (label, primary, off, run) => (
     <button type="button" aria-disabled={off} onClick={run}
@@ -93,34 +156,100 @@ export function ManifestBlock({ data = {}, onToast }) {
     </button>
   );
 
+  const doCreate = async () => {
+    const stops = create.stops.split('\n').map(s => s.trim()).filter(Boolean).map(code => ({ tracking_code: code }));
+    if (!stops.length) { toast(V('Agregue al menos un código de seguimiento.', 'Add at least one tracking code.', '请至少添加一个跟踪代码。')); return; }
+    setCreate(c => ({ ...c, busy: true }));
+    try {
+      const created = await api.createManifest({ codigo: create.code.trim() || undefined, stops }, token);
+      toast(V(`Manifiesto ${created.codigo} creado.`, `Manifest ${created.codigo} created.`, `货单 ${created.codigo} 已创建。`));
+      setCreate({ open: false, code: '', stops: '', busy: false });
+      await load(false);
+      setSel(created.id);
+    } catch (e) { toast(e.message); }
+    setCreate(c => ({ ...c, busy: false }));
+  };
+
+  const doAssign = async () => {
+    if (!assign.driverId || !assign.vehicleId) { toast(V('Seleccione chofer y vehículo.', 'Select driver and vehicle.', '请选择司机和车辆。')); return; }
+    setAssign(a => ({ ...a, busy: true }));
+    try {
+      await api.assignManifest(m.id, { driver_id: Number(assign.driverId), vehicle_id: Number(assign.vehicleId) }, token);
+      toast(V('Manifiesto asignado al chofer.', 'Manifest assigned to driver.', '货单已分配给司机。'));
+      setAssign({ open: false, driverId: '', vehicleId: '', busy: false });
+      await load();
+    } catch (e) { toast(e.message); }
+    setAssign(a => ({ ...a, busy: false }));
+  };
+
+  const selectedDriver = (drivers || []).find(d => String(d.user_id) === String(assign.driverId));
+
   const printManifest = () => {
-    if (stage !== 'issued') { onToast && onToast(data.needIssue); return; }
+    if (!m) return;
     const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-    const meta = (data.meta || []).map(k => '<div><small>' + esc(k.k) + '</small><b>' + esc(k.v) + '</b></div>').join('');
-    const head = (data.cols || []).map(c => '<th>' + esc(c) + '</th>').join('');
-    const body = MAN_ROWS.map((r, i) => '<tr><td>' + (i + 1) + '</td><td class="m">' + esc(r[0]) + '</td><td>' + qrSvgString(r[0], 54) + '</td><td>' + esc(r[1]) + '</td><td>' + esc(r[2]) + '</td><td>' + esc(r[3]) + '</td><td class="s"></td></tr>').join('');
+    const meta = [
+      [V('Manifiesto', 'Manifest', '货单'), manId],
+      [V('Estado', 'Status', '状态'), estadoLabel],
+      [V('Chofer', 'Driver', '司机'), driverName(m.choferId)],
+      [V('Vehículo', 'Vehicle', '车辆'), vehicleName(m.vehiculoId)],
+      [V('Creado', 'Created', '创建'), fmtDT(m.fechaCreacion)],
+      [V('Inicio de ruta', 'Route start', '路线开始'), fmtDT(m.fechaInicioRuta)]
+    ].map(([k, v]) => '<div><small>' + esc(k) + '</small><b>' + esc(v) + '</b></div>').join('');
+    const head = ['#', 'Tracking', V('Estado', 'Status', '状态'), V('Hora', 'Time', '时间'), V('Motivo', 'Reason', '原因')].map(c => '<th>' + esc(c) + '</th>').join('');
+    const body = (m.detalles || []).map((d, i) => '<tr><td>' + (d.secuenciaVisita || i + 1) + '</td><td class="m">' + esc(d.codigoSeguimiento) + '</td><td>' + qrSvgString(d.codigoSeguimiento, 54) + '</td><td>' + esc(detailLabel(d.estado)) + '</td><td>' + esc(fmtDT(d.horaVisita)) + '</td><td>' + esc(d.motivoFallo || '') + '</td></tr>').join('');
     const sig = (data.sig || []).map(g => '<div><i></i><b>' + esc(g) + '</b><small>' + esc(data.sigLine) + '</small></div>').join('');
-    const doc = '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(manId) + '</title><style>body{font-family:Inter,Arial,sans-serif;color:#10233F;margin:28px}h1{font:800 22px Montserrat,Arial;color:#001B45;margin:2px 0 14px}.top{display:flex;gap:24px;justify-content:space-between}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 18px}small{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#6C82A6}b{font-size:13px}table{width:100%;border-collapse:collapse;margin-top:18px;font-size:12px}th{background:#001B45;color:#fff;text-align:left;padding:7px 8px;font-size:10px;text-transform:uppercase}td{border-top:1px solid #DCE6F5;padding:6px 8px;vertical-align:middle}.m{font-family:Menlo,monospace}.s{width:130px;border-bottom:1px solid #8B9DBA}.sig{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:30px}.sig i{display:block;height:34px;border-bottom:1px solid #10233F}.f{margin-top:18px;font-size:10px;color:#6C82A6;display:flex;justify-content:space-between}</style></head><body>'
+    const doc = '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(manId) + '</title><style>body{font-family:Inter,Arial,sans-serif;color:#10233F;margin:28px}h1{font:800 22px Montserrat,Arial;color:#001B45;margin:2px 0 14px}.top{display:flex;gap:24px;justify-content:space-between}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 18px}small{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#6C82A6}b{font-size:13px}table{width:100%;border-collapse:collapse;margin-top:18px;font-size:12px}th{background:#001B45;color:#fff;text-align:left;padding:7px 8px;font-size:10px;text-transform:uppercase}td{border-top:1px solid #DCE6F5;padding:6px 8px;vertical-align:middle}.m{font-family:Menlo,monospace}.sig{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:30px}.sig i{display:block;height:34px;border-bottom:1px solid #10233F}.f{margin-top:18px;font-size:10px;color:#6C82A6;display:flex;justify-content:space-between}</style></head><body>'
       + '<div class="top"><div><b style="letter-spacing:.08em;color:#001B45">TR3SLOG</b><h1>' + esc(data.docT) + '</h1><div class="g">' + meta + '</div></div><div style="text-align:center">' + qrSvgString(manId, 120) + '<div class="m" style="font-size:10px">' + esc(manId) + '</div></div></div>'
-      + '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table><div class="sig">' + sig + '</div><div class="f"><span>' + esc(data.qrNote) + '</span><span>' + esc(data.footer) + '</span></div></body></html>';
+      + '<table><thead><tr><th></th><th></th><th></th>' + head + '</tr></thead><tbody>' + body + '</tbody></table><div class="sig">' + sig + '</div><div class="f"><span>' + esc(data.qrNote) + '</span><span>' + esc(data.footer) + '</span></div></body></html>';
     const w = window.open('', '_blank');
-    if (!w) { onToast && onToast(data.popup); return; }
+    if (!w) { toast(data.popup); return; }
     w.document.write(doc); w.document.close();
     setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 350);
-    onToast && onToast(data.printOk);
+    toast(data.printOk);
   };
+
+  const inputStyle = { padding: '10px 12px', borderRadius: 9, border: `1.5px solid ${C.border}`, font: 'inherit', fontSize: 13, background: C.white, color: C.text, minWidth: 0 };
 
   return (
     <div style={card}>
       <div style={{ padding: '16px 22px', borderBottom: `1px solid ${C.border}`, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
         <div style={sectionTitle}>{data.t}</div>
-        <span style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: S.bg, color: S.fg }}>{(data.states || {})[stage]}</span>
+        <select value={sel ?? ''} onChange={e => setSel(Number(e.target.value))} style={{ ...inputStyle, maxWidth: 260 }} aria-label={V('Manifiesto', 'Manifest', '货单')}>
+          {list.map(x => <option key={x.id} value={x.id}>{x.codigo}</option>)}
+          {!list.length && <option value="">—</option>}
+        </select>
+        {m && <span style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: S.bg, color: S.fg }}>{estadoLabel}</span>}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {btn(data.gen, stage === 'draft', stage !== 'draft', () => { if (stage !== 'draft') return; setStage('generated'); onToast && onToast(data.genOk); })}
-          {btn(data.issue, stage === 'generated', stage !== 'generated', () => { if (stage !== 'generated') return; setStage('issued'); onToast && onToast(data.issueOk); })}
-          {btn(data.print, false, stage !== 'issued', printManifest)}
+          {btn(V('Nuevo manifiesto', 'New manifest', '新建货单'), false, false, () => setCreate(c => ({ ...c, open: !c.open })))}
+          {btn(V('Asignar chofer y vehículo', 'Assign driver & vehicle', '分配司机和车辆'), true, !m || m.estado !== 'CREADO', () => { setAssign(a => ({ ...a, open: !a.open })); loadDrivers(); })}
+          {btn(data.print, false, !m, printManifest)}
         </div>
       </div>
+
+      {create.open && (
+        <div style={{ padding: '14px 22px', borderBottom: `1px solid ${C.divider}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input style={inputStyle} placeholder={V('Código (opcional, se genera automático)', 'Code (optional, auto-generated)', '代码（可选，自动生成）')} value={create.code} onChange={e => setCreate(c => ({ ...c, code: e.target.value }))} />
+          <textarea style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }} placeholder={V('Un tracking por línea', 'One tracking code per line', '每行一个跟踪代码')} value={create.stops} onChange={e => setCreate(c => ({ ...c, stops: e.target.value }))} />
+          <div style={{ display: 'flex', gap: 10 }}>
+            {btn(V('Crear', 'Create', '创建'), true, create.busy, doCreate)}
+            {btn(V('Cancelar', 'Cancel', '取消'), false, false, () => setCreate({ open: false, code: '', stops: '', busy: false }))}
+          </div>
+        </div>
+      )}
+
+      {assign.open && m && m.estado === 'CREADO' && (
+        <div style={{ padding: '14px 22px', borderBottom: `1px solid ${C.divider}`, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+          <select style={{ ...inputStyle, flex: '1 1 200px' }} value={assign.driverId} onChange={e => setAssign(a => ({ ...a, driverId: e.target.value, vehicleId: '' }))}>
+            <option value="">{V('Chofer…', 'Driver…', '司机…')}</option>
+            {(drivers || []).map(d => <option key={d.user_id} value={d.user_id}>{d.name} · {d.v}</option>)}
+          </select>
+          <select style={{ ...inputStyle, flex: '1 1 200px' }} value={assign.vehicleId} onChange={e => setAssign(a => ({ ...a, vehicleId: e.target.value }))}>
+            <option value="">{V('Vehículo…', 'Vehicle…', '车辆…')}</option>
+            {(selectedDriver?.vehicles || []).map(v => <option key={v.id} value={v.id}>{v.label || `#${v.id}`}{v.plate ? ` · ${v.plate}` : ''}</option>)}
+          </select>
+          {btn(V('Asignar', 'Assign', '分配'), true, assign.busy || !assign.driverId || !assign.vehicleId, doAssign)}
+        </div>
+      )}
 
       <div role="tablist" style={{ display: 'flex', gap: 6, padding: '12px 22px', borderBottom: `1px solid ${C.divider}` }}>
         {[['digital', data.modeDigital], ['print', data.modePrint]].map(([k, label]) => (
@@ -132,70 +261,124 @@ export function ManifestBlock({ data = {}, onToast }) {
       </div>
 
       <div style={{ padding: 22, background: C.bg, overflowX: 'auto' }}>
-        <div style={{ background: C.white, border: `1px solid ${C.border}`, maxWidth: 960, minWidth: 720, margin: '0 auto', padding: '28px 30px', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 10px 30px rgba(0,27,69,.08)' }}>
-          <div style={{ fontSize: 13, lineHeight: 1.55, padding: '10px 14px', borderRadius: 10, background: B.bg, color: B.fg }}>{(data.banner || {})[stage]}</div>
+        {loading && <div style={{ padding: 40, textAlign: 'center', color: C.textSecondary }}>{V('Cargando manifiestos…', 'Loading manifests…', '正在加载货单…')}</div>}
+        {!loading && err && <div style={{ padding: 40, textAlign: 'center', color: C.red }}>{err}</div>}
+        {!loading && !err && !m && <div style={{ padding: 40, textAlign: 'center', color: C.textSecondary }}>{V('No hay manifiestos. Cree el primero con "Nuevo manifiesto".', 'No manifests yet. Create the first one with "New manifest".', '暂无货单，请点击“新建货单”创建。')}</div>}
+        {!loading && !err && m && (
+          <div style={{ background: C.white, border: `1px solid ${C.border}`, maxWidth: 960, minWidth: 720, margin: '0 auto', padding: '28px 30px', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: '0 10px 30px rgba(0,27,69,.08)' }}>
+            {m.asistenciaVialPendiente && (
+              <div style={{ fontSize: 13, lineHeight: 1.55, padding: '10px 14px', borderRadius: 10, background: 'rgba(217,154,0,.12)', color: '#6C5220' }}>
+                {V('Aguardando asistencia vial: el traspaso fue rechazado y el manifiesto volvió a ruta.', 'Waiting for roadside assistance: the transfer was rejected and the manifest returned to route.', '正在等待道路救援：转移被拒绝，货单已恢复运输。')}
+              </div>
+            )}
+            {m.idManifiestoOrigen && (
+              <div style={{ fontSize: 13, lineHeight: 1.55, padding: '10px 14px', borderRadius: 10, background: 'rgba(8,124,240,.1)', color: C.blueDark }}>
+                {V(`Manifiesto derivado del traspaso del manifiesto #${m.idManifiestoOrigen}.`, `Derived manifest from transfer of manifest #${m.idManifiestoOrigen}.`, `由货单 #${m.idManifiestoOrigen} 转移衍生。`)}
+              </div>
+            )}
 
-          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Motif w={20} h={4} mb={8} />
-              <div style={{ fontFamily: 'Montserrat,sans-serif', fontWeight: 800, fontSize: 15, letterSpacing: '.08em', color: C.navy }}>TR3SLOG</div>
-              <div style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 22, color: C.navy, margin: '4px 0 16px' }}>{data.docT}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '12px 20px' }}>
-                {(data.meta || []).map((m, i) => (
-                  <div key={i}>
-                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.textSecondary }}>{m.k}</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginTop: 3 }}>{m.v}</div>
+            <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Motif w={20} h={4} mb={8} />
+                <div style={{ fontFamily: 'Montserrat,sans-serif', fontWeight: 800, fontSize: 15, letterSpacing: '.08em', color: C.navy }}>TR3SLOG</div>
+                <div style={{ fontFamily: FONT_HEAD, fontWeight: 800, fontSize: 22, color: C.navy, margin: '4px 0 16px' }}>{data.docT}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0,1fr))', gap: '12px 20px' }}>
+                  {[
+                    [V('Manifiesto', 'Manifest', '货单'), manId],
+                    [V('Estado', 'Status', '状态'), estadoLabel],
+                    [V('Chofer', 'Driver', '司机'), driverName(m.choferId)],
+                    [V('Vehículo', 'Vehicle', '车辆'), vehicleName(m.vehiculoId)],
+                    [V('Creado', 'Created', '创建'), fmtDT(m.fechaCreacion)],
+                    [V('Inicio de ruta', 'Route start', '路线开始'), fmtDT(m.fechaInicioRuta)],
+                    [V('Cierre', 'Closed', '关闭'), fmtDT(m.fechaCierre)],
+                    [V('Bultos', 'Packages', '货物'), `${(m.detalles || []).length}`],
+                    [V('Progreso', 'Progress', '进度'), `${Math.round((m.progreso || 0) * 100)}%`]
+                  ].map(([k, v], i) => (
+                    <div key={i}>
+                      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: C.textSecondary }}>{k}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginTop: 3 }}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: '0 0 auto' }}>
+                <Qr text={manId} size={112} />
+                <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: C.text }}>{manId}</div>
+              </div>
+            </div>
+
+            <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '36px minmax(170px,1.4fr) 60px minmax(120px,1fr) minmax(120px,1fr) minmax(130px,1.2fr)', gap: 12, alignItems: 'center', padding: '10px 14px', background: C.navy, color: C.white, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                {['#', 'Tracking', 'QR', V('Estado', 'Status', '状态'), V('Hora visita', 'Visited', '访问时间'), V('Motivo / GPS', 'Reason / GPS', '原因 / GPS')].map((c, i) => <span key={i} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{c}</span>)}
+              </div>
+              {(m.detalles || []).map((d, i) => {
+                const t = tone(DETAIL_TONE, d.estado);
+                return (
+                  <div key={d.id || i} style={{ display: 'grid', gridTemplateColumns: '36px minmax(170px,1.4fr) 60px minmax(120px,1fr) minmax(120px,1fr) minmax(130px,1.2fr)', gap: 12, alignItems: 'center', padding: '10px 14px', borderTop: `1px solid ${C.divider}`, fontSize: 13 }}>
+                    <span style={{ fontWeight: 700, color: C.navy }}>{d.secuenciaVisita || i + 1}</span>
+                    <span style={{ fontFamily: FONT_MONO, fontSize: 12.5, color: C.text }}>{d.codigoSeguimiento}</span>
+                    <span style={{ width: 44, height: 44 }}><Qr text={d.codigoSeguimiento} size={44} /></span>
+                    <span><span style={{ justifySelf: 'start', display: 'inline-flex', padding: '4px 10px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, background: t.bg, color: t.fg }}>{detailLabel(d.estado)}</span></span>
+                    <span style={{ color: C.textSecondary, fontSize: 12 }}>{fmtDT(d.horaVisita)}</span>
+                    <span style={{ fontSize: 12, color: C.textSecondary }}>
+                      {d.motivoFallo || ''}
+                      {d.lat != null && d.lng != null ? `${d.motivoFallo ? ' · ' : ''}GPS ${Number(d.lat).toFixed(4)},${Number(d.lng).toFixed(4)}` : ''}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {(m.solicitudes || []).length > 0 && (
+              <div>
+                <div style={{ ...sectionTitle, marginBottom: 8 }}>{V('Solicitudes de traspaso', 'Transfer requests', '转移申请')}</div>
+                <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden' }}>
+                  {(m.solicitudes || []).map((s, i) => {
+                    const t = tone(REQ_TONE, s.estado);
+                    return (
+                      <div key={s.id || i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 14px', borderTop: i ? `1px solid ${C.divider}` : 'none', fontSize: 13 }}>
+                        <span style={{ flex: 1, minWidth: 0 }}>{s.motivoIncidencia}</span>
+                        <span style={{ color: C.textSecondary, fontSize: 12 }}>{(s.items || []).length} {V('bultos', 'packages', '件')}</span>
+                        <span style={{ display: 'inline-flex', padding: '4px 10px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, background: t.bg, color: t.fg }}>{reqLabel(s.estado)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {(m.derivados || []).length > 0 && (
+              <div>
+                <div style={{ ...sectionTitle, marginBottom: 8 }}>{V('Manifiestos derivados', 'Derived manifests', '衍生货单')}</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {m.derivados.map(d => (
+                    <button key={d.id} type="button" onClick={() => setSel(d.id)}
+                      style={{ ...ghostBtn, fontFamily: FONT_MONO }}>
+                      {d.codigo}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {mode === 'print' && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }}>
+                {(data.sig || []).map((g, i) => (
+                  <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <span style={{ display: 'block', height: 34, borderBottom: `1px solid ${C.text}` }} />
+                    <b style={{ fontSize: 13 }}>{g}</b>
+                    <small style={{ fontSize: 10, color: C.textSecondary, letterSpacing: '.08em', textTransform: 'uppercase' }}>{data.sigLine}</small>
                   </div>
                 ))}
               </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: '0 0 auto' }}>
-              <Qr text={manId} size={112} opacity={stage === 'draft' ? 0.25 : 1} />
-              <div style={{ fontFamily: FONT_MONO, fontSize: 11, color: C.text }}>{manId}</div>
+            )}
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', justifyContent: 'space-between', borderTop: `1px solid ${C.divider}`, paddingTop: 12, fontSize: 11.5, color: C.textSecondary }}>
+              <span>{data.qrNote}</span>
+              <span>{data.footer}</span>
             </div>
           </div>
-
-          <div style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '36px minmax(190px,1.5fr) 60px minmax(120px,1fr) 110px 56px minmax(130px,1fr)', gap: 12, alignItems: 'center', padding: '10px 14px', background: C.navy, color: C.white, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-              {cols.map((c, i) => <span key={i} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{c}</span>)}
-            </div>
-            {MAN_ROWS.map((r, i) => {
-              const ok = stage === 'issued' && i < scanned;
-              const t = ok ? TONE.ok : TONE.info;
-              const last = mode === 'print'
-                ? <span style={{ display: 'inline-block', width: 110, borderBottom: `1px solid ${C.textMuted}`, height: 20 }} />
-                : <span style={{ justifySelf: 'start', display: 'inline-flex', padding: '4px 10px', borderRadius: 100, fontSize: 11.5, fontWeight: 600, background: t.bg, color: t.fg }}>{ok ? data.scanned : data.pending}</span>;
-              return (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '36px minmax(190px,1.5fr) 60px minmax(120px,1fr) 110px 56px minmax(130px,1fr)', gap: 12, alignItems: 'center', padding: '10px 14px', borderTop: `1px solid ${C.divider}`, fontSize: 13 }}>
-                  <span style={{ fontWeight: 700, color: C.navy }}>{i + 1}</span>
-                  <span style={{ fontFamily: FONT_MONO, fontSize: 12.5, color: C.text }}>{r[0]}</span>
-                  <span style={{ width: 44, height: 44 }}><Qr text={r[0]} size={44} opacity={stage === 'draft' ? 0.25 : 1} /></span>
-                  <span>{r[1]}</span>
-                  <span style={{ color: C.textSecondary }}>{r[2]}</span>
-                  <span>{r[3]}</span>
-                  {last}
-                </div>
-              );
-            })}
-          </div>
-
-          {mode === 'print' && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }}>
-              {(data.sig || []).map((g, i) => (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ display: 'block', height: 34, borderBottom: `1px solid ${C.text}` }} />
-                  <b style={{ fontSize: 13 }}>{g}</b>
-                  <small style={{ fontSize: 10, color: C.textSecondary, letterSpacing: '.08em', textTransform: 'uppercase' }}>{data.sigLine}</small>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px 18px', justifyContent: 'space-between', borderTop: `1px solid ${C.divider}`, paddingTop: 12, fontSize: 11.5, color: C.textSecondary }}>
-            <span>{data.qrNote}</span>
-            <span>{data.footer}</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

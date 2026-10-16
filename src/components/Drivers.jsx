@@ -22,12 +22,14 @@ const DOC_COLORS = {
   ok: { bg: 'rgba(19,122,69,.12)', fg: '#0F5F36' },
   soon: { bg: 'rgba(217,154,0,.16)', fg: '#8A6300' },
   expired: { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
+  pending: { bg: 'rgba(8,124,240,.1)', fg: '#0768C9' },
+  rejected: { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
 }
 
 const FILTER_KEYS = ['all', 'active', 'route', 'available', 'suspended', 'docsSoon']
 
 const emptyVehicle = () => ({
-  label: '', plate: '', cargoCapacity: '',
+  type: '', label: '', plate: '', cargoCapacity: '',
   registrationNumber: '', insuranceNumber: '', insuranceExpires: '',
   inspectionNumber: '', inspectionExpires: '', permitNumber: '', permitExpires: '',
   files: {},
@@ -40,7 +42,7 @@ const VEHICLE_DOCS = [
   { key: 'permit', number: 'permitNumber', expiry: 'permitExpires', file: 'cargo_permit' },
 ]
 
-function FileInput({ label, placeholder, file, onChange, accept = 'image/*,.pdf' }) {
+function FileInput({ label, placeholder, file, onChange, accept = 'image/*,.heic,.heif,.pdf' }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{label}</span>
@@ -88,6 +90,10 @@ export default function Drivers({ app, lang, token }) {
   const [newId, setNewId] = React.useState('')
   const [clients, setClients] = React.useState([])
   const [selected, setSelected] = React.useState(null)
+  const [pendingDocs, setPendingDocs] = React.useState([])
+  const [rejectingId, setRejectingId] = React.useState(null)
+  const [rejectReason, setRejectReason] = React.useState('')
+  const [reviewBusy, setReviewBusy] = React.useState(false)
 
   const fetchDrivers = React.useCallback(async (isPoll) => {
     if (!token) return
@@ -95,6 +101,8 @@ export default function Drivers({ app, lang, token }) {
     try {
       const data = await api.getDrivers(token)
       setDrivers(Array.isArray(data) ? data : data.data || [])
+      const pending = await api.getPendingDocuments(token).catch(() => [])
+      setPendingDocs(Array.isArray(pending) ? pending : [])
       setError('')
     } catch (e) {
       if (!isPoll) setError(e.message || d.error)
@@ -226,7 +234,8 @@ export default function Drivers({ app, lang, token }) {
       if (docFiles.licenseFile) fd.append('license_file', docFiles.licenseFile)
       vehicles.forEach((v, i) => {
         fd.append(`vehicles[${i}][plate]`, v.plate)
-        if (v.label) fd.append(`vehicles[${i}][label]`, v.label)
+        const label = [v.type ? (d.vehicles.types[v.type] || v.type) : '', v.label.trim()].filter(Boolean).join(' · ')
+        if (label) fd.append(`vehicles[${i}][label]`, label)
         if (v.cargoCapacity) fd.append(`vehicles[${i}][cargo_capacity]`, v.cargoCapacity)
         if (v.registrationNumber) fd.append(`vehicles[${i}][registration_number]`, v.registrationNumber)
         if (v.insuranceNumber) fd.append(`vehicles[${i}][insurance_number]`, v.insuranceNumber)
@@ -244,10 +253,27 @@ export default function Drivers({ app, lang, token }) {
       resetForm()
       setNewId(created.id)
       setOpen(false)
+      fetchDrivers(true)
     } catch (err) {
       setFormError(err.message || 'No se pudo registrar el conductor')
     } finally {
       setFormLoading(false)
+    }
+  }
+
+  const reviewDoc = async (docId, status, reason) => {
+    if (reviewBusy) return
+    setReviewBusy(true)
+    try {
+      await api.reviewDocument(docId, { status, reason }, token)
+      setPendingDocs((prev) => prev.filter((x) => x.id !== docId))
+      setRejectingId(null)
+      setRejectReason('')
+      fetchDrivers(true)
+    } catch (e) {
+      setError(e.message || 'Error')
+    } finally {
+      setReviewBusy(false)
     }
   }
 
@@ -366,6 +392,15 @@ export default function Drivers({ app, lang, token }) {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px 18px', marginBottom: 14 }}>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.type}</span>
+                      <select value={v.type} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, type: e.target.value } : x))} style={{ padding: '12px 14px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', color: v.type ? '#001B45' : '#6C82A6', outline: 'none' }}>
+                        <option value="">{d.vehicles.selectType}</option>
+                        {Object.entries(d.vehicles.types).map(([k, label]) => (
+                          <option key={k} value={k}>{label}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.label}</span>
                       <input type="text" value={v.label} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} placeholder={d.vehiclePh} style={{ padding: '12px 14px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', color: '#001B45', outline: 'none' }} />
                     </label>
@@ -400,6 +435,51 @@ export default function Drivers({ app, lang, token }) {
           </div>
         </form>
       )}
+
+      <div className="app-card" style={{ marginBottom: 20 }}>
+        <div className="app-card-head" style={{ gap: 12 }}>
+          <span className="app-card-title">{d.review.title}</span>
+          {pendingDocs.length > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 100, background: 'rgba(8,124,240,.1)', color: '#0768C9' }}>{pendingDocs.length}</span>
+          )}
+        </div>
+        <div style={{ padding: '16px 22px 20px' }}>
+          <p style={{ margin: '0 0 14px', fontSize: 13, color: '#6C82A6' }}>{d.review.sub}</p>
+          {pendingDocs.length === 0 ? (
+            <div style={{ padding: '14px 0', textAlign: 'center', color: '#6C82A6', fontSize: 14 }}>{d.review.empty}</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {pendingDocs.map((doc) => (
+                <div key={doc.id} style={{ border: '1px solid #DCE6F5', borderRadius: 10, padding: '12px 14px', background: '#F6F9FD' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: '#001B45' }}>
+                      {(d.docTypes && d.docTypes[doc.type]) || doc.type}
+                      {doc.subject === 'vehicle' && doc.vehicle ? ` · ${d.review.vehicleDoc}: ${doc.vehicle}` : ''}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#10233F' }}>{doc.driver_name} {doc.driver_id ? `(${doc.driver_id})` : ''}</span>
+                    {doc.number && <span style={{ fontSize: 12, color: '#6C82A6' }}>{doc.number}</span>}
+                    {doc.expires_at && <span style={{ fontSize: 12, color: '#6C82A6' }}>{d.expires} {doc.expires_at}</span>}
+                    {doc.file_path && (
+                      <a href={`${MEDIA_URL}/${doc.file_path}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, fontWeight: 600, color: '#087CF0' }}>{d.viewFile}</a>
+                    )}
+                    <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                      <button type="button" disabled={reviewBusy} onClick={() => reviewDoc(doc.id, 'approved')} style={{ padding: '7px 14px', border: 'none', borderRadius: 100, background: 'rgba(19,122,69,.12)', color: '#0F5F36', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{d.review.approve}</button>
+                      <button type="button" disabled={reviewBusy} onClick={() => { setRejectingId(rejectingId === doc.id ? null : doc.id); setRejectReason('') }} style={{ padding: '7px 14px', border: 'none', borderRadius: 100, background: 'rgba(192,57,43,.1)', color: '#A93226', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{d.review.reject}</button>
+                    </span>
+                  </div>
+                  {rejectingId === doc.id && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                      <input type="text" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder={d.review.rejectPh} style={{ flex: 1, padding: '9px 12px', border: '1.5px solid #DCE6F5', borderRadius: 8, background: '#fff', font: 'inherit', fontSize: 13, color: '#001B45', outline: 'none' }} />
+                      <button type="button" disabled={reviewBusy || !rejectReason.trim()} onClick={() => reviewDoc(doc.id, 'rejected', rejectReason.trim())} style={{ padding: '9px 16px', border: 'none', borderRadius: 8, background: '#A93226', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{d.review.confirmReject}</button>
+                      <button type="button" onClick={() => { setRejectingId(null); setRejectReason('') }} style={{ padding: '9px 16px', border: '1.5px solid #DCE6F5', borderRadius: 8, background: '#fff', color: '#10233F', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>{d.review.cancel}</button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       <div className="app-card">
         <div className="app-card-head" style={{ flexWrap: 'wrap', gap: 12 }}>
@@ -506,11 +586,16 @@ export default function Drivers({ app, lang, token }) {
                 if (!photoDoc && !rest.length && !vehs.length) return null
                 const DocRow = ({ doc }) => {
                   const expired = doc.expires_at && new Date(doc.expires_at) < new Date()
+                  const stStyle = doc.status === 'rejected' ? DOC_COLORS.rejected
+                    : doc.status === 'approved' ? DOC_COLORS.ok
+                    : DOC_COLORS.pending
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', border: '1px solid #DCE6F5', borderRadius: 8, fontSize: 12 }}>
                       <span style={{ fontWeight: 600, color: '#001B45' }}>{(d.docTypes && d.docTypes[doc.type]) || doc.type}</span>
                       {doc.number && <span style={{ color: '#10233F' }}>{doc.number}</span>}
                       {doc.expires_at && <span style={{ color: expired ? '#A93226' : '#6C82A6' }}>{d.expires} {doc.expires_at}</span>}
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100, background: stStyle.bg, color: stStyle.fg }}>{d.docStates[doc.status] || doc.status}</span>
+                      {doc.status === 'rejected' && doc.rejection_reason && <span style={{ color: '#A93226' }}>{doc.rejection_reason}</span>}
                       {doc.file_path && <a href={`${MEDIA_URL}/${doc.file_path}`} target="_blank" rel="noreferrer" style={{ marginLeft: 'auto', color: '#087CF0', fontWeight: 600 }}>{d.viewFile}</a>}
                     </div>
                   )

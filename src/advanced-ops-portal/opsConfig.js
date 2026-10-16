@@ -44,7 +44,7 @@ export const PAGES = {
   offers: { roles: ['super', 'ops', 'support'], blocks: [['stats', 'stats', { cols: 4 }], ['chips', 'filters'], ['table', 'list'], ['toggles', 'toggles'], ['note', 'note']] },
   addrchg: { roles: ['super', 'ops', 'support'], blocks: [['stats', 'stats', { cols: 3 }], ['chips', 'filters'], ['table', 'list'], ['panels', 'panels', { cols: 1 }], ['form', 'form'], ['note', 'note']] },
   notify: { roles: ['super', 'ops', 'support'], blocks: [['table', 'list'], ['toggles', 'toggles'], ['panels', 'panels', { cols: 1 }], ['note', 'note']] },
-  manifest: { roles: ['super', 'ops'], blocks: [['stats', 'stats', { cols: 4 }], ['manifest', 'man'], ['steps', 'steps'], ['panels', 'panels', { cols: 2 }], ['table', 'versions'], ['note', 'note']] },
+  manifest: { roles: ['super', 'ops'], blocks: [['stats', 'stats', { cols: 4 }], ['manifest', 'man'], ['steps', 'steps'], ['panels', 'panels', { cols: 2 }], ['note', 'note']] },
   breakdown: { roles: ['super', 'ops', 'support'], blocks: [['stats', 'stats', { cols: 3 }], ['chips', 'filters'], ['table', 'list'], ['panels', 'panels', { cols: 2 }], ['form', 'form'], ['note', 'note']] },
   handover: { roles: ['super', 'ops', 'support'], blocks: [['stats', 'stats', { cols: 4 }], ['chips', 'filters'], ['table', 'list'], ['steps', 'steps'], ['panels', 'panels', { cols: 2 }], ['note', 'note']] },
   mantransfer: { roles: ['super', 'ops'], blocks: [['stats', 'stats', { cols: 4 }], ['chips', 'filters'], ['table', 'list'], ['table', 'hist'], ['steps', 'steps'], ['panels', 'panels', { cols: 1 }], ['note', 'note']] },

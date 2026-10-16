@@ -11,7 +11,7 @@ import { loadStore, saveStore, knownCodes, stampClock, stampMinute } from '../bu
 
 const SUPER_ROLES = ['sysadmin', 'super'];
 
-export default function FinancePortal({ config, dict = null, lang: langProp = null, defaultRole: defaultRoleProp = null, onLogout = null, onLangChange = null, account = null }) {
+export default function FinancePortal({ config, dict = null, lang: langProp = null, defaultRole: defaultRoleProp = null, onLogout = null, onLangChange = null, account = null, token = null }) {
   const { pack, badge, roles: ROLES, pages: PAGES, navGroups: NAV_GROUPS, navIcons: NAV_ICONS } = config;
 
   const startRole = defaultRoleProp || config.defaultRole;
@@ -98,7 +98,7 @@ export default function FinancePortal({ config, dict = null, lang: langProp = nu
   const base = t.common || {};
 
   const ctx = {
-    page, screen, lang, view, common, base,
+    page, screen, lang, view, common, base, token,
     mstat: f.mstat || {},
     chips, toggles, stage, scan, scanned, formErr, formBad, formVals, records,
     query,
