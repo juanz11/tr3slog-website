@@ -154,6 +154,98 @@ const btn = (label, primary, off, run) => (
 
 const inputStyle = { padding: '10px 12px', borderRadius: 9, border: '1.5px solid #DCE6F5', font: 'inherit', fontSize: 13, background: '#fff', color: '#10233F', minWidth: 0 }
 
+function CreatePanel({ create, setCreate, token, shipments, setShipments, shipQuery, setShipQuery, onCreate, onCancel }) {
+  React.useEffect(() => {
+    if (!create.open || !token) return
+    let cancelled = false
+    api.getShipments(token)
+      .then(rows => {
+        if (cancelled) return
+        const arr = Array.isArray(rows) ? rows : (rows && rows.data) || []
+        setShipments(arr)
+      })
+      .catch(() => setShipments([]))
+    return () => { cancelled = true }
+  }, [create.open, token, setShipments])
+
+  const filtered = React.useMemo(() => {
+    const q = shipQuery.trim().toLowerCase()
+    if (!q) return shipments
+    return shipments.filter(s => {
+      const t = String(s.tracking_number || '').toLowerCase()
+      const d = String(s.destination || '').toLowerCase()
+      const r = String(s.recipient_name || '').toLowerCase()
+      return t.includes(q) || d.includes(q) || r.includes(q)
+    })
+  }, [shipments, shipQuery])
+
+  const isSelected = (id) => create.stops.some(s => s.shipment_id === id)
+
+  const toggle = (s) => {
+    setCreate(c => {
+      const exists = c.stops.some(x => x.shipment_id === s.id)
+      if (exists) {
+        return { ...c, stops: c.stops.filter(x => x.shipment_id !== s.id) }
+      }
+      return {
+        ...c,
+        stops: [...c.stops, { shipment_id: s.id, tracking_code: s.tracking_number || `ENV-${s.id}` }],
+      }
+    })
+  }
+
+  const remove = (id) => setCreate(c => ({ ...c, stops: c.stops.filter(x => x.shipment_id !== id) }))
+
+  const chipStyle = {
+    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 100,
+    background: 'rgba(8,124,240,.1)', color: '#0768C9', fontSize: 12, fontWeight: 600,
+  }
+
+  return (
+    <div style={{ padding: '14px 22px', borderBottom: '1px solid #E3EBF7', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <input style={inputStyle} placeholder={T.codeHint} value={create.code} onChange={e => setCreate(c => ({ ...c, code: e.target.value }))} />
+
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#001B45' }}>Envíos a incluir</div>
+      <input style={inputStyle} placeholder="Buscar por tracking, destino o destinatario…" value={shipQuery} onChange={e => setShipQuery(e.target.value)} />
+
+      <div style={{ border: '1.5px solid #DCE6F5', borderRadius: 9, maxHeight: 240, overflow: 'auto', background: '#fff' }}>
+        {filtered.length === 0 && (
+          <div style={{ padding: 16, color: '#6C82A6', fontSize: 13 }}>No hay envíos disponibles. Cargue envíos primero o verifique permisos.</div>
+        )}
+        {filtered.map(s => {
+          const checked = isSelected(s.id)
+          return (
+            <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderBottom: '1px solid #E3EBF7', cursor: 'pointer', background: checked ? 'rgba(8,124,240,.06)' : '#fff' }}>
+              <input type="checkbox" checked={checked} onChange={() => toggle(s)} />
+              <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12.5, color: '#001B45', minWidth: 150 }}>{s.tracking_number || `ENV-${s.id}`}</span>
+              <span style={{ flex: 1, fontSize: 12.5, color: '#10233F', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.destination || '—'}</span>
+              <span style={{ fontSize: 12, color: '#6C82A6' }}>{s.recipient_name || s.status || ''}</span>
+            </label>
+          )
+        })}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', alignItems: 'center' }}>
+        <span style={{ fontSize: 12, color: '#6C82A6' }}>{create.stops.length} seleccionado(s)</span>
+        {create.stops.map((s, i) => (
+          <span key={s.shipment_id || i} style={chipStyle}>
+            {s.tracking_code}
+            <button type="button" onClick={() => remove(s.shipment_id)}
+              style={{ background: 'transparent', border: 'none', color: '#0768C9', fontSize: 16, lineHeight: 1, cursor: 'pointer', padding: 0, width: 18 }}>
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 10 }}>
+        {btn(T.create, true, create.busy, onCreate)}
+        {btn(T.cancel, false, false, onCancel)}
+      </div>
+    </div>
+  )
+}
+
 export default function Manifest({ token }) {
   const [view, setView] = React.useState('digital')
   const [list, setList] = React.useState([])
@@ -163,7 +255,9 @@ export default function Manifest({ token }) {
   const [toast, setToast] = React.useState('')
   const [drivers, setDrivers] = React.useState(null)
   const [assign, setAssign] = React.useState({ open: false, driverId: '', vehicleId: '', busy: false })
-  const [create, setCreate] = React.useState({ open: false, code: '', stops: '', busy: false })
+  const [create, setCreate] = React.useState({ open: false, code: '', stops: [], busy: false })
+  const [shipments, setShipments] = React.useState([])
+  const [shipQuery, setShipQuery] = React.useState('')
   const toastRef = React.useRef(null)
 
   const notify = (m) => {
@@ -225,13 +319,13 @@ export default function Manifest({ token }) {
   ]
 
   const doCreate = async () => {
-    const stops = create.stops.split('\n').map(s => s.trim()).filter(Boolean).map(code => ({ tracking_code: code }))
-    if (!stops.length) { notify(T.stopsRequired); return }
+    if (!create.stops.length) { notify(T.stopsRequired); return }
     setCreate(c => ({ ...c, busy: true }))
     try {
-      const created = await api.createManifest({ codigo: create.code.trim() || undefined, stops }, token)
+      const created = await api.createManifest({ codigo: create.code.trim() || undefined, stops: create.stops }, token)
       notify(T.created(created.codigo))
-      setCreate({ open: false, code: '', stops: '', busy: false })
+      setCreate({ open: false, code: '', stops: [], busy: false })
+      setShipQuery('')
       await load(false)
       setSel(created.id)
     } catch (e) { notify(e.message) }
@@ -319,14 +413,17 @@ export default function Manifest({ token }) {
         </div>
 
         {create.open && (
-          <div style={{ padding: '14px 22px', borderBottom: '1px solid #E3EBF7', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <input style={inputStyle} placeholder={T.codeHint} value={create.code} onChange={e => setCreate(c => ({ ...c, code: e.target.value }))} />
-            <textarea style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }} placeholder={T.stopsHint} value={create.stops} onChange={e => setCreate(c => ({ ...c, stops: e.target.value }))} />
-            <div style={{ display: 'flex', gap: 10 }}>
-              {btn(T.create, true, create.busy, doCreate)}
-              {btn(T.cancel, false, false, () => setCreate({ open: false, code: '', stops: '', busy: false }))}
-            </div>
-          </div>
+          <CreatePanel
+            create={create}
+            setCreate={setCreate}
+            token={token}
+            shipments={shipments}
+            setShipments={setShipments}
+            shipQuery={shipQuery}
+            setShipQuery={setShipQuery}
+            onCreate={doCreate}
+            onCancel={() => { setCreate({ open: false, code: '', stops: [], busy: false }); setShipQuery('') }}
+          />
         )}
 
         {assign.open && m && m.estado === 'CREADO' && (

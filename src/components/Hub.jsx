@@ -43,6 +43,22 @@ const T = {
   dispatchOk: 'Manifiesto despachado del hub.',
   adjOk: 'Ajuste registrado.',
   resolvedOk: 'Ajuste resuelto.',
+  kpiTotal: 'Manifiestos',
+  kpiReceived: 'Recibidos en hub',
+  kpiDispatched: 'Despachados',
+  kpiOpen: 'En conciliación',
+  flowTitle: 'Flujo del manifiesto',
+  steps: ['Creado', 'Recibido', 'Conciliado', 'Despachado'],
+  zonesTitle: 'Zonas del almacén',
+  zoneIn: 'Recepción',
+  zoneStage: 'Clasificación',
+  zoneOut: 'Despacho',
+  zonePkgs: 'bultos',
+  activityTitle: 'Actividad reciente',
+  activityEmpty: 'Sin movimientos aún.',
+  progressIn: 'Avance de entrada',
+  progressOut: 'Avance de salida',
+  scannedBy: 'Operario',
 }
 
 const TONE = {
@@ -82,6 +98,81 @@ const cell = { padding: '10px 12px', borderTop: '1px solid #E3EBF7', fontSize: 1
 const tagList = (items, tone) => (
   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
     {items.length ? items.map(c => chip(c, tone)) : <span style={{ fontSize: 12, color: '#8B9DBA' }}>—</span>}
+  </div>
+)
+
+const Kpi = ({ label, value, tone, icon }) => (
+  <div style={{ flex: '1 1 160px', background: '#fff', border: '1px solid #DCE6F5', borderRadius: 14, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+    <span style={{ width: 44, height: 44, borderRadius: 12, background: tone.bg, color: tone.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }}>{icon}</span>
+    <div>
+      <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 800, fontSize: 24, color: '#001B45', lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: '#6C82A6', marginTop: 2 }}>{label}</div>
+    </div>
+  </div>
+)
+
+const Stepper = ({ steps, current }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+    {steps.map((label, i) => {
+      const done = i < current
+      const active = i === current
+      return (
+        <React.Fragment key={label}>
+          {i > 0 && <div style={{ flex: 1, height: 3, minWidth: 18, borderRadius: 2, background: done || active ? '#087CF0' : '#DCE6F5' }} />}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: '0 0 auto' }}>
+            <span style={{
+              width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 700,
+              background: done ? '#087CF0' : active ? '#fff' : '#fff',
+              color: done ? '#fff' : active ? '#087CF0' : '#8B9DBA',
+              border: `2px solid ${done || active ? '#087CF0' : '#DCE6F5'}`,
+              boxShadow: active ? '0 0 0 4px rgba(8,124,240,.15)' : 'none',
+            }}>
+              {done ? '✓' : i + 1}
+            </span>
+            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase', color: done || active ? '#0768C9' : '#8B9DBA' }}>{label}</span>
+          </div>
+        </React.Fragment>
+      )
+    })}
+  </div>
+)
+
+const ProgressBar = ({ label, value, total, color }) => {
+  const pct = total > 0 ? Math.min(100, Math.round((value / total) * 100)) : 0
+  return (
+    <div style={{ flex: '1 1 220px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 6 }}>
+        <span style={{ fontWeight: 600, color: '#10233F' }}>{label}</span>
+        <span style={{ color: '#6C82A6' }}>{value}/{total} · {pct}%</span>
+      </div>
+      <div style={{ height: 8, borderRadius: 100, background: '#E3EBF7', overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 100, background: color, transition: 'width .35s ease' }} />
+      </div>
+    </div>
+  )
+}
+
+const Donut = ({ pct, label }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+    <div style={{ width: 108, height: 108, borderRadius: '50%', background: `conic-gradient(#087CF0 ${pct * 3.6}deg, #E3EBF7 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 78, height: 78, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 22, color: '#001B45' }}>
+        {pct}%
+      </div>
+    </div>
+    <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: '#6C82A6', textAlign: 'center' }}>{label}</span>
+  </div>
+)
+
+const Zone = ({ name, count, tone, icon }) => (
+  <div style={{ flex: 1, minWidth: 150, border: `1.5px ${count ? 'solid' : 'dashed'} ${tone.fg}`, borderRadius: 12, padding: '14px 16px', background: tone.bg, display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: tone.fg }}>
+      {icon}
+      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>{name}</span>
+    </div>
+    <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 26, color: '#001B45' }}>
+      {count} <span style={{ fontSize: 11, fontWeight: 600, color: '#6C82A6' }}>{T.zonePkgs}</span>
+    </div>
   </div>
 )
 
@@ -187,6 +278,14 @@ export default function Hub({ token }) {
         <p style={{ margin: 0, fontSize: 15, color: '#10233F', maxWidth: '70ch', lineHeight: 1.6 }}>{T.subtitle}</p>
       </div>
 
+      {/* KPIs del hub */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+        <Kpi label={T.kpiTotal} value={list.length} tone={TONE.neutral} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 8l8-4 8 4v8l-8 4-8-4V8z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>} />
+        <Kpi label={T.kpiReceived} value={list.filter(x => x.hubRecibidoAt).length} tone={TONE.info} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>} />
+        <Kpi label={T.kpiOpen} value={list.filter(x => x.hubRecibidoAt && !x.hubDespachadoAt).length} tone={TONE.warn} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>} />
+        <Kpi label={T.kpiDispatched} value={list.filter(x => x.hubDespachadoAt).length} tone={TONE.ok} icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 12h13m0 0l-4-4m4 4l-4 4M17 5h4v14h-4"/></svg>} />
+      </div>
+
       <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, overflow: 'hidden' }}>
         <div style={{ padding: '16px 22px', borderBottom: '1px solid #DCE6F5', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
           <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase' }}>
@@ -221,6 +320,12 @@ export default function Hub({ token }) {
                 {rec.bloqueado && rec.ajustes?.some(a => a.estado === 'PENDIENTE') ? ' ' + T.pendingAdj : ''}
               </div>
 
+              {/* Stepper del flujo */}
+              <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '18px 20px' }}>
+                <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 14 }}>{T.flowTitle}</div>
+                <Stepper steps={T.steps} current={rec.despachadoAt ? 4 : rec.recibidoAt ? (rec.bloqueado ? 2 : 3) : 1} />
+              </div>
+
               {/* Escaneo */}
               {!rec.despachadoAt && (
                 <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px' }}>
@@ -247,6 +352,11 @@ export default function Hub({ token }) {
               {/* Conciliación */}
               <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45' }}>{T.reconTitle}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center', padding: '10px 14px', background: '#F6F9FD', borderRadius: 10 }}>
+                  <Donut pct={(rec.esperados?.length ?? 0) > 0 ? Math.round(((rec.salidas?.length ?? 0) / rec.esperados.length) * 100) : 0} label={T.progressOut} />
+                  <ProgressBar label={T.progressIn} value={rec.entradas?.length ?? 0} total={rec.esperados?.length ?? 0} color="#087CF0" />
+                  <ProgressBar label={T.progressOut} value={rec.salidas?.length ?? 0} total={rec.esperados?.length ?? 0} color="#0F5F36" />
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                   <div>
                     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }}>{T.expected} · {rec.esperados?.length ?? 0}</div>
@@ -274,6 +384,21 @@ export default function Hub({ token }) {
                     <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C5220', marginBottom: 8 }}>{T.pendingOut} · {rec.pendientesSalida?.length ?? 0}</div>
                     {tagList(rec.pendientesSalida || [], TONE.warn)}
                   </div>
+                </div>
+              </div>
+
+              {/* Zonas del almacén */}
+              <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px' }}>
+                <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 14 }}>{T.zonesTitle}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'stretch' }}>
+                  <Zone name={T.zoneIn} count={rec.entradas?.length ?? 0} tone={TONE.info}
+                    icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>} />
+                  <div style={{ alignSelf: 'center', color: '#8B9DBA', fontSize: 18 }}>→</div>
+                  <Zone name={T.zoneStage} count={Math.max(0, (rec.entradas?.length ?? 0) - (rec.salidas?.length ?? 0)) + (rec.noEsperados?.length ?? 0)} tone={TONE.warn}
+                    icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 8l8-4 8 4v8l-8 4-8-4V8z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>} />
+                  <div style={{ alignSelf: 'center', color: '#8B9DBA', fontSize: 18 }}>→</div>
+                  <Zone name={T.zoneOut} count={rec.salidas?.length ?? 0} tone={TONE.ok}
+                    icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 12h13m0 0l-4-4m4 4l-4 4M17 5h4v14h-4"/></svg>} />
                 </div>
               </div>
 
@@ -324,6 +449,38 @@ export default function Hub({ token }) {
                         </React.Fragment>
                       ))}
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Actividad reciente */}
+              <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px' }}>
+                <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 14 }}>{T.activityTitle}</div>
+                {!scans.length ? (
+                  <div style={{ fontSize: 13, color: '#8B9DBA', padding: '8px 0' }}>{T.activityEmpty}</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {[...scans].slice(-8).reverse().map((s, i, arr) => {
+                      const isIn = s.fase === 'in'
+                      const tone = isIn ? TONE.info : TONE.ok
+                      return (
+                        <div key={s.id} style={{ display: 'flex', gap: 14, position: 'relative' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto' }}>
+                            <span style={{ width: 12, height: 12, borderRadius: '50%', background: tone.fg, border: `3px solid ${tone.bg}`, marginTop: 3 }} />
+                            {i < arr.length - 1 && <span style={{ width: 2, flex: 1, background: '#DCE6F5', minHeight: 18 }} />}
+                          </div>
+                          <div style={{ paddingBottom: 16 }}>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, fontWeight: 700, color: '#001B45' }}>{s.tracking_code}</span>
+                              {chip(isIn ? T.phaseIn : T.phaseOut, tone)}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>
+                              {fmtDT(s.scanned_at)}{s.scanned_by ? ` · ${T.scannedBy} #${s.scanned_by}` : ''}{s.notas ? ` · ${s.notas}` : ''}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
