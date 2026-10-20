@@ -4,11 +4,13 @@ import { Pagination, usePagination, usePolling } from './Shared'
 import { authI18n } from '../i18n-auth'
 import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
 
-const SHIFT_PLACEHOLDERS = {
-  es: 'Ej. Mañana / Tarde / Noche',
-  en: 'e.g. Morning / Afternoon / Night',
-  'zh-CN': '例如：早班 / 中班 / 晚班',
+const SHIFT_VALUES = ['Mañana', 'Tarde', 'Noche']
+const SHIFT_LABELS = {
+  es: { Mañana: 'Mañana', Tarde: 'Tarde', Noche: 'Noche' },
+  en: { Mañana: 'Morning', Tarde: 'Afternoon', Noche: 'Night' },
+  'zh-CN': { Mañana: '早班', Tarde: '晚班', Noche: '夜班' },
 }
+const shiftLabel = (value, lang) => (SHIFT_LABELS[lang] || SHIFT_LABELS.es)[value] || value
 
 const STATUS_COLORS = {
   active: { bg: 'rgba(19,122,69,.12)', fg: '#0F5F36' },
@@ -35,6 +37,9 @@ const emptyVehicle = () => ({
   files: {},
 })
 
+const FI = { padding: '10px 13px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#EEF4FC', font: 'inherit', fontSize: 14, color: '#001B45', outline: 'none', width: '100%', boxSizing: 'border-box' }
+const FL = { fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }
+
 const VEHICLE_DOCS = [
   { key: 'registration', number: 'registrationNumber', file: 'registration' },
   { key: 'insurance', number: 'insuranceNumber', expiry: 'insuranceExpires', file: 'insurance' },
@@ -44,11 +49,11 @@ const VEHICLE_DOCS = [
 
 function FileInput({ label, placeholder, file, onChange, accept = 'image/*,.heic,.heif,.pdf' }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{label}</span>
       <span style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px',
-        border: `1.5px dashed ${file ? '#087CF0' : '#DCE6F5'}`, borderRadius: 11,
+        display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
+        border: `1.5px dashed ${file ? '#087CF0' : '#DCE6F5'}`, borderRadius: 10,
         background: '#EEF4FC', cursor: 'pointer', fontSize: 13,
         color: file ? '#001B45' : '#6C82A6', overflow: 'hidden',
       }}>
@@ -137,6 +142,7 @@ export default function Drivers({ app, lang, token }) {
   const [formLoading, setFormLoading] = React.useState(false)
   const [newId, setNewId] = React.useState('')
   const [clients, setClients] = React.useState([])
+  const [zones, setZones] = React.useState([])
   const [selected, setSelected] = React.useState(null)
   const [rejectingId, setRejectingId] = React.useState(null)
   const [rejectReason, setRejectReason] = React.useState('')
@@ -198,6 +204,13 @@ export default function Drivers({ app, lang, token }) {
   React.useEffect(() => {
     if (open) fetchClients()
   }, [open, fetchClients])
+
+  React.useEffect(() => {
+    if (!token) return
+    api.getZones(token)
+      .then((data) => setZones((data.zones || []).filter((z) => z.is_active)))
+      .catch(() => setZones([]))
+  }, [token])
 
   const handleClientChange = (userId) => {
     if (!userId) {
@@ -444,8 +457,24 @@ export default function Drivers({ app, lang, token }) {
               <label style={labelSt}><span style={spanSt}>{a.email}</span><input type="email" required value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} style={inputSt} /></label>
               <label style={labelSt}><span style={spanSt}>{a.phone}</span><input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} style={inputSt} /></label>
               <label style={labelSt}><span style={spanSt}>{d.cols[2]}</span><input value={editForm.vehicle} onChange={(e) => setEditForm({ ...editForm, vehicle: e.target.value })} style={inputSt} /></label>
-              <label style={labelSt}><span style={spanSt}>{d.cols[3]}</span><input value={editForm.hub} onChange={(e) => setEditForm({ ...editForm, hub: e.target.value })} style={inputSt} /></label>
-              <label style={labelSt}><span style={spanSt}>{d.cols[4]}</span><input value={editForm.shift} onChange={(e) => setEditForm({ ...editForm, shift: e.target.value })} placeholder={SHIFT_PLACEHOLDERS[lang] || SHIFT_PLACEHOLDERS.es} style={inputSt} /></label>
+              <label style={labelSt}><span style={spanSt}>{d.cols[3]}</span>
+                <select value={editForm.hub} onChange={(e) => setEditForm({ ...editForm, hub: e.target.value })} style={{ ...inputSt, cursor: 'pointer' }}>
+                  <option value="">—</option>
+                  {editForm.hub && !zones.some((z) => z.name === editForm.hub) && <option value={editForm.hub}>{editForm.hub}</option>}
+                  {zones.map((z) => (
+                    <option key={z.id} value={z.name}>{z.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={labelSt}><span style={spanSt}>{d.cols[4]}</span>
+                <select value={editForm.shift} onChange={(e) => setEditForm({ ...editForm, shift: e.target.value })} style={{ ...inputSt, cursor: 'pointer' }}>
+                  <option value="">—</option>
+                  {editForm.shift && !SHIFT_VALUES.includes(editForm.shift) && <option value={editForm.shift}>{editForm.shift}</option>}
+                  {SHIFT_VALUES.map((s) => (
+                    <option key={s} value={s}>{shiftLabel(s, lang)}</option>
+                  ))}
+                </select>
+              </label>
               <label style={labelSt}>
                 <span style={spanSt}>{d.availability}</span>
                 <select value={editForm.available ? '1' : '0'} onChange={(e) => setEditForm({ ...editForm, available: e.target.value === '1' })} style={{ ...inputSt, cursor: 'pointer' }}>
@@ -519,75 +548,87 @@ export default function Drivers({ app, lang, token }) {
       )}
 
       {open && (
-        <form onSubmit={submit} style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 26, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <form onSubmit={submit} autoComplete="off" style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 24, marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
           {formError && (
             <div style={{ padding: '12px 16px', borderRadius: 8, background: '#FDECEC', color: '#B91C1C', fontSize: 14 }}>{formError}</div>
           )}
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.selectClient}</span>
-            <select value={form.user_id} onChange={(e) => handleClientChange(e.target.value)} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }}>
-              <option value="">{d.newDriver}</option>
-              {clients.map((c) => (
-                <option key={c.id} value={String(c.id)}>{c.name} — {c.email}</option>
-              ))}
-            </select>
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', rowGap: 28, columnGap: 24 }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8, gridColumn: '1 / -1' }}>
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{a.name}</span>
-              <input type="text" required disabled={!!form.user_id} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+          <div style={{ maxWidth: 420 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={FL}>{d.selectClient}</span>
+              <select value={form.user_id} onChange={(e) => handleClientChange(e.target.value)} style={{ ...FI, cursor: 'pointer' }}>
+                <option value="">{d.newDriver}</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={String(c.id)}>{c.name} — {c.email}</option>
+                ))}
+              </select>
             </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{a.phone}</span>
-              <div style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
-                <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} style={{ flex: '0 0 110px', padding: '14px 12px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', color: '#001B45', font: 'inherit', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '16px 18px' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={FL}>{a.name}</span>
+              <input type="text" required disabled={!!form.user_id} autoComplete="off" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={FI} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={FL}>{a.email}</span>
+              <input type="email" required disabled={!!form.user_id} autoComplete="off" name="driver_reg_email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={FI} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={FL}>{a.phone}</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
+                <select value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} style={{ flex: '0 0 92px', padding: '10px 8px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#EEF4FC', color: '#001B45', font: 'inherit', fontSize: 13, cursor: 'pointer', outline: 'none' }}>
                   <option value="">{a.country}</option>
-                  {Object.keys(PHONE_FORMATS).map((k) => (
+                  {Object.keys(PHONE_FORMATS).filter((k) => k === 'DO' || k === 'CR').map((k) => (
                     <option key={k} value={k}>{PHONE_FORMATS[k].code} {k}</option>
                   ))}
                 </select>
-                <input type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder={form.country && PHONE_FORMATS[form.country] ? PHONE_FORMATS[form.country].example : d.phonePh} style={{ flex: 1, padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                <input type="tel" inputMode="tel" autoComplete="off" name="driver_reg_phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder={form.country && PHONE_FORMATS[form.country] ? PHONE_FORMATS[form.country].example : d.phonePh} style={{ ...FI, flex: 1, minWidth: 0 }} />
               </div>
             </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{a.email}</span>
-              <input type="email" required disabled={!!form.user_id} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.cols[3]}</span>
-              <input type="text" value={form.hub} onChange={(e) => setForm({ ...form, hub: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
-            </label>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.cols[4]}</span>
-              <input type="text" value={form.shift} onChange={(e) => setForm({ ...form, shift: e.target.value })} placeholder={SHIFT_PLACEHOLDERS[lang] || SHIFT_PLACEHOLDERS.es} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
-            </label>
             {!form.user_id && (
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 8, gridColumn: '1 / -1' }}>
-                <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{a.password}</span>
-                <input type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={FL}>{a.password}</span>
+                <input type="password" required autoComplete="new-password" name="driver_reg_password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} style={FI} />
               </label>
             )}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={FL}>{d.cols[3]}</span>
+              <select value={form.hub} onChange={(e) => setForm({ ...form, hub: e.target.value })} style={{ ...FI, cursor: 'pointer', color: form.hub ? '#001B45' : '#6C82A6' }}>
+                <option value="">—</option>
+                {zones.map((z) => (
+                  <option key={z.id} value={z.name}>{z.name}</option>
+                ))}
+              </select>
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={FL}>{d.cols[4]}</span>
+              <select value={form.shift} onChange={(e) => setForm({ ...form, shift: e.target.value })} style={{ ...FI, cursor: 'pointer', color: form.shift ? '#001B45' : '#6C82A6' }}>
+                <option value="">—</option>
+                {SHIFT_VALUES.map((s) => (
+                  <option key={s} value={s}>{shiftLabel(s, lang)}</option>
+                ))}
+              </select>
+            </label>
 
-            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #DCE6F5', paddingTop: 20 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#001B45', marginBottom: 6 }}>{d.docs.title}</div>
-              <div style={{ fontSize: 12, color: '#6C82A6', marginBottom: 18 }}>{d.docs.required}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '18px 24px' }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.docs.idNumber} *</span>
-                  <input type="text" value={docs.idNumber} onChange={(e) => setDocs({ ...docs, idNumber: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #DCE6F5', paddingTop: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#001B45', marginBottom: 4 }}>{d.docs.title}</div>
+              <div style={{ fontSize: 12, color: '#6C82A6', marginBottom: 14 }}>{d.docs.required}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '14px 18px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={FL}>{d.docs.idNumber} *</span>
+                  <input type="text" value={docs.idNumber} onChange={(e) => setDocs({ ...docs, idNumber: e.target.value })} style={FI} />
                 </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.docs.idExpiry}</span>
-                  <input type="date" value={docs.idExpires} onChange={(e) => setDocs({ ...docs, idExpires: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={FL}>{d.docs.idExpiry}</span>
+                  <input type="date" value={docs.idExpires} onChange={(e) => setDocs({ ...docs, idExpires: e.target.value })} style={FI} />
                 </label>
                 <FileInput label={d.docs.idFile} placeholder={d.docs.chooseFile} file={docFiles.idFile} onChange={(f) => setDocFiles({ ...docFiles, idFile: f })} />
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.docs.licenseNumber} *</span>
-                  <input type="text" value={docs.licenseNumber} onChange={(e) => setDocs({ ...docs, licenseNumber: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={FL}>{d.docs.licenseNumber} *</span>
+                  <input type="text" value={docs.licenseNumber} onChange={(e) => setDocs({ ...docs, licenseNumber: e.target.value })} style={FI} />
                 </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.docs.licenseExpiry} *</span>
-                  <input type="date" value={docs.licenseExpires} onChange={(e) => setDocs({ ...docs, licenseExpires: e.target.value })} style={{ padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={FL}>{d.docs.licenseExpiry} *</span>
+                  <input type="date" value={docs.licenseExpires} onChange={(e) => setDocs({ ...docs, licenseExpires: e.target.value })} style={FI} />
                 </label>
                 <FileInput label={d.docs.licenseFile} placeholder={d.docs.chooseFile} file={docFiles.licenseFile} onChange={(f) => setDocFiles({ ...docFiles, licenseFile: f })} />
                 <FileInput label={`${d.docs.photo} *`} placeholder={d.docs.chooseFile} file={docFiles.photo} onChange={(f) => setDocFiles({ ...docFiles, photo: f })} accept="image/*" />
@@ -605,10 +646,10 @@ export default function Drivers({ app, lang, token }) {
                     <span style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, color: '#001B45' }}>{d.vehicles.name.replace('{n}', i + 1)}</span>
                     <button type="button" onClick={() => setVehicles(vehicles.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#A93226' }}>{d.vehicles.remove}</button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px 18px', marginBottom: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '12px 14px', marginBottom: 12 }}>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.type}</span>
-                      <select value={v.type} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, type: e.target.value } : x))} style={{ padding: '12px 14px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', color: v.type ? '#001B45' : '#6C82A6', outline: 'none' }}>
+                      <select value={v.type} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, type: e.target.value } : x))} style={{ padding: '10px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', fontSize: 13, color: v.type ? '#001B45' : '#6C82A6', outline: 'none' }}>
                         <option value="">{d.vehicles.selectType}</option>
                         {Object.entries(d.vehicles.types).map(([k, label]) => (
                           <option key={k} value={k}>{label}</option>
@@ -617,24 +658,24 @@ export default function Drivers({ app, lang, token }) {
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.label}</span>
-                      <input type="text" value={v.label} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} placeholder={d.vehiclePh} style={{ padding: '12px 14px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                      <input type="text" value={v.label} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, label: e.target.value } : x))} placeholder={d.vehiclePh} style={{ padding: '10px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', fontSize: 13, color: '#001B45', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.plate} *</span>
-                      <input type="text" value={v.plate} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, plate: e.target.value } : x))} style={{ padding: '12px 14px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                      <input type="text" value={v.plate} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, plate: e.target.value } : x))} style={{ padding: '10px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', fontSize: 13, color: '#001B45', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.capacity}</span>
-                      <input type="text" value={v.cargoCapacity} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, cargoCapacity: e.target.value } : x))} placeholder={d.vehicles.capacityPh} style={{ padding: '12px 14px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', color: '#001B45', outline: 'none' }} />
+                      <input type="text" value={v.cargoCapacity} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, cargoCapacity: e.target.value } : x))} placeholder={d.vehicles.capacityPh} style={{ padding: '10px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', fontSize: 13, color: '#001B45', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                     </label>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
                     {VEHICLE_DOCS.map((vd) => (
                       <div key={vd.key} style={{ border: '1px dashed #DCE6F5', borderRadius: 10, padding: 12, background: '#fff', display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45' }}>{d.vehicles[vd.key]}</span>
-                        <input type="text" value={v[vd.number]} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, [vd.number]: e.target.value } : x))} placeholder={d.vehicles.number} style={{ padding: '9px 12px', border: '1.5px solid #DCE6F5', borderRadius: 8, background: '#EEF4FC', font: 'inherit', fontSize: 13, color: '#001B45', outline: 'none' }} />
+                        <input type="text" value={v[vd.number]} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, [vd.number]: e.target.value } : x))} placeholder={d.vehicles.number} style={{ padding: '8px 10px', border: '1.5px solid #DCE6F5', borderRadius: 8, background: '#EEF4FC', font: 'inherit', fontSize: 12.5, color: '#001B45', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                         {vd.expiry && (
-                          <input type="date" value={v[vd.expiry]} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, [vd.expiry]: e.target.value } : x))} title={d.vehicles.expiry} style={{ padding: '9px 12px', border: '1.5px solid #DCE6F5', borderRadius: 8, background: '#EEF4FC', font: 'inherit', fontSize: 13, color: '#001B45', outline: 'none' }} />
+                          <input type="date" value={v[vd.expiry]} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, [vd.expiry]: e.target.value } : x))} title={d.vehicles.expiry} style={{ padding: '8px 10px', border: '1.5px solid #DCE6F5', borderRadius: 8, background: '#EEF4FC', font: 'inherit', fontSize: 12.5, color: '#001B45', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                         )}
                         <FileInput label={d.vehicles.file} placeholder={d.docs.chooseFile} file={v.files[vd.file]} onChange={(f) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, files: { ...x.files, [vd.file]: f } } : x))} />
                       </div>
@@ -709,7 +750,7 @@ export default function Drivers({ app, lang, token }) {
                   <span className="app-table-text">{driver.id}</span>
                   <span className="app-table-text">{driver.v}</span>
                   <span className="app-table-text">{driver.hub}</span>
-                  <span className="app-table-text">{driver.shift}</span>
+                  <span className="app-table-text">{shiftLabel(driver.shift, lang)}</span>
                   <span className="app-status" style={{ background: docStyle.bg, color: docStyle.fg }}>{d.docStates[driver.doc]}</span>
                   <span className="app-status" style={{ background: stStyle.bg, color: stStyle.fg }}>{d.statuses[driver.st]}</span>
                   <span>

@@ -112,9 +112,8 @@ function AssignDriverModal({ d, app, shipment, drivers, busyDrivers, saving, err
             return (
               <button
                 key={id}
-                onClick={() => !busy && setDriverId(id)}
-                disabled={busy}
-                style={{ ...rowStyle(on), opacity: busy ? .55 : 1, cursor: busy ? 'not-allowed' : 'pointer' }}
+                onClick={() => setDriverId(id)}
+                style={rowStyle(on)}
               >
                 {radio(on)}
                 <span style={{ flex: 1, minWidth: 0 }}>

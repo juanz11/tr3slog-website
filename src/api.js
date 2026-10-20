@@ -95,6 +95,10 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getZones: (token) => fetch(`${API_URL}/zones`, {
+    headers: headers(token),
+  }).then(handle),
+
   getUsers: (token) => fetch(`${API_URL}/users`, {
     headers: headers(token),
   }).then(handle),
