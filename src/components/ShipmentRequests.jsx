@@ -5,46 +5,57 @@ import { Pagination, usePagination, usePolling } from './Shared'
 const I18N = {
   es: {
     title: 'Solicitudes de recolección',
-    sub: 'Solicitudes de conductores para tomar envíos sin asignar.',
+    sub: 'Solicitudes de conductores para tomar envíos sin asignar y avisos de clientes para entregas de mismo día.',
     filterAll: 'Todas',
     filters: { pending: 'Pendientes', approved: 'Aprobadas', rejected: 'Rechazadas' },
-    cols: ['Guía', 'Ruta', 'Conductor', 'Mensaje', 'Estado', ''],
+    cols: ['Guía', 'Ruta', 'Tipo', 'Solicitante', 'Mensaje', 'Estado', ''],
     empty: 'No hay solicitudes.',
     approve: 'Aprobar',
     reject: 'Rechazar',
-    notePh: 'Nota para el conductor (opcional)',
+    notePh: 'Nota para el solicitante (opcional)',
+    driverPh: 'Asignar conductor…',
     error: 'No se pudo actualizar la solicitud.',
     updated: 'Solicitud actualizada.',
     statuses: { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' },
+    types: { driver: 'Conductor', same_day: 'Mismo día' },
   },
   en: {
     title: 'Pickup requests',
-    sub: 'Driver requests to take unassigned shipments.',
+    sub: 'Driver requests to take unassigned shipments and client same-day priority notices.',
     filterAll: 'All',
     filters: { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' },
-    cols: ['Tracking', 'Route', 'Driver', 'Message', 'Status', ''],
+    cols: ['Tracking', 'Route', 'Type', 'Requester', 'Message', 'Status', ''],
     empty: 'No requests.',
     approve: 'Approve',
     reject: 'Reject',
-    notePh: 'Note for the driver (optional)',
+    notePh: 'Note for the requester (optional)',
+    driverPh: 'Assign driver…',
     error: 'Could not update the request.',
     updated: 'Request updated.',
     statuses: { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' },
+    types: { driver: 'Driver', same_day: 'Same day' },
   },
   'zh-CN': {
     title: '取件请求',
-    sub: '司机请求接取未分配货件。',
+    sub: '司机请求接取未分配货件，以及客户的当日达优先通知。',
     filterAll: '全部',
     filters: { pending: '待处理', approved: '已批准', rejected: '已拒绝' },
-    cols: ['追踪号', '路线', '司机', '留言', '状态', ''],
+    cols: ['追踪号', '路线', '类型', '申请人', '留言', '状态', ''],
     empty: '暂无请求。',
     approve: '批准',
     reject: '拒绝',
-    notePh: '给司机的备注（可选）',
+    notePh: '给申请人的备注（可选）',
+    driverPh: '分配司机…',
     error: '无法更新请求。',
     updated: '请求已更新。',
     statuses: { pending: '待处理', approved: '已批准', rejected: '已拒绝' },
+    types: { driver: '司机', same_day: '当日达' },
   },
+}
+
+const TYPE_COLORS = {
+  same_day: { bg: 'rgba(8,124,240,.12)', fg: '#0768C9' },
+  driver: { bg: '#EEF4FC', fg: '#6C82A6' },
 }
 
 const STATUS_COLORS = {
@@ -56,10 +67,12 @@ const STATUS_COLORS = {
 export default function ShipmentRequests({ app, lang, token }) {
   const d = I18N[lang] || I18N.es
   const [requests, setRequests] = React.useState([])
+  const [drivers, setDrivers] = React.useState([])
   const [loading, setLoading] = React.useState(true)
   const [filter, setFilter] = React.useState('pending')
   const [busy, setBusy] = React.useState(null)
   const [notes, setNotes] = React.useState({})
+  const [driverSel, setDriverSel] = React.useState({})
 
   const fetchRequests = React.useCallback(async (isPoll = false) => {
     if (!token) return
@@ -75,6 +88,13 @@ export default function ShipmentRequests({ app, lang, token }) {
   }, [token])
 
   usePolling(fetchRequests, 30000)
+
+  React.useEffect(() => {
+    if (!token) return
+    api.getDrivers(token)
+      .then((data) => setDrivers(Array.isArray(data) ? data : data.data || []))
+      .catch(() => setDrivers([]))
+  }, [token])
 
   const statusOf = (req) => req.status || 'pending'
   const counts = React.useMemo(() => {
@@ -96,19 +116,19 @@ export default function ShipmentRequests({ app, lang, token }) {
   const updateStatus = async (req, status) => {
     setBusy(req.id)
     try {
-      await api.updateShipmentRequest(req.id, {
-        status,
-        review_notes: notes[req.id] || '',
-      }, token)
+      const payload = { status, review_notes: notes[req.id] || '' }
+      if (req.type === 'same_day' && driverSel[req.id]) payload.driver_id = driverSel[req.id]
+      await api.updateShipmentRequest(req.id, payload, token)
       fetchRequests(false)
     } catch (e) {
-      alert(d.error)
+      alert(e.message || d.error)
     } finally {
       setBusy(null)
     }
   }
 
   const onNoteChange = (id, value) => setNotes((prev) => ({ ...prev, [id]: value }))
+  const onDriverChange = (id, value) => setDriverSel((prev) => ({ ...prev, [id]: value }))
 
   return (
     <div>
@@ -174,14 +194,22 @@ export default function ShipmentRequests({ app, lang, token }) {
                 {pageItems.map((req) => {
                   const s = req.shipment || {}
                   const route = `${s.origin || '—'} → ${s.destination || '—'}`
-                  const driver = req.driver?.name || `ID ${req.driver_id}`
+                  const type = req.type || 'driver'
+                  const isSameDay = type === 'same_day'
+                  const requester = isSameDay
+                    ? (req.client?.name || s.client?.name || `ID ${req.client_id}`)
+                    : (req.driver?.name || `ID ${req.driver_id}`)
                   const st = req.status || 'pending'
                   const color = STATUS_COLORS[st] || STATUS_COLORS.pending
+                  const typeColor = TYPE_COLORS[type] || TYPE_COLORS.driver
                   return (
                     <tr key={req.id} style={{ borderTop: '1px solid #EDF3FB' }}>
                       <td style={{ padding: '14px 16px', fontWeight: 700 }}>{s.tracking_number || `ENV-${s.id}`}</td>
                       <td style={{ padding: '14px 16px' }}>{route}</td>
-                      <td style={{ padding: '14px 16px' }}>{driver}</td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 100, background: typeColor.bg, color: typeColor.fg, fontSize: 12, fontWeight: 700 }}>{d.types[type] || type}</span>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>{requester}</td>
                       <td style={{ padding: '14px 16px', color: '#6C82A6' }}>{req.message || '—'}</td>
                       <td style={{ padding: '14px 16px' }}>
                         <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 100, background: color.bg, color: color.fg, fontSize: 12, fontWeight: 700 }}>{d.statuses[st] || st}</span>
@@ -189,6 +217,20 @@ export default function ShipmentRequests({ app, lang, token }) {
                       <td style={{ padding: '14px 16px' }}>
                         {st === 'pending' && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
+                            {isSameDay && (
+                              <select
+                                value={driverSel[req.id] || ''}
+                                onChange={(e) => onDriverChange(req.id, e.target.value)}
+                                style={{ padding: '8px 10px', border: '1px solid #DCE6F5', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}
+                              >
+                                <option value="">{d.driverPh}</option>
+                                {drivers.map((drv) => (
+                                  <option key={drv.user_id || drv.id} value={drv.user_id || drv.id}>
+                                    {drv.name || drv.n} — {drv.v || drv.vehicle || ''}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                             <input
                               type="text"
                               value={notes[req.id] || ''}
@@ -198,9 +240,9 @@ export default function ShipmentRequests({ app, lang, token }) {
                             />
                             <div style={{ display: 'flex', gap: 8 }}>
                               <button
-                                disabled={busy === req.id}
+                                disabled={busy === req.id || (isSameDay && !driverSel[req.id])}
                                 onClick={() => updateStatus(req, 'approved')}
-                                style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: '#137A45', color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+                                style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', background: '#137A45', color: '#fff', fontWeight: 600, cursor: 'pointer', opacity: (isSameDay && !driverSel[req.id]) ? 0.5 : 1 }}
                               >
                                 {d.approve}
                               </button>

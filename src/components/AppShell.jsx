@@ -74,7 +74,15 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const [pendingQuotes, setPendingQuotes] = React.useState(0)
   const [pendingRequests, setPendingRequests] = React.useState(0)
   const [requestToast, setRequestToast] = React.useState(0)
-  const prevRequestsRef = React.useRef(null)
+  const [requestKinds, setRequestKinds] = React.useState({ same_day: 0, driver: 0 })
+  const reqSeenRef = React.useRef(null)
+
+  const markRequestsSeen = (count) => {
+    const n = count ?? pendingRequests
+    reqSeenRef.current = n
+    try { localStorage.setItem('tr3slog-req-seen', String(n)) } catch (e) {}
+    setRequestToast(0)
+  }
 
   React.useEffect(() => {
     try {
@@ -92,17 +100,36 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
       if (!isOperations && !isOpsSupervisor) return
       try {
         let count = 0
+        let kinds = null
         try {
           const data = await api.getPendingShipmentRequestsCount(token)
           count = data?.count ?? 0
-        } catch (e) {
-          const data = await api.getShipmentRequests(token, 'pending')
-          count = (Array.isArray(data) ? data : data.data || []).length
+          if (data?.same_day !== undefined || data?.driver !== undefined) {
+            kinds = { same_day: data?.same_day ?? 0, driver: data?.driver ?? 0 }
+          }
+        } catch (e) {}
+        if (kinds === null) {
+          try {
+            const data = await api.getShipmentRequests(token, 'pending')
+            const list = Array.isArray(data) ? data : data.data || []
+            count = list.length
+            kinds = {
+              same_day: list.filter((r) => r.type === 'same_day').length,
+              driver: list.filter((r) => r.type !== 'same_day').length,
+            }
+          } catch (e2) {}
         }
-        if (prevRequestsRef.current !== null && count > prevRequestsRef.current) {
-          setRequestToast(count - prevRequestsRef.current)
+        if (kinds !== null) setRequestKinds(kinds)
+        if (reqSeenRef.current === null) {
+          try { reqSeenRef.current = Number(localStorage.getItem('tr3slog-req-seen') || '0') } catch (e) { reqSeenRef.current = 0 }
         }
-        prevRequestsRef.current = count
+        if (count < reqSeenRef.current) {
+          reqSeenRef.current = count
+          try { localStorage.setItem('tr3slog-req-seen', String(count)) } catch (e) {}
+        }
+        if (count > reqSeenRef.current) {
+          setRequestToast(count - reqSeenRef.current)
+        }
         setPendingRequests(count)
       } catch (e) {}
     }
@@ -166,7 +193,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           {g.keys.map((k) => nav[k] && (
             <button
               key={k}
-              onClick={() => { setActiveKey(k); setMobileOpen(false) }}
+              onClick={() => { setActiveKey(k); setMobileOpen(false); if (k === 'requests') markRequestsSeen() }}
               className={`app-nav-item ${k === activeKey ? 'on' : ''}`}
             >
               <NavIcon name={k} color={k === activeKey ? '#fff' : '#6C82A6'} />
@@ -189,7 +216,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
         return (
           <button
             key={k}
-            onClick={() => { setActiveKey(k); setMobileOpen(false) }}
+            onClick={() => { setActiveKey(k); setMobileOpen(false); if (k === 'requests') markRequestsSeen() }}
             className={`app-nav-item ${on ? 'on' : ''}`}
           >
             <NavIcon name={k} color={on ? '#fff' : '#6C82A6'} />
@@ -356,7 +383,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
 
       {requestToast > 0 && (
         <button
-          onClick={() => { setActiveKey('requests'); setRequestToast(0) }}
+          onClick={() => { setActiveKey('requests'); markRequestsSeen() }}
           style={{
             position: 'fixed', bottom: 24, right: 24, zIndex: 200,
             display: 'flex', alignItems: 'center', gap: 12,
@@ -375,7 +402,11 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             </svg>
           </span>
           <span>
-            <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{app.shell.newRequest}</span>
+            <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>
+              {requestKinds.same_day > 0
+                ? (app.shell.newRequestClient || app.shell.newRequest)
+                : app.shell.newRequest}
+            </span>
             <span style={{ display: 'block', fontSize: 12, color: '#C6D6EF' }}>{app.shell.newRequestSub.replace('{n}', requestToast)}</span>
           </span>
         </button>

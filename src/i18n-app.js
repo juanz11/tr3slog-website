@@ -21,6 +21,7 @@ export const appI18n = {
       operator: 'Operaciones · Hub San Juan',
       searchPh: 'Buscar número de guía, cliente o ruta',
       newRequest: 'Nueva solicitud de conductor',
+      newRequestClient: 'Nueva solicitud de cliente',
       newRequestSub: '{n} solicitud(es) pendiente(s) por revisar',
     },
     navC: {
@@ -645,6 +646,7 @@ export const appI18n = {
       operator: 'Operations · San Juan hub',
       searchPh: 'Search tracking number, client or route',
       newRequest: 'New driver request',
+      newRequestClient: 'New client request',
       newRequestSub: '{n} pending request(s) to review',
     },
     navC: {
@@ -1268,6 +1270,7 @@ export const appI18n = {
       client: 'Comercial Bayamón LLC',
       operator: '运营 · 圣胡安枢纽',
       newRequest: '新的司机请求',
+      newRequestClient: '新的客户请求',
       newRequestSub: '{n} 条待审核请求',
     },
     navC: {

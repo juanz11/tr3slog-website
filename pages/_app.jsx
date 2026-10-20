@@ -25,6 +25,7 @@ export default function App({ Component, pageProps }) {
   const [user, setUser] = useState(null)
   const [authOpen, setAuthOpen] = useState(false)
   const [authReady, setAuthReady] = useState(false)
+  const [notifToast, setNotifToast] = useState(null)
   const toastTimer = useRef(null)
 
   useEffect(() => {
@@ -88,6 +89,69 @@ export default function App({ Component, pageProps }) {
     verify()
     return () => { active = false }
   }, [])
+
+  // Poll personal notifications for the logged-in user, on every page/portal.
+  // Unread alerts pop on every refresh until the user opens them (marked read).
+  useEffect(() => {
+    if (!user) return
+    let token = null
+    try { token = localStorage.getItem('tr3slog-token') } catch (e) {}
+    if (!token) return
+    const fetchNotifs = async () => {
+      try {
+        const notifs = await api.getNotifications(token)
+        const list = Array.isArray(notifs) ? notifs : notifs.data || []
+        const unread = list.filter((n) => !n.read_at)
+        if (unread.length) setNotifToast(unread[0])
+      } catch (e) {}
+    }
+    fetchNotifs()
+    const interval = setInterval(fetchNotifs, 30000)
+    return () => clearInterval(interval)
+  }, [user])
+
+  useEffect(() => {
+    if (!notifToast) return
+    const t = setTimeout(() => setNotifToast(null), 15000)
+    return () => clearTimeout(t)
+  }, [notifToast])
+
+  const openNotif = () => {
+    const n = notifToast
+    setNotifToast(null)
+    try {
+      const token = localStorage.getItem('tr3slog-token')
+      if (token) api.markNotificationRead(n.id, token).catch(() => {})
+    } catch (e) {}
+    router.push('/dashboard')
+  }
+
+  const NotifCard = () => (
+    <button
+      onClick={openNotif}
+      style={{
+        position: 'fixed', bottom: 24, right: 24, zIndex: 1000,
+        display: 'flex', alignItems: 'center', gap: 12, maxWidth: 380,
+        padding: '14px 18px', border: 'none', borderRadius: 12,
+        background: '#001B45', color: '#fff', cursor: 'pointer',
+        boxShadow: '0 12px 32px rgba(0,27,69,.35)', font: 'inherit', textAlign: 'left',
+      }}
+    >
+      <span style={{
+        width: 34, height: 34, borderRadius: 10, background: '#C0392B',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto',
+      }}>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+        </svg>
+      </span>
+      <span>
+        <span style={{ display: 'block', fontSize: 13, fontWeight: 700 }}>{notifToast.title}</span>
+        <span style={{ display: 'block', fontSize: 12, color: '#C6D6EF' }}>{notifToast.body}</span>
+      </span>
+    </button>
+  )
 
 
   const t = i18n[lang] || i18n.es
@@ -190,6 +254,7 @@ export default function App({ Component, pageProps }) {
           />
         )}
         {toast && <Toast text={toast} />}
+        {notifToast && <NotifCard />}
       </div>
     )
   }
@@ -214,6 +279,7 @@ export default function App({ Component, pageProps }) {
       {legal && <LegalModal t={t} legal={legal} onClose={() => setLegal(null)} />}
       {toast && <Toast text={toast} />}
       {authOpen && <AuthModal t={t} lang={lang} langs={langs} setLang={setLang} onClose={() => setAuthOpen(false)} onLogin={handleLogin} setLegal={setLegal} />}
+      {notifToast && <NotifCard />}
     </div>
   )
 }

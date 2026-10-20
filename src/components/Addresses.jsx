@@ -1,7 +1,7 @@
 import React from 'react'
 import { api } from '../api'
 import { Pagination, usePagination } from './Shared'
-import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
+import { COUNTRY_NAMES, PHONE_FORMATS, detectDialCountry } from '../lib/countries'
 
 const COUNTRY_OPTIONS = [
   { code: 'DO', name: 'República Dominicana' },
@@ -165,7 +165,7 @@ export default function Addresses({ app, token }) {
       zip: row.zip || '',
       contact: row.c,
       phone: row.phone || '',
-      phoneCountry: row.country || '',
+      phoneCountry: detectDialCountry(row.phone, row.country, ['DO', 'CR']),
       instructions: row.ins || '',
       type: row.type || 0,
     })
@@ -207,6 +207,7 @@ export default function Addresses({ app, token }) {
       zip_code: formVals.zip,
       contact_name: formVals.contact,
       phone: formVals.phone,
+      phone_country: formVals.phoneCountry || formVals.country,
       delivery_instructions: formVals.instructions,
       type: TYPE_STRINGS[formVals.type || 0],
       is_default: rows.length === 0,

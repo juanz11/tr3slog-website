@@ -183,6 +183,15 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getNotifications: (token) => fetch(`${API_URL}/notifications`, {
+    headers: headers(token),
+  }).then(handle),
+
+  markNotificationRead: (id, token) => fetch(`${API_URL}/notifications/${id}/read`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
   updateShipmentRequest: (id, data, token) => fetch(`${API_URL}/shipments/requests/${id}`, {
     method: 'PATCH',
     headers: headers(token),

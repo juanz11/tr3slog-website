@@ -1,6 +1,6 @@
 import React from 'react'
 import { api } from '../api'
-import { COUNTRY_NAMES, PHONE_FORMATS } from '../lib/countries'
+import { COUNTRY_NAMES, PHONE_FORMATS, detectDialCountry } from '../lib/countries'
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { DeliveryIcon } from './PricingCalc'
@@ -1201,7 +1201,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
         country: found.country || '',
         zip: found.zip_code || '',
         phone: found.phone || '',
-        phoneCountry: found.country || '',
+        phoneCountry: detectDialCountry(found.phone, found.country, ['DO', 'CR']),
       },
     }))
   }, [savedAddresses])

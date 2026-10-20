@@ -715,8 +715,11 @@ export function AdminDashboardScreen({ dict = null, lang = 'es', token = null, s
     cols: d.reqCols,
     rows: pendingReqs.slice(0, 10).map((r) => {
       const s = r.shipment || {};
+      const requester = r.type === 'same_day'
+        ? (r.client?.name || s.client?.name || `ID ${r.client_id || '—'}`)
+        : (r.driver?.name || `ID ${r.driver_id || '—'}`);
       return {
-        c: [s.tracking_number || `ENV-${s.id || r.shipment_id || '—'}`, `${s.origin || '—'} → ${s.destination || '—'}`, r.driver?.name || `ID ${r.driver_id || '—'}`],
+        c: [s.tracking_number || `ENV-${s.id || r.shipment_id || '—'}`, `${s.origin || '—'} → ${s.destination || '—'}`, requester],
         pill: d.reqPill,
         st: 'warn',
       };

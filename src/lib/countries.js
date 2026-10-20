@@ -164,6 +164,15 @@ export const COUNTRY_NAMES = {
   ZW: "Zimbabwe",
 }
 
+export const detectDialCountry = (phone, fallback, candidates) => {
+  const raw = String(phone || '').trim()
+  if (!raw) return fallback || ''
+  if (fallback && PHONE_FORMATS[fallback] && PHONE_FORMATS[fallback].pattern.test(raw)) return fallback
+  const pool = candidates && candidates.length ? candidates : Object.keys(PHONE_FORMATS)
+  const hit = pool.find((k) => k !== fallback && PHONE_FORMATS[k] && PHONE_FORMATS[k].pattern.test(raw))
+  return hit || fallback || ''
+}
+
 export const PHONE_FORMATS = {
   AE: { code: '+971', example: "50 123 4567", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
   AF: { code: '+93', example: "70 123 4567", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
@@ -192,14 +201,14 @@ export const PHONE_FORMATS = {
   CM: { code: '+237', example: "6 71 23 45 67", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
   CN: { code: '+86', example: "131 2345 6789", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
   CO: { code: '+57', example: "310 123 4567", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
-  CR: { code: '+506', example: "8123 4567", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
+  CR: { code: '+506', example: "8888-8888", pattern: /^(\(?\+?506\)?[\s.\-]?)?\d{4}[\s.\-]?\d{4}$/ },
   CU: { code: '+53', example: "5 123 4567", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
   CV: { code: '+238', example: "991 12 34", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
   CY: { code: '+357', example: "96 123456", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
   CZ: { code: '+420', example: "601 123 456", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
   DE: { code: '+49', example: "151 23456789", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
   DK: { code: '+45', example: "20 12 34 56", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
-  DO: { code: '+1-809', example: "+1 809 555 1234", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
+  DO: { code: '+1-809', example: "555-1234", pattern: /^(\+?1[\s.\-]?)?(\(?\d{3}\)?[\s.\-]?)?\d{3}[\s.\-]?\d{4}$/ },
   DZ: { code: '+213', example: "551 23 45 67", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
   EC: { code: '+593', example: "99 123 4567", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
   EE: { code: '+372', example: "5123 4567", pattern: /^[\+\d\s\-\(\)\.\/]{7,25}$/ },
