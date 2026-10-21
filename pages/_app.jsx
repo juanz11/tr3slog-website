@@ -90,10 +90,12 @@ export default function App({ Component, pageProps }) {
     return () => { active = false }
   }, [])
 
-  // Poll personal notifications for the logged-in user, on every page/portal.
-  // Unread alerts pop on every refresh until the user opens them (marked read).
+  // Poll personal notifications — internal staff only (operations, hub, admin…).
+  // Clients get no popups; the same-day notice belongs to operations.
   useEffect(() => {
-    if (!user) return
+    const roles = (user?.roles || []).map((r) => r.name || r)
+    const isStaff = roles.some((r) => !['executive_client'].includes(r)) && roles.length > 0
+    if (!user || !isStaff) return
     let token = null
     try { token = localStorage.getItem('tr3slog-token') } catch (e) {}
     if (!token) return

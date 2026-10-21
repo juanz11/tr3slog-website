@@ -70,6 +70,31 @@ const emptyService = () => ({
   service: 'Terrestre', delivery: 'standard', pickupDate: '', timeWindow: '', notes: '',
 })
 
+const payBrandBadge = (txt, bg, fg) => (
+  <span style={{
+    width: 26, height: 26, borderRadius: 7, background: bg, color: fg,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 12, fontWeight: 800, flexShrink: 0,
+  }}>{txt}</span>
+)
+
+const payMethodIcon = (value) => (
+  value === 'card' ? (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+  ) : value === 'transfer' ? (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16V4M7 4L3 8M7 4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+  ) : value === 'paypal' ? payBrandBadge('P', '#012169', '#fff')
+  : value === 'affirm' ? payBrandBadge('A', '#4A4AF4', '#fff')
+  : value === 'klarna' ? payBrandBadge('K', '#FFB3C7', '#17120F')
+  : value === 'apple_pay' ? (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg>
+  ) : value === 'google_pay' ? (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 7V5a2 2 0 0 0-2-2H4"/></svg>
+  ) : (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 10h.01M6 14h.01M18 10h.01M18 14h.01"/></svg>
+  )
+)
+
 const emptyPayment = () => ({
   method: '', paymentMethod: '', chargeToAccount: '', cardholderName: '', billingZip: '', bank: '', reference: '',
 })
@@ -420,14 +445,7 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
                   const value = opt.value
                   const label = opt.label
                   const active = (section ? data[section][key] : '') === value
-                  const icon =
-                    value === 'card' ? (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                    ) : value === 'transfer' ? (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16V4M7 4L3 8M7 4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
-                    ) : (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 10h.01M6 14h.01M18 10h.01M18 14h.01"/></svg>
-                    )
+                  const icon = payMethodIcon(value)
                   return (
                     <button
                       key={value}
@@ -512,6 +530,32 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
                   )
                 })}
               </select>
+            ) : key === 'paypalInfo' ? (
+              <div style={{
+                padding: '16px 18px', borderRadius: 11,
+                background: '#F0F7FF', border: '1px solid #CDE3FA',
+                display: 'flex', gap: 14, alignItems: 'flex-start',
+              }}>
+                <span style={{
+                  width: 34, height: 34, borderRadius: 9, background: '#012169', color: '#fff',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 15, fontWeight: 800, flexShrink: 0,
+                }}>P</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#012169', marginBottom: 6 }}>
+                    {c.payment.paypalTitle}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#1E3A6E', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                    {c.payment.paypalEmail}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#1E3A6E', fontFamily: 'monospace', marginTop: 2 }}>
+                    {c.payment.paypalPass}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#5B7BA6', marginTop: 8 }}>
+                    {c.payment.paypalNote}
+                  </div>
+                </div>
+              </div>
             ) : key === 'paymentMethod' && section === 'payment' ? (
               <div style={{ width: '100%', padding: '14px 15px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC' }}>
                 <CardElement
@@ -783,6 +827,8 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState('')
   const [result, setResult] = React.useState(null)
+  const [dupShipment, setDupShipment] = React.useState(null)
+  const [checkingDup, setCheckingDup] = React.useState(false)
   const [savedAddresses, setSavedAddresses] = React.useState([])
   const [surcharges, setSurcharges] = React.useState({})
   const [data, setData] = React.useState({
@@ -907,6 +953,8 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
       if (method === 'card') {
         extraKeys.push('paymentMethod', 'cardholderName', 'billingZip')
         extraRequired.push('paymentMethod', 'cardholderName', 'billingZip')
+      } else if (method === 'paypal') {
+        extraKeys.push('paypalInfo')
       } else if (method === 'transfer') {
         extraKeys.push('bank', 'reference')
         extraRequired.push('bank', 'reference')
@@ -1021,7 +1069,28 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
     return ''
   }
 
-  const onNext = React.useCallback(() => {
+  const digits = (v) => (v || '').replace(/\D/g, '')
+  const normTxt = (v) => String(v || '').trim().toLowerCase()
+
+  const findSimilarShipment = React.useCallback(async () => {
+    const res = await api.getShipments(token)
+    const list = Array.isArray(res) ? res : res.data || []
+    const rec = data.recipient
+    const phone7 = digits(rec.phone).slice(-7)
+    const name = normTxt(rec.name)
+    const placeHints = [rec.address, rec.city].map(normTxt).filter((v) => v.length > 2)
+    return list.find((s) => {
+      const st = normTxt(s.status)
+      if (['delivered', 'cancelled', 'entregado', 'entregada', 'cancelada'].includes(st)) return false
+      const sameName = name.length > 1 && normTxt(s.recipient_name) === name
+      if (!sameName) return false
+      const samePhone = phone7.length === 7 && digits(s.recipient_phone).slice(-7) === phone7
+      const samePlace = placeHints.some((h) => normTxt(s.destination).includes(h))
+      return samePhone || samePlace
+    })
+  }, [token, data.recipient])
+
+  const onNext = React.useCallback(async () => {
     if (section === 'sender' || section === 'recipient') {
       const err = validateAddress(section)
       if (err) { setError(err); return }
@@ -1034,8 +1103,16 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
       const err = validateService()
       if (err) { setError(err); return }
     }
+    if (section === 'recipient') {
+      setCheckingDup(true)
+      try {
+        const dup = await findSimilarShipment()
+        if (dup) { setDupShipment(dup); return }
+      } catch (e) {}
+      finally { setCheckingDup(false) }
+    }
     setStep((s) => Math.min(s + 1, c.steps.length - 1))
-  }, [c, data, section])
+  }, [c, data, section, token, findSimilarShipment])
 
   const validatePayment = () => {
     const p = data.payment
@@ -1296,7 +1373,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
             onSelectAddress={onSelectAddress}
             submitted={submitted}
             error={error}
-            submitting={submitting}
+            submitting={submitting || checkingDup}
             result={result}
             onChange={onChange}
             onPackageChange={onPackageChange}
@@ -1319,6 +1396,70 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
             {app.empty}
           </div>
         )
+      )}
+
+      {dupShipment && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          background: 'rgba(0,27,69,.45)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 18, width: '100%', maxWidth: 460,
+            padding: 30, boxShadow: '0 24px 60px rgba(0,27,69,.3)',
+          }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: '50%', marginBottom: 18,
+              background: 'rgba(217,154,0,.14)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#8A6300" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+                <path d="M12 9v4" /><path d="M12 17h.01" />
+              </svg>
+            </div>
+            <h2 style={{
+              fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 21,
+              color: '#001B45', margin: '0 0 10px',
+            }}>{c.dupTitle}</h2>
+            <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.65, color: '#6C82A6' }}>
+              {(c.dupMsg || '').replace('{tracking}', dupShipment.tracking_number || `#${dupShipment.id}`).replace('{destination}', dupShipment.destination || '—')}
+            </p>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
+              background: '#F6FAFF', border: '1px solid #DCE6F5', borderRadius: 12,
+              marginBottom: 22,
+            }}>
+              <span style={{
+                padding: '5px 12px', borderRadius: 100, fontSize: 12, fontWeight: 700,
+                background: 'rgba(8,124,240,.1)', color: '#0768C9', whiteSpace: 'nowrap',
+              }}>{dupShipment.tracking_number || `#${dupShipment.id}`}</span>
+              <span style={{ fontSize: 13, color: '#001B45', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {dupShipment.recipient_name || '—'} · {dupShipment.destination || '—'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setDupShipment(null)}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: 11, cursor: 'pointer',
+                  border: '1.5px solid #DCE6F5', background: '#fff',
+                  color: '#001B45', fontSize: 14, fontWeight: 600,
+                }}
+              >{c.dupCancel}</button>
+              <button
+                type="button"
+                onClick={() => { setDupShipment(null); setStep((s) => Math.min(s + 1, c.steps.length - 1)) }}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: 11, cursor: 'pointer',
+                  border: 'none', background: '#087CF0',
+                  color: '#fff', fontSize: 14, fontWeight: 600,
+                }}
+              >{c.dupContinue}</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
