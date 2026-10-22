@@ -57,7 +57,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
     : isOpsSupervisor
       ? { ...app.navOps, profile: app.navA.profile }
       : isOperations
-        ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => !['console', 'ops', 'users', 'roles', 'pricing'].includes(k)))
+        ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => !['console', 'ops', 'users', 'roles', 'pricing', 'hub'].includes(k)))
         : isHubStaff
           ? { hub: app.navA.hub, profile: app.navA.profile }
           : isFinance
@@ -368,7 +368,11 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isManifest ? (
             <Manifest app={app} token={token} />
           ) : isHub ? (
-            <Hub token={token} />
+            <Hub
+              token={token}
+              canManage={isAdminRole || userRoles.includes('hub_operation') || userRoles.includes('hub_supervisor')}
+              canResolve={isAdminRole || isOpsSupervisor || userRoles.includes('hub_operation') || userRoles.includes('hub_supervisor')}
+            />
           ) : isAdash ? (
             <AdminDashboardScreen dict={adminDict} lang={lang} token={token} statuses={app.ship?.statuses || []} />
           ) : isProfile ? (

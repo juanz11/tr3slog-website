@@ -12,6 +12,23 @@ const T = {
   notesPh: 'Notas (opcional)',
   phaseIn: 'Entrada',
   phaseOut: 'Salida',
+  phaseMove: 'Mover',
+  phaseInspect: 'Inspeccionar',
+  stepAction: '1 · Acción',
+  stepPackage: '2 · Paquete',
+  stepConfirm: '3 · Confirmar',
+  descIn: 'El paquete llega al hub',
+  descOut: 'El paquete sale del hub',
+  descMove: 'Cambiar de ubicación',
+  descInspect: 'Revisar la mercancía',
+  continueBtn: 'Continuar →',
+  back: '← Volver',
+  otherCode: '— Otro código (manual)…',
+  backToList: '← Volver a la lista',
+  locationPh: 'Ubicación (ej. A-03-2)',
+  condOk: 'Íntegro',
+  condDamaged: 'Dañado',
+  condOpened: 'Abierto',
   scan: 'Registrar escaneo',
   receive: 'Marcar recepción',
   dispatch: 'Despachar',
@@ -19,6 +36,7 @@ const T = {
   received: 'Recibido en hub',
   notReceived: 'Pendiente de recepción',
   blocked: 'Despacho bloqueado: hay diferencias sin ajuste aprobado.',
+  awaitingReceipt: 'Manifiesto aún no recibido en el hub. Registra la recepción y escanea las entradas para conciliar.',
   ready: 'Conciliado: sin diferencias pendientes.',
   pendingAdj: 'Hay ajustes pendientes de aprobación del supervisor.',
   reconTitle: 'Conciliación',
@@ -37,10 +55,11 @@ const T = {
   reject: 'Rechazar',
   cols: ['Código', 'Fase', 'Por', 'Hora', 'Notas'],
   scansTitle: 'Escaneos registrados',
-  adjCols: ['Código', 'Tipo', 'Motivo', 'Estado', 'Acción'],
+  adjCols: ['Código', 'Tipo', 'Motivo', 'Estado', 'Registrado por', 'Resuelto por', 'Acción'],
   done: 'Escaneo registrado',
   receivedOk: 'Recepción marcada.',
   dispatchOk: 'Manifiesto despachado del hub.',
+  doneMsg: 'flujo completado.',
   adjOk: 'Ajuste registrado.',
   resolvedOk: 'Ajuste resuelto.',
   kpiTotal: 'Manifiestos',
@@ -53,6 +72,7 @@ const T = {
   zoneIn: 'Recepción',
   zoneStage: 'Clasificación',
   zoneOut: 'Despacho',
+  locations: ['RECEPCIÓN', 'CLASIFICACIÓN', 'CUARENTENA', 'DAÑADOS', 'DESPACHO', 'A-01-1', 'A-01-2', 'A-02-1', 'A-03-2', 'B-01-4', 'B-02-1', 'C-05-3'],
   zonePkgs: 'bultos',
   activityTitle: 'Actividad reciente',
   activityEmpty: 'Sin movimientos aún.',
@@ -176,14 +196,14 @@ const Zone = ({ name, count, tone, icon }) => (
   </div>
 )
 
-export default function Hub({ token }) {
+export default function Hub({ token, canManage = true, canResolve = true }) {
   const [list, setList] = React.useState([])
   const [sel, setSel] = React.useState(null)
   const [detail, setDetail] = React.useState(null) // { manifest, conciliacion, escaneos }
   const [loading, setLoading] = React.useState(true)
   const [err, setErr] = React.useState('')
   const [toast, setToast] = React.useState('')
-  const [scan, setScan] = React.useState({ code: '', phase: 'in', notes: '', busy: false })
+  const [scan, setScan] = React.useState({ code: '', phase: 'in', notes: '', location: '', condition: 'ok', step: 0, busy: false, manualCode: false })
   const [adj, setAdj] = React.useState({ open: false, codigo: '', type: 'FALTANTE', reason: '', busy: false })
   const toastRef = React.useRef(null)
 
@@ -225,13 +245,30 @@ export default function Hub({ token }) {
   const rec = detail?.conciliacion || null
   const scans = detail?.escaneos || []
 
+  const estadoPorCodigo = Object.fromEntries((m?.detalles || []).map(d => [d.codigoSeguimiento, d.estado]))
+  const scanSuggestions = (() => {
+    if (!rec) return []
+    const esperados = rec.esperados || []
+    const entradas = rec.entradas || []
+    const salidas = rec.salidas || []
+    if (scan.phase === 'in') return esperados.filter(c => !entradas.includes(c))
+    if (scan.phase === 'out') return entradas.filter(c => esperados.includes(c) && !salidas.includes(c))
+    return entradas.filter(c => esperados.includes(c))
+  })()
+
   const doScan = async () => {
     if (!scan.code.trim()) return
     setScan(s => ({ ...s, busy: true }))
     try {
-      await api.scanHubManifest(m.id, { codigo: scan.code.trim(), phase: scan.phase, notes: scan.notes || undefined }, token)
+      await api.scanHubManifest(m.id, {
+        codigo: scan.code.trim(),
+        phase: scan.phase,
+        notes: scan.notes || undefined,
+        location: scan.phase === 'move' ? scan.location.trim() : undefined,
+        condition: scan.phase === 'inspect' ? scan.condition : undefined,
+      }, token)
       notify(T.done)
-      setScan(s => ({ ...s, code: '', notes: '', busy: false }))
+      setScan({ code: '', phase: 'in', notes: '', location: '', condition: 'ok', step: 0, busy: false, manualCode: false })
       await loadDetail(m.id)
     } catch (e) { notify(e.message); setScan(s => ({ ...s, busy: false })) }
   }
@@ -292,7 +329,7 @@ export default function Hub({ token }) {
             {T.manifestLabel}
           </div>
           <select value={sel ?? ''} onChange={e => setSel(Number(e.target.value))} style={{ ...inputStyle, maxWidth: 260 }} aria-label={T.manifestLabel}>
-            {list.map(x => <option key={x.id} value={x.id}>{x.codigo}</option>)}
+            {list.map(x => <option key={x.id} value={x.id}>{x.codigo}{x.hubDespachadoAt ? ' · DESPACHADO' : ''}</option>)}
             {!list.length && <option value="">—</option>}
           </select>
           {m && chip(ESTADOS[m.estado] || m.estado, TONE.info)}
@@ -301,10 +338,12 @@ export default function Hub({ token }) {
             : rec.recibidoAt
               ? chip(`${T.received} · ${fmtDT(rec.recibidoAt)}`, TONE.info)
               : chip(T.notReceived, TONE.neutral))}
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {btn(T.receive, false, !m || !rec || !!rec.recibidoAt, doReceive)}
-            {btn(T.dispatch, true, !m || !rec || !rec.recibidoAt || !!rec.despachadoAt || rec.bloqueado, doDispatch)}
-          </div>
+          {canManage && (
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {btn(T.receive, false, !m || !rec || !!rec.recibidoAt, doReceive)}
+              {btn(T.dispatch, true, !m || !rec || !rec.recibidoAt || !!rec.despachadoAt || rec.bloqueado, doDispatch)}
+            </div>
+          )}
         </div>
 
         <div style={{ padding: 22, background: '#EEF4FC', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -315,10 +354,20 @@ export default function Hub({ token }) {
           {!loading && !err && m && rec && (
             <>
               {/* Banner de conciliación */}
-              <div style={{ fontSize: 13, lineHeight: 1.55, padding: '12px 16px', borderRadius: 10, background: rec.bloqueado ? 'rgba(192,57,43,.08)' : 'rgba(19,122,69,.08)', color: rec.bloqueado ? '#A93226' : '#0F5F36', border: `1px solid ${rec.bloqueado ? 'rgba(192,57,43,.3)' : 'rgba(19,122,69,.3)'}` }}>
-                {rec.bloqueado ? T.blocked : T.ready}
-                {rec.bloqueado && rec.ajustes?.some(a => a.estado === 'PENDIENTE') ? ' ' + T.pendingAdj : ''}
-              </div>
+              {rec.despachadoAt ? (
+                <div style={{ fontSize: 13, lineHeight: 1.55, padding: '12px 16px', borderRadius: 10, background: '#ECEFF4', color: '#5B6B82', border: '1px solid #D5DCE6' }}>
+                  {T.dispatched} · {fmtDT(rec.despachadoAt)} — {T.doneMsg}
+                </div>
+              ) : !rec.recibidoAt ? (
+                <div style={{ fontSize: 13, lineHeight: 1.55, padding: '12px 16px', borderRadius: 10, background: 'rgba(8,124,240,.07)', color: '#0768C9', border: '1px solid rgba(8,124,240,.3)' }}>
+                  {T.awaitingReceipt}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, lineHeight: 1.55, padding: '12px 16px', borderRadius: 10, background: rec.bloqueado ? 'rgba(192,57,43,.08)' : 'rgba(19,122,69,.08)', color: rec.bloqueado ? '#A93226' : '#0F5F36', border: `1px solid ${rec.bloqueado ? 'rgba(192,57,43,.3)' : 'rgba(19,122,69,.3)'}` }}>
+                  {rec.bloqueado ? T.blocked : T.ready}
+                  {rec.bloqueado && rec.ajustes?.some(a => a.estado === 'PENDIENTE') ? ' ' + T.pendingAdj : ''}
+                </div>
+              )}
 
               {/* Stepper del flujo */}
               <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '18px 20px' }}>
@@ -326,26 +375,111 @@ export default function Hub({ token }) {
                 <Stepper steps={T.steps} current={rec.despachadoAt ? 4 : rec.recibidoAt ? (rec.bloqueado ? 2 : 3) : 1} />
               </div>
 
-              {/* Escaneo */}
-              {!rec.despachadoAt && (
+              {/* Escaneo guiado por pasos */}
+              {!rec.despachadoAt && canManage && (
                 <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px' }}>
-                  <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 12 }}>{T.scanTitle}</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      {['in', 'out'].map(p => (
-                        <button key={p} type="button" onClick={() => setScan(s => ({ ...s, phase: p }))}
-                          style={{ minHeight: 36, padding: '7px 16px', borderRadius: 100, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: scan.phase === p ? '#001B45' : '#fff', color: scan.phase === p ? '#fff' : '#10233F', border: `1.5px solid ${scan.phase === p ? '#001B45' : '#DCE6F5'}` }}>
-                          {p === 'in' ? T.phaseIn : T.phaseOut}
+                  <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 14 }}>{T.scanTitle}</div>
+
+                  {/* Indicador de pasos */}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+                    {[T.stepAction, T.stepPackage, T.stepConfirm].map((label, i) => {
+                      const active = scan.step === i
+                      const done = scan.step > i
+                      return (
+                        <span key={i} style={{
+                          padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 600,
+                          background: active ? '#001B45' : done ? 'rgba(19,122,69,.12)' : '#EEF4FC',
+                          color: active ? '#fff' : done ? '#0F5F36' : '#6C82A6',
+                        }}>{label}</span>
+                      )
+                    })}
+                  </div>
+
+                  {/* Paso 1 — acción */}
+                  {scan.step === 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                      {[['in', T.phaseIn, T.descIn, TONE.info], ['out', T.phaseOut, T.descOut, TONE.ok], ['move', T.phaseMove, T.descMove, TONE.warn], ['inspect', T.phaseInspect, T.descInspect, TONE.neutral]].map(([p, label, desc, t]) => (
+                        <button key={p} type="button" onClick={() => setScan(s => ({ ...s, phase: p, code: '', step: 1 }))}
+                          style={{ textAlign: 'left', padding: '14px 16px', borderRadius: 12, border: `1.5px solid ${t.fg}33`, background: t.bg, cursor: 'pointer', font: 'inherit' }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: t.fg }}>{label}</div>
+                          <div style={{ fontSize: 11.5, color: '#5B7BA6', marginTop: 4, lineHeight: 1.4 }}>{desc}</div>
                         </button>
                       ))}
                     </div>
-                    <input style={{ ...inputStyle, flex: '1 1 220px' }} placeholder={T.codePh} value={scan.code}
-                      onChange={e => setScan(s => ({ ...s, code: e.target.value }))}
-                      onKeyDown={e => { if (e.key === 'Enter') doScan() }} />
-                    <input style={{ ...inputStyle, flex: '1 1 180px' }} placeholder={T.notesPh} value={scan.notes}
-                      onChange={e => setScan(s => ({ ...s, notes: e.target.value }))} />
-                    {btn(T.scan, true, scan.busy || !scan.code.trim(), doScan)}
-                  </div>
+                  )}
+
+                  {/* Paso 2 — paquete */}
+                  {scan.step === 1 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        {chip({ in: T.phaseIn, out: T.phaseOut, move: T.phaseMove, inspect: T.phaseInspect }[scan.phase], { in: TONE.info, out: TONE.ok, move: TONE.warn, inspect: TONE.neutral }[scan.phase])}
+                        <button type="button" onClick={() => setScan(s => ({ ...s, step: 0 }))}
+                          style={{ background: 'none', border: 'none', fontSize: 12, color: '#087CF0', cursor: 'pointer', fontWeight: 600 }}>{T.back}</button>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        {!scan.manualCode ? (
+                          <select style={{ ...inputStyle, flex: '1 1 260px', cursor: 'pointer' }} value={scan.code} autoFocus
+                            onChange={e => {
+                              if (e.target.value === '__manual__') setScan(s => ({ ...s, manualCode: true, code: '' }))
+                              else setScan(s => ({ ...s, code: e.target.value }))
+                            }}>
+                            <option value="">{T.codePh}</option>
+                            {scanSuggestions.map(c => (
+                              <option key={c} value={c}>{c}{estadoPorCodigo[c] ? ` · ${estadoPorCodigo[c]}` : ''}</option>
+                            ))}
+                            <option value="__manual__">{T.otherCode}</option>
+                          </select>
+                        ) : (
+                          <>
+                            <input style={{ ...inputStyle, flex: '1 1 240px' }} placeholder={T.codePh} value={scan.code}
+                              autoFocus
+                              onChange={e => setScan(s => ({ ...s, code: e.target.value }))}
+                              onKeyDown={e => { if (e.key === 'Enter' && scan.code.trim()) setScan(s => ({ ...s, step: 2 })) }} />
+                            <button type="button" onClick={() => setScan(s => ({ ...s, manualCode: false, code: '' }))}
+                              style={{ background: 'none', border: 'none', fontSize: 12, color: '#087CF0', cursor: 'pointer', fontWeight: 600 }}>{T.backToList}</button>
+                          </>
+                        )}
+                        {btn(T.continueBtn, true, !scan.code.trim(), () => setScan(s => ({ ...s, step: 2 })))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Paso 3 — detalles + confirmar */}
+                  {scan.step === 2 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        {chip({ in: T.phaseIn, out: T.phaseOut, move: T.phaseMove, inspect: T.phaseInspect }[scan.phase], { in: TONE.info, out: TONE.ok, move: TONE.warn, inspect: TONE.neutral }[scan.phase])}
+                        <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, fontWeight: 700, color: '#001B45' }}>{scan.code}</span>
+                        <button type="button" onClick={() => setScan(s => ({ ...s, step: 1 }))}
+                          style={{ background: 'none', border: 'none', fontSize: 12, color: '#087CF0', cursor: 'pointer', fontWeight: 600 }}>{T.back}</button>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        {scan.phase === 'move' && (
+                          <>
+                            <input style={{ ...inputStyle, flex: '0 1 200px' }} placeholder={T.locationPh} value={scan.location}
+                              list="hub-locations" autoFocus
+                              onChange={e => setScan(s => ({ ...s, location: e.target.value }))} />
+                            <datalist id="hub-locations">
+                              {T.locations.map(l => <option key={l} value={l} />)}
+                            </datalist>
+                          </>
+                        )}
+                        {scan.phase === 'inspect' && (
+                          <select style={{ ...inputStyle, flex: '0 1 160px', cursor: 'pointer' }} value={scan.condition}
+                            onChange={e => setScan(s => ({ ...s, condition: e.target.value }))}>
+                            <option value="ok">{T.condOk}</option>
+                            <option value="damaged">{T.condDamaged}</option>
+                            <option value="opened">{T.condOpened}</option>
+                          </select>
+                        )}
+                        <input style={{ ...inputStyle, flex: '1 1 200px' }} placeholder={T.notesPh} value={scan.notes}
+                          onChange={e => setScan(s => ({ ...s, notes: e.target.value }))} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        {btn(T.scan, true, scan.busy || (scan.phase === 'move' && !scan.location.trim()), doScan)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -406,12 +540,17 @@ export default function Hub({ token }) {
               <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45' }}>{T.adjTitle}</div>
-                  <div style={{ marginLeft: 'auto' }}>{btn(T.adjNew, false, false, () => setAdj(a => ({ ...a, open: !a.open })))}</div>
+                  {canManage && !rec.despachadoAt && <div style={{ marginLeft: 'auto' }}>{btn(T.adjNew, false, false, () => setAdj(a => ({ ...a, open: !a.open })))}</div>}
                 </div>
-                {adj.open && (
+                {adj.open && canManage && !rec.despachadoAt && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '10px 12px', background: '#EEF4FC', borderRadius: 10 }}>
-                    <input style={{ ...inputStyle, flex: '0 1 180px' }} placeholder={T.codePh} value={adj.codigo}
-                      onChange={e => setAdj(a => ({ ...a, codigo: e.target.value }))} />
+                    <select style={{ ...inputStyle, flex: '0 1 260px' }} value={adj.codigo}
+                      onChange={e => setAdj(a => ({ ...a, codigo: e.target.value }))}>
+                      <option value="">{T.codePh}</option>
+                      {(m.detalles || []).map(d => (
+                        <option key={d.id} value={d.codigoSeguimiento}>{d.codigoSeguimiento} · {d.estado}</option>
+                      ))}
+                    </select>
                     <select style={inputStyle} value={adj.type} onChange={e => setAdj(a => ({ ...a, type: e.target.value }))}>
                       {['FALTANTE', 'SOBRANTE', 'AVERIADO', 'OTRO'].map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
@@ -422,7 +561,7 @@ export default function Hub({ token }) {
                 )}
                 {!!rec.ajustes?.length && (
                   <div style={{ overflowX: 'auto' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr .8fr 2fr .8fr 1.4fr', minWidth: 700 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr .8fr 2fr .8fr 1fr 1fr 1.4fr', minWidth: 880 }}>
                       {T.adjCols.map(c => (
                         <div key={c} style={{ padding: '8px 12px', fontSize: 10, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{c}</div>
                       ))}
@@ -432,8 +571,10 @@ export default function Hub({ token }) {
                           <div style={cell}>{a.tipo}</div>
                           <div style={cell}>{a.motivo}</div>
                           <div style={cell}>{chip(a.estado, TONE[ADJ_TONE[a.estado]] || TONE.neutral)}</div>
+                          <div style={cell}>{a.registradoPorNombre || '—'}</div>
+                          <div style={cell}>{a.resueltoPorNombre || '—'}</div>
                           <div style={cell}>
-                            {a.estado === 'PENDIENTE' ? (
+                            {a.estado === 'PENDIENTE' && canResolve ? (
                               <div style={{ display: 'flex', gap: 6 }}>
                                 <button type="button" onClick={() => resolveAdj(a.id, true)}
                                   style={{ padding: '5px 12px', borderRadius: 8, border: '1.5px solid #0F5F36', background: 'rgba(19,122,69,.1)', color: '#0F5F36', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
@@ -461,8 +602,7 @@ export default function Hub({ token }) {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {[...scans].slice(-8).reverse().map((s, i, arr) => {
-                      const isIn = s.fase === 'in'
-                      const tone = isIn ? TONE.info : TONE.ok
+                      const [phaseLabel, tone] = { in: [T.phaseIn, TONE.info], out: [T.phaseOut, TONE.ok], move: [T.phaseMove, TONE.warn], inspect: [T.phaseInspect, TONE.neutral] }[s.fase] || [s.fase, TONE.neutral]
                       return (
                         <div key={s.id} style={{ display: 'flex', gap: 14, position: 'relative' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto' }}>
@@ -472,10 +612,11 @@ export default function Hub({ token }) {
                           <div style={{ paddingBottom: 16 }}>
                             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                               <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, fontWeight: 700, color: '#001B45' }}>{s.tracking_code}</span>
-                              {chip(isIn ? T.phaseIn : T.phaseOut, tone)}
+                              {chip(phaseLabel, tone)}
+                              {s.condicion && s.condicion !== 'ok' && chip(s.condicion === 'damaged' ? T.condDamaged : T.condOpened, TONE.bad)}
                             </div>
                             <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>
-                              {fmtDT(s.scanned_at)}{s.scanned_by ? ` · ${T.scannedBy} #${s.scanned_by}` : ''}{s.notas ? ` · ${s.notas}` : ''}
+                              {fmtDT(s.scanned_at)}{s.scanned_by ? ` · ${T.scannedBy} #${s.scanned_by}` : ''}{s.ubicacion ? ` · ${s.ubicacion}` : ''}{s.notas ? ` · ${s.notas}` : ''}
                             </div>
                           </div>
                         </div>
@@ -497,7 +638,7 @@ export default function Hub({ token }) {
                       {scans.map(s => (
                         <React.Fragment key={s.id}>
                           <div style={{ ...cell, fontFamily: 'ui-monospace, Menlo, monospace' }}>{s.tracking_code}</div>
-                          <div style={cell}>{chip(s.fase === 'in' ? T.phaseIn : T.phaseOut, s.fase === 'in' ? TONE.info : TONE.ok)}</div>
+                          <div style={cell}>{chip(({ in: T.phaseIn, out: T.phaseOut, move: T.phaseMove, inspect: T.phaseInspect })[s.fase] || s.fase, { in: TONE.info, out: TONE.ok, move: TONE.warn, inspect: TONE.neutral }[s.fase] || TONE.neutral)}</div>
                           <div style={cell}>{s.scanned_by ? `#${s.scanned_by}` : '—'}</div>
                           <div style={cell}>{fmtDT(s.scanned_at)}</div>
                           <div style={cell}>{s.notas || '—'}</div>
