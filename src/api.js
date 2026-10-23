@@ -163,6 +163,10 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getShipment: (id, token) => fetch(`${API_URL}/shipments/${id}`, {
+    headers: headers(token),
+  }).then(handle),
+
   updateShipmentStatus: (id, status, token) => fetch(`${API_URL}/shipments/${id}`, {
     method: 'PUT',
     headers: headers(token),

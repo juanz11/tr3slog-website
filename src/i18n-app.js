@@ -273,6 +273,14 @@ export const appI18n = {
       statuses: ['Pendiente', 'Pagada'],
       success: 'Pago registrado correctamente.',
       warning: 'El pago no se procesa en el sistema: falta el servicio de pagos.',
+      view: 'Ver factura',
+      empty: 'Aún no tienes facturas. Se generan automáticamente al crear un envío.',
+      inv: {
+        title: 'Factura', billTo: 'Facturar a', guide: 'Guía', route: 'Ruta',
+        mode: 'Modalidad', payMethod: 'Método de pago', issued: 'Emitida',
+        desc: 'Descripción', amount: 'Monto', subtotal: 'Subtotal', total: 'Total',
+        service: 'Servicio de transporte', close: 'Cerrar',
+      },
     },
     addr: {
       title: 'Direcciones',
@@ -907,6 +915,14 @@ export const appI18n = {
       statuses: ['Pending', 'Paid'],
       success: 'Payment registered successfully.',
       warning: 'The payment is not processed in the system: payment service is missing.',
+      view: 'View invoice',
+      empty: 'You have no invoices yet. They are generated automatically when you create a shipment.',
+      inv: {
+        title: 'Invoice', billTo: 'Bill to', guide: 'Tracking #', route: 'Route',
+        mode: 'Delivery mode', payMethod: 'Payment method', issued: 'Issued',
+        desc: 'Description', amount: 'Amount', subtotal: 'Subtotal', total: 'Total',
+        service: 'Transport service', close: 'Close',
+      },
     },
     addr: {
       title: 'Addresses',
@@ -1540,6 +1556,14 @@ export const appI18n = {
       statuses: ['待处理', '已支付'],
       success: '支付已成功登记。',
       warning: '支付未在系统中处理：缺少支付服务。',
+      view: '查看账单',
+      empty: '暂无账单。创建运单后将自动生成。',
+      inv: {
+        title: '账单', billTo: '开票对象', guide: '运单号', route: '路线',
+        mode: '运输方式', payMethod: '支付方式', issued: '开具日期',
+        desc: '描述', amount: '金额', subtotal: '小计', total: '总计',
+        service: '运输服务', close: '关闭',
+      },
     },
     addr: {
       title: '地址管理',

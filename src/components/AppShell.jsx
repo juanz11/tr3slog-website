@@ -342,7 +342,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isShipments ? (
             <ShipmentsList app={app} token={token} query={hquery} onQueryChange={setHquery} />
           ) : isPayments ? (
-            <Payments app={app} />
+            <Payments app={app} token={token} user={user} onPay={() => setActiveKey('create')} />
           ) : isAddresses ? (
             <Addresses app={app} token={token} />
           ) : isSupport ? (
