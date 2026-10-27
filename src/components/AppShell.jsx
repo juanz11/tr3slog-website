@@ -75,6 +75,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const [pendingRequests, setPendingRequests] = React.useState(0)
   const [requestToast, setRequestToast] = React.useState(0)
   const [requestKinds, setRequestKinds] = React.useState({ same_day: 0, driver: 0 })
+  const [navTick, setNavTick] = React.useState(0)
   const reqSeenRef = React.useRef(null)
 
   const markRequestsSeen = (count) => {
@@ -82,6 +83,17 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
     reqSeenRef.current = n
     try { localStorage.setItem('tr3slog-req-seen', String(n)) } catch (e) {}
     setRequestToast(0)
+  }
+
+  const goSection = (k) => {
+    if (k === activeKey && k !== 'create') {
+      try {
+        if (k === 'addresses') localStorage.removeItem('tr3slog-address-draft')
+      } catch (e) {}
+      setNavTick((t) => t + 1)
+    }
+    else if (k !== activeKey) setActiveKey(k)
+    if (k === 'requests') markRequestsSeen()
   }
 
   React.useEffect(() => {
@@ -193,7 +205,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           {g.keys.map((k) => nav[k] && (
             <button
               key={k}
-              onClick={() => { setActiveKey(k); setMobileOpen(false); if (k === 'requests') markRequestsSeen() }}
+              onClick={() => { goSection(k); setMobileOpen(false) }}
               className={`app-nav-item ${k === activeKey ? 'on' : ''}`}
             >
               <NavIcon name={k} color={k === activeKey ? '#fff' : '#6C82A6'} />
@@ -216,7 +228,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
         return (
           <button
             key={k}
-            onClick={() => { setActiveKey(k); setMobileOpen(false); if (k === 'requests') markRequestsSeen() }}
+            onClick={() => { goSection(k); setMobileOpen(false) }}
             className={`app-nav-item ${on ? 'on' : ''}`}
           >
             <NavIcon name={k} color={on ? '#fff' : '#6C82A6'} />
@@ -336,13 +348,13 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           </div>
         )}
 
-        <main className="app-content">
+        <main className="app-content" key={navTick}>
           {isCreate ? (
             <ShipmentCreate app={app} token={token} user={user} onTrack={(code) => { setHquery(code); setActiveKey('shipments') }} />
           ) : isShipments ? (
             <ShipmentsList app={app} token={token} query={hquery} onQueryChange={setHquery} />
           ) : isPayments ? (
-            <Payments app={app} token={token} user={user} onPay={() => setActiveKey('create')} />
+            <Payments app={app} token={token} user={user} />
           ) : isAddresses ? (
             <Addresses app={app} token={token} />
           ) : isSupport ? (

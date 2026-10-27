@@ -40,6 +40,22 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  changePassword: (data, token) => fetch(`${API_URL}/user/password`, {
+    method: 'PUT',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(async (res) => {
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      const details = Object.values(body.errors || {}).flat().join(' · ')
+      const err = new Error(details || body.message_es || body.message || 'Error del servidor')
+      err.body = body
+      err.status = res.status
+      throw err
+    }
+    return body
+  }),
+
   updateUser: (id, data, token) => fetch(`${API_URL}/users/${id}`, {
     method: 'PUT',
     headers: headers(token),

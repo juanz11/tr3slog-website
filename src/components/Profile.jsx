@@ -11,11 +11,53 @@ export default function Profile({ app, user, token, onUserUpdate }) {
   const [ok, setOk] = React.useState('')
   const [error, setError] = React.useState('')
 
+  const [pwdCurrent, setPwdCurrent] = React.useState('')
+  const [pwdNew, setPwdNew] = React.useState('')
+  const [pwdConfirm, setPwdConfirm] = React.useState('')
+  const [pwdLoading, setPwdLoading] = React.useState(false)
+  const [pwdOk, setPwdOk] = React.useState('')
+  const [pwdError, setPwdError] = React.useState('')
+  const [pwdLocked, setPwdLocked] = React.useState(false)
+
   React.useEffect(() => {
     setName(user?.name || '')
     setCompany(user?.company || '')
     setPhone(user?.phone || '')
   }, [user])
+
+  const submitPassword = async (e) => {
+    e.preventDefault()
+    setPwdOk('')
+    setPwdError('')
+    setPwdLocked(false)
+    if (pwdNew !== pwdConfirm) {
+      setPwdError(p.pwdMismatch)
+      return
+    }
+    setPwdLoading(true)
+    try {
+      await api.changePassword({
+        current_password: pwdCurrent,
+        password: pwdNew,
+        password_confirmation: pwdConfirm,
+      }, token)
+      setPwdOk(p.pwdSaved)
+      setPwdCurrent('')
+      setPwdNew('')
+      setPwdConfirm('')
+    } catch (err) {
+      const body = err.body || {}
+      if (body.too_many_attempts) {
+        setPwdLocked(true)
+      } else if (typeof body.attempts_left === 'number') {
+        setPwdError(p.pwdAttempts.replace('{n}', body.attempts_left))
+      } else {
+        setPwdError(err.message || p.pwdError)
+      }
+    } finally {
+      setPwdLoading(false)
+    }
+  }
 
   const submit = async (e) => {
     e.preventDefault()
@@ -164,6 +206,111 @@ export default function Profile({ app, user, token, onUserUpdate }) {
           }}
         >
           {loading ? 'Procesando…' : p.save}
+        </button>
+      </form>
+
+      <h2 style={{
+        fontFamily: 'Montserrat, "Noto Sans SC", sans-serif',
+        fontWeight: 700, fontSize: 18, margin: '28px 0 14px', color: '#001B45',
+      }}>{p.pwdTitle}</h2>
+
+      {pwdOk && (
+        <div style={{
+          marginBottom: 16, padding: '12px 16px', borderRadius: 8,
+          background: '#F1FAF5', color: '#0F5F36', fontSize: 14,
+        }}>{pwdOk}</div>
+      )}
+      {pwdError && (
+        <div style={{
+          marginBottom: 16, padding: '12px 16px', borderRadius: 8,
+          background: '#FDECEC', color: '#B91C1C', fontSize: 14,
+        }}>{pwdError}</div>
+      )}
+      {pwdLocked && (
+        <div style={{
+          marginBottom: 16, padding: '14px 16px', borderRadius: 12,
+          border: '1px dashed rgba(217,154,0,.55)', background: 'rgba(217,154,0,.07)',
+          color: '#6C5220', fontSize: 13, lineHeight: 1.6,
+        }}>{p.pwdLocked}</div>
+      )}
+
+      <form onSubmit={submitPassword} style={{
+        background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16,
+        padding: 26, display: 'flex', flexDirection: 'column', gap: 16,
+      }}>
+        <label style={{ display: 'block' }}>
+          <span style={{
+            display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
+            textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8,
+          }}>{p.pwdCurrent}</span>
+          <input
+            type="password"
+            required
+            value={pwdCurrent}
+            onChange={(e) => setPwdCurrent(e.target.value)}
+            autoComplete="current-password"
+            style={{
+              width: '100%', padding: '14px 15px',
+              border: '1.5px solid #DCE6F5', borderRadius: 11,
+              background: '#EEF4FC', font: 'inherit', color: '#001B45',
+              outline: 'none',
+            }}
+          />
+        </label>
+
+        <label style={{ display: 'block' }}>
+          <span style={{
+            display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
+            textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8,
+          }}>{p.pwdNew}</span>
+          <input
+            type="password"
+            required
+            value={pwdNew}
+            onChange={(e) => setPwdNew(e.target.value)}
+            autoComplete="new-password"
+            style={{
+              width: '100%', padding: '14px 15px',
+              border: '1.5px solid #DCE6F5', borderRadius: 11,
+              background: '#EEF4FC', font: 'inherit', color: '#001B45',
+              outline: 'none',
+            }}
+          />
+        </label>
+
+        <label style={{ display: 'block' }}>
+          <span style={{
+            display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
+            textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8,
+          }}>{p.pwdConfirm}</span>
+          <input
+            type="password"
+            required
+            value={pwdConfirm}
+            onChange={(e) => setPwdConfirm(e.target.value)}
+            autoComplete="new-password"
+            style={{
+              width: '100%', padding: '14px 15px',
+              border: '1.5px solid #DCE6F5', borderRadius: 11,
+              background: '#EEF4FC', font: 'inherit', color: '#001B45',
+              outline: 'none',
+            }}
+          />
+        </label>
+
+        <button
+          type="submit"
+          disabled={pwdLoading}
+          style={{
+            marginTop: 8, padding: '14px 24px',
+            background: pwdLoading ? '#8FC6F7' : '#087CF0',
+            border: 'none', borderRadius: 11, color: '#fff',
+            fontSize: 14, fontWeight: 600,
+            cursor: pwdLoading ? 'not-allowed' : 'pointer',
+            alignSelf: 'flex-start',
+          }}
+        >
+          {pwdLoading ? 'Procesando…' : p.pwdSave}
         </button>
       </form>
     </div>

@@ -15,12 +15,10 @@ const MODE_LABELS = {
 function rowOf(s) {
   return {
     id: s.id,
-    invoice: s.invoice_number || `INV-${String(s.id).padStart(6, '0')}`,
+    invoice: s.invoice_number || `REC-${String(s.id).padStart(6, '0')}`,
     shipment: s.tracking_number || `ENV-${s.id}`,
     issued: fmtDate(s.invoiced_at || s.created_at),
     amount: s.amount != null ? fmtMoney(s.amount) : '—',
-    amountNum: Number(s.amount || 0),
-    done: ['delivered', 'cancelled'].includes(s.status),
     raw: s,
   }
 }
@@ -34,7 +32,7 @@ function Table({ p, pagerLabels, rows, statusIdx, actionLabel, onAction }) {
         padding: '18px 22px', borderBottom: '1px solid #DCE6F5',
         fontFamily: 'Montserrat, "Noto Sans SC", sans-serif',
         fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase',
-      }}>{statusIdx === 0 ? p.pending : p.completed}</div>
+      }}>{p.completed}</div>
       <div style={{ overflowX: 'auto' }}>
         <div style={{ minWidth: 700 }}>
           <div style={{
@@ -59,10 +57,10 @@ function Table({ p, pagerLabels, rows, statusIdx, actionLabel, onAction }) {
               <span style={{
                 display: 'inline-flex', padding: '5px 11px', borderRadius: 100,
                 fontSize: 11, fontWeight: 600,
-                background: statusIdx === 0 ? 'rgba(217,154,0,.16)' : 'rgba(19,122,69,.12)',
-                color: statusIdx === 0 ? '#8A6300' : '#0F5F36',
+                background: 'rgba(19,122,69,.12)',
+                color: '#0F5F36',
                 justifySelf: 'start',
-              }}>{p.statuses[statusIdx]}</span>
+              }}>{p.statuses[1]}</span>
               <button onClick={() => onAction(r)} style={{ justifySelf: 'end', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#087CF0' }}>{actionLabel}</button>
             </div>
           ))}
@@ -79,7 +77,6 @@ function InvoiceModal({ p, shipment, onClose }) {
   const iv = p.inv
   const client = s.client || {}
   const packages = Array.isArray(s.packages) ? s.packages : []
-  const statusDone = ['delivered', 'cancelled'].includes(s.status)
 
   const Field = ({ label, children }) => (
     <div>
@@ -104,13 +101,13 @@ function InvoiceModal({ p, shipment, onClose }) {
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 18, textTransform: 'uppercase', color: '#001B45' }}>{iv.title}</div>
-            <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 14, color: '#087CF0' }}>{s.invoice_number || `INV-${String(s.id).padStart(6, '0')}`}</div>
+            <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 14, color: '#087CF0' }}>{s.invoice_number || `REC-${String(s.id).padStart(6, '0')}`}</div>
             <span style={{
               display: 'inline-block', marginTop: 6, padding: '4px 12px', borderRadius: 100,
               fontSize: 11, fontWeight: 600,
-              background: statusDone ? 'rgba(19,122,69,.12)' : 'rgba(217,154,0,.16)',
-              color: statusDone ? '#0F5F36' : '#8A6300',
-            }}>{p.statuses[statusDone ? 1 : 0]}</span>
+              background: 'rgba(19,122,69,.12)',
+              color: '#0F5F36',
+            }}>{p.statuses[1]}</span>
           </div>
         </div>
 
@@ -159,7 +156,7 @@ function InvoiceModal({ p, shipment, onClose }) {
   )
 }
 
-export default function Payments({ app, token, user, onPay }) {
+export default function Payments({ app, token, user }) {
   const p = app.payments
   const [rows, setRows] = React.useState([])
   const [loading, setLoading] = React.useState(true)
@@ -172,9 +169,6 @@ export default function Payments({ app, token, user, onPay }) {
       .catch(() => setRows([]))
       .finally(() => setLoading(false))
   }, [token])
-
-  const pending = rows.filter((r) => !r.done)
-  const completed = rows.filter((r) => r.done)
 
   const openInvoice = (r) => {
     setView(r.raw)
@@ -198,10 +192,7 @@ export default function Payments({ app, token, user, onPay }) {
       {loading ? (
         <div style={{ padding: 30, textAlign: 'center', color: '#6C82A6', fontSize: 14 }}>…</div>
       ) : (
-        <>
-          <Table p={p} pagerLabels={app.pager} rows={pending} statusIdx={0} actionLabel={p.pay} onAction={onPay} />
-          <Table p={p} pagerLabels={app.pager} rows={completed} statusIdx={1} actionLabel={p.view} onAction={openInvoice} />
-        </>
+        <Table p={p} pagerLabels={app.pager} rows={rows} statusIdx={1} actionLabel={p.view} onAction={openInvoice} />
       )}
 
       {view && invShipment && (
