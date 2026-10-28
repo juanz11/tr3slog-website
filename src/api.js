@@ -257,6 +257,10 @@ export const api = {
     body: JSON.stringify(data),
   }).then(handle),
 
+  getSupportTicket: (id, token) => fetch(`${API_URL}/support/${id}`, {
+    headers: headers(token),
+  }).then(handle),
+
   getAuditFiles: (token) => fetch(`${API_URL}/audit-files`, {
     headers: headers(token),
   }).then(handle),

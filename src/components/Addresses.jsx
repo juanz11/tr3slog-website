@@ -1,4 +1,5 @@
 import React from 'react'
+import Script from 'next/script'
 import { api } from '../api'
 import { Pagination, usePagination } from './Shared'
 import { COUNTRY_NAMES, PHONE_FORMATS, detectDialCountry } from '../lib/countries'
@@ -75,6 +76,7 @@ function backendToRow(addr) {
 const SPAN2 = ['address', 'instructions']
 const REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'contact']
 
+const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 const ADDRESS_DRAFT_KEY = 'tr3slog-address-draft'
 
 function initialPrimary(rows) {
@@ -143,6 +145,57 @@ export default function Addresses({ app, token }) {
 
   const formOpen = formMode !== null
   const formTitle = formMode === 'new' ? a.newT : a.editT
+  const placesContainer = React.useRef(null)
+  const [placesReady, setPlacesReady] = React.useState(false)
+  const [placesError, setPlacesError] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!formOpen || !placesReady || !placesContainer.current) return
+    const Autocomplete = window.google?.maps?.places?.PlaceAutocompleteElement
+    if (!Autocomplete) {
+      setPlacesError(true)
+      return
+    }
+    let active = true
+    let selection = 0
+    const widget = new Autocomplete({ includedRegionCodes: ['do', 'cr'] })
+    widget.setAttribute('aria-label', a.f.address)
+    widget.style.width = '100%'
+    const onError = () => { if (active) setPlacesError(true) }
+    const onSelect = async ({ placePrediction }) => {
+      const request = ++selection
+      try {
+        const place = placePrediction.toPlace()
+        await place.fetchFields({ fields: ['formattedAddress', 'addressComponents'] })
+        if (!active || request !== selection) return
+        const part = (type) => place.addressComponents?.find((c) => c.types.includes(type))
+        const text = (type) => part(type)?.longText || ''
+        const country = part('country')?.shortText?.toUpperCase() || ''
+        if (!COUNTRY_OPTIONS.some((c) => c.code === country)) return onError()
+        setFormVals((v) => ({
+          ...v,
+          address: place.formattedAddress || '',
+          country,
+          city: text('locality') || text('postal_town') || text('administrative_area_level_2'),
+          zip: [text('postal_code'), text('postal_code_suffix')].filter(Boolean).join('-'),
+        }))
+        setErr(false)
+        setLoadError(null)
+        setPlacesError(false)
+      } catch {
+        if (request === selection) onError()
+      }
+    }
+    widget.addEventListener('gmp-select', onSelect)
+    widget.addEventListener('gmp-error', onError)
+    placesContainer.current.appendChild(widget)
+    return () => {
+      active = false
+      widget.removeEventListener('gmp-select', onSelect)
+      widget.removeEventListener('gmp-error', onError)
+      widget.remove()
+    }
+  }, [formOpen, formMode, placesReady, a.f.address])
 
   const pendingRow = removeId ? rows.find((r) => r.id === removeId) : null
 
@@ -354,19 +407,21 @@ export default function Addresses({ app, token }) {
           </div>
 
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 10 }}>{a.typeT}</div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {a.types.map((t, i) => {
-                const on = (formVals.type || 0) === i
-                return (
-                  <button key={i} onClick={() => setFormVals((v) => ({ ...v, type: i }))} style={{
-                    padding: '11px 15px', border: `1.5px solid ${on ? '#087CF0' : '#DCE6F5'}`,
-                    borderRadius: 100, background: on ? 'rgba(8,124,240,.08)' : '#fff',
-                    color: on ? '#0768C9' : '#10233F', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  }}>{t}</button>
-                )
-              })}
-            </div>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{a.f.address} · Google Maps</div>
+            {GOOGLE_MAPS_KEY ? (
+              <>
+                <Script
+                  id="google-places"
+                  src={`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_KEY)}&libraries=places&v=weekly`}
+                  onReady={() => setPlacesReady(true)}
+                  onError={() => setPlacesError(true)}
+                />
+                <div ref={placesContainer} />
+                {placesError && <p role="status" style={{ color: '#A93226', fontSize: 13 }}>Google Maps: búsqueda no disponible. Ingrese la dirección manualmente.</p>}
+              </>
+            ) : (
+              <p role="status" style={{ color: '#6C82A6', fontSize: 13 }}>Google Maps: configure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY para activar la búsqueda.</p>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

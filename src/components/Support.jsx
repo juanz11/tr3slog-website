@@ -1,6 +1,17 @@
 import React from 'react'
 import { api } from '../api'
 
+const CASES_KEY = 'tr3slog-support-cases'
+
+const STATUS_TONES = {
+  open: { bg: 'rgba(217,154,0,.14)', fg: '#8A6300' },
+  pending: { bg: 'rgba(8,124,240,.1)', fg: '#0768C9' },
+  resolved: { bg: 'rgba(19,122,69,.12)', fg: '#0F5F36' },
+  closed: { bg: '#EEF4FC', fg: '#10233F' },
+}
+
+export const caseNumber = (t) => t?.id ? `CS-${String(t.id).padStart(6, '0')}` : '—'
+
 export default function Support({ app, token }) {
   const s = app.support
   const [subjectType, setSubjectType] = React.useState('')
@@ -15,6 +26,35 @@ export default function Support({ app, token }) {
   const [sent, setSent] = React.useState(false)
   const [sending, setSending] = React.useState(false)
   const [shipments, setShipments] = React.useState([])
+  const [cases, setCases] = React.useState([])
+  const [refreshing, setRefreshing] = React.useState(null)
+  const [lastTicket, setLastTicket] = React.useState(null)
+
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CASES_KEY)
+      if (raw) setCases(JSON.parse(raw))
+    } catch (e) {}
+  }, [])
+
+  const saveCases = (list) => {
+    setCases(list)
+    try { localStorage.setItem(CASES_KEY, JSON.stringify(list)) } catch (e) {}
+  }
+
+  const refreshStatus = async (c) => {
+    if (!token || refreshing) return
+    setRefreshing(c.id)
+    try {
+      const t = await api.getSupportTicket(c.id, token)
+      const checkedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      saveCases(cases.map((x) => x.id === c.id ? { ...x, status: t.status || x.status, checkedAt, checkError: false } : x))
+    } catch (e) {
+      saveCases(cases.map((x) => x.id === c.id ? { ...x, checkError: true } : x))
+    } finally {
+      setRefreshing(null)
+    }
+  }
 
   React.useEffect(() => {
     if (!token) return
@@ -37,8 +77,12 @@ export default function Support({ app, token }) {
     setSending(true)
     try {
       const body = ship ? `${msg}\n\n${s.f.ship}: ${ship}` : msg
-      await api.createSupport({ subject, message: body, ship }, token)
+      const res = await api.createSupport({ subject, message: body, ship }, token)
       setSent(true)
+      if (res?.ticket) {
+        setLastTicket(res.ticket)
+        saveCases([{ id: res.ticket.id, subject, status: res.ticket.status, ship }, ...cases])
+      }
       setSubjectType('')
       setCustomSubject('')
       setShip('')
@@ -149,7 +193,14 @@ export default function Support({ app, token }) {
                 <circle cx="12" cy="12" r="9" />
                 <path d="M8.5 12.5l2.5 2.5 4.5-5" />
               </svg>
-              {s.sent}
+              <div>
+                {s.sent}
+                {lastTicket && (
+                  <div style={{ marginTop: 6, fontFamily: 'Montserrat, sans-serif', fontWeight: 700 }}>
+                    {s.refLabel || 'Referencia:'} {caseNumber(lastTicket)}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -185,15 +236,32 @@ export default function Support({ app, token }) {
               fontFamily: 'Montserrat, "Noto Sans SC", sans-serif',
               fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase',
             }}>{s.openT}</div>
-            {s.open.map((o, i) => (
-              <div key={i} style={{ padding: '16px 22px', borderTop: '1px solid #E3EBF7', display: 'flex', gap: 10, alignItems: 'center' }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 600, fontSize: 13, color: '#001B45' }}>{o.id} · {o.t}</div>
-                  <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>{o.when}</div>
+            <div style={{ padding: '18px 22px', borderTop: '1px solid #E3EBF7', fontSize: 14, lineHeight: 1.6, color: '#10233F' }}>
+              {cases.length === 0 ? s.openEmpty : s.openNote}
+            </div>
+            {cases.map((c) => {
+              const tone = STATUS_TONES[c.status] || STATUS_TONES.open
+              return (
+                <div key={c.id} style={{ padding: '16px 22px', borderTop: '1px solid #E3EBF7', display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 600, fontSize: 13, color: '#001B45' }}>{caseNumber(c)} · {c.subject}</div>
+                    {c.ship && <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>{s.f.ship}: {c.ship}</div>}
+                    {c.checkError && <div style={{ fontSize: 12, color: '#A93226', marginTop: 2 }}>{s.statusErr || 'No se pudo consultar el estado.'}</div>}
+                    {!c.checkError && c.checkedAt && <div style={{ fontSize: 12, color: '#0F5F36', marginTop: 2 }}>{s.statusChecked || 'Estado consultado'} · {c.checkedAt}</div>}
+                  </div>
+                  <button
+                    onClick={() => refreshStatus(c)}
+                    disabled={refreshing === c.id}
+                    style={{
+                      marginLeft: 'auto', background: 'none', border: 'none', padding: 0,
+                      cursor: refreshing === c.id ? 'wait' : 'pointer', fontSize: 12,
+                      fontWeight: 600, color: '#087CF0', whiteSpace: 'nowrap',
+                    }}
+                  >{refreshing === c.id ? '…' : (s.checkStatus || 'Consultar estado')}</button>
+                  <span style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: tone.bg, color: tone.fg, whiteSpace: 'nowrap' }}>{(s.statuses || {})[c.status] || c.status}</span>
                 </div>
-                <span style={{ marginLeft: 'auto', display: 'inline-flex', padding: '5px 11px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: 'rgba(217,154,0,.14)', color: '#8A6300', whiteSpace: 'nowrap' }}>{o.st}</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>

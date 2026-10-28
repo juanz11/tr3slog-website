@@ -656,8 +656,7 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
                     if (!data.sender.addressId || data.sender.addressId === 'manual') return true
                     return String(addr.id) !== String(data.sender.addressId)
                   }).map((addr) => {
-                    const initials = getInitials(addr.address || addr.name)
-                    const label = [initials ? `${initials} —` : '', addr.address || addr.name, addr.city].filter(Boolean).join(' ')
+                    const label = [addr.name || addr.address, addr.city].filter(Boolean).join(' · ')
                     return (
                       <option key={addr.id} value={String(addr.id)}>
                         {label}
