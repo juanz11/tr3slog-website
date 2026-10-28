@@ -311,6 +311,12 @@ export const api = {
   }).then(handle),
 
   /* Asignar chofer + vehículo (CREADO → ASIGNADO). */
+  updateManifestStops: (id, stops, token) => fetch(`${API_URL}/manifests/${id}/stops`, {
+    method: 'PUT',
+    headers: headers(token),
+    body: JSON.stringify({ stops }),
+  }).then(handle),
+
   assignManifest: (id, data, token) => fetch(`${API_URL}/manifests/${id}/assignment`, {
     method: 'PATCH',
     headers: headers(token),

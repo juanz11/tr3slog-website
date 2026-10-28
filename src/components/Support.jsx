@@ -1,5 +1,6 @@
 import React from 'react'
 import { api } from '../api'
+import { SortControl, sortRows } from './Shared'
 
 const CASES_KEY = 'tr3slog-support-cases'
 
@@ -29,6 +30,8 @@ export default function Support({ app, token }) {
   const [cases, setCases] = React.useState([])
   const [refreshing, setRefreshing] = React.useState(null)
   const [lastTicket, setLastTicket] = React.useState(null)
+  const [showHidden, setShowHidden] = React.useState(false)
+  const [sortMode, setSortMode] = React.useState('recent')
 
   React.useEffect(() => {
     try {
@@ -41,6 +44,12 @@ export default function Support({ app, token }) {
     setCases(list)
     try { localStorage.setItem(CASES_KEY, JSON.stringify(list)) } catch (e) {}
   }
+
+  const hideCase = (c, hidden = true) => {
+    saveCases(cases.map((x) => x.id === c.id ? { ...x, hidden } : x))
+  }
+
+  const sortedCases = sortRows(cases, sortMode, { date: (c) => c.id, text: (c) => c.subject })
 
   const refreshStatus = async (c) => {
     if (!token || refreshing) return
@@ -235,11 +244,15 @@ export default function Support({ app, token }) {
               padding: '18px 22px', borderBottom: '1px solid #DCE6F5',
               fontFamily: 'Montserrat, "Noto Sans SC", sans-serif',
               fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase',
-            }}>{s.openT}</div>
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <span>{s.openT}</span>
+              <span style={{ marginLeft: 'auto' }}><SortControl value={sortMode} onChange={setSortMode} labels={app.sort} /></span>
+            </div>
             <div style={{ padding: '18px 22px', borderTop: '1px solid #E3EBF7', fontSize: 14, lineHeight: 1.6, color: '#10233F' }}>
               {cases.length === 0 ? s.openEmpty : s.openNote}
             </div>
-            {cases.map((c) => {
+            {sortedCases.filter((c) => !c.hidden).map((c) => {
               const tone = STATUS_TONES[c.status] || STATUS_TONES.open
               return (
                 <div key={c.id} style={{ padding: '16px 22px', borderTop: '1px solid #E3EBF7', display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -258,10 +271,49 @@ export default function Support({ app, token }) {
                       fontWeight: 600, color: '#087CF0', whiteSpace: 'nowrap',
                     }}
                   >{refreshing === c.id ? '…' : (s.checkStatus || 'Consultar estado')}</button>
+                  <button
+                    onClick={() => hideCase(c)}
+                    style={{
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600, color: '#6C82A6', whiteSpace: 'nowrap',
+                    }}
+                  >{s.hide || 'Ocultar'}</button>
                   <span style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: tone.bg, color: tone.fg, whiteSpace: 'nowrap' }}>{(s.statuses || {})[c.status] || c.status}</span>
                 </div>
               )
             })}
+            {cases.some((c) => c.hidden) && (
+              <>
+                <button
+                  onClick={() => setShowHidden(!showHidden)}
+                  style={{
+                    width: '100%', padding: '12px 22px', borderTop: '1px solid #E3EBF7',
+                    background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+                    fontSize: 12, fontWeight: 600, color: '#6C82A6',
+                    letterSpacing: '.06em', textTransform: 'uppercase',
+                  }}
+                >{s.hiddenT || 'Casos ocultos'} ({sortedCases.filter((c) => c.hidden).length}) {showHidden ? '▲' : '▼'}</button>
+                {showHidden && sortedCases.filter((c) => c.hidden).map((c) => {
+                  const tone = STATUS_TONES[c.status] || STATUS_TONES.open
+                  return (
+                    <div key={c.id} style={{ padding: '14px 22px', borderTop: '1px solid #F0F5FB', display: 'flex', gap: 10, alignItems: 'center', opacity: .65 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 600, fontSize: 13, color: '#001B45' }}>{caseNumber(c)} · {c.subject}</div>
+                      </div>
+                      <button
+                        onClick={() => hideCase(c, false)}
+                        style={{
+                          marginLeft: 'auto', background: 'none', border: 'none', padding: 0,
+                          cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#087CF0',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >{s.show || 'Mostrar'}</button>
+                      <span style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: tone.bg, color: tone.fg, whiteSpace: 'nowrap' }}>{(s.statuses || {})[c.status] || c.status}</span>
+                    </div>
+                  )
+                })}
+              </>
+            )}
           </div>
         </div>
       </div>

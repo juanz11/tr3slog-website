@@ -134,7 +134,7 @@ export default function Drivers({ app, lang, token }) {
   const [filter, setFilter] = React.useState('all')
   const a = authI18n[lang] || authI18n.es
   const [open, setOpen] = React.useState(false)
-  const [form, setForm] = React.useState({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: '', password: '' })
+  const [form, setForm] = React.useState({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: [], password: '' })
   const [docs, setDocs] = React.useState({ idNumber: '', idExpires: '', licenseNumber: '', licenseExpires: '' })
   const [docFiles, setDocFiles] = React.useState({ photo: null, idFile: null, licenseFile: null })
   const [vehicles, setVehicles] = React.useState([])
@@ -183,7 +183,7 @@ export default function Drivers({ app, lang, token }) {
   }))
 
   const resetForm = () => {
-    setForm({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: '', password: '' })
+    setForm({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: [], password: '' })
     setDocs({ idNumber: '', idExpires: '', licenseNumber: '', licenseExpires: '' })
     setDocFiles({ photo: null, idFile: null, licenseFile: null })
     setVehicles([])
@@ -281,7 +281,7 @@ export default function Drivers({ app, lang, token }) {
       fd.append('email', form.email)
       if (form.vehicle) fd.append('vehicle', form.vehicle)
       if (form.hub) fd.append('hub', form.hub)
-      fd.append('shift', form.shift)
+      fd.append('shift', (form.shift || []).join(','))
       if (!form.user_id) {
         fd.append('password', form.password)
         fd.append('password_confirmation', form.password)
@@ -348,7 +348,7 @@ export default function Drivers({ app, lang, token }) {
       phone: driver.phone === '—' ? '' : driver.phone || '',
       vehicle: driver.v === '—' ? '' : driver.v || '',
       hub: driver.hub === '—' ? '' : driver.hub || '',
-      shift: driver.shift === '—' ? '' : driver.shift || '',
+      shift: driver.shift === '—' ? [] : String(driver.shift || '').split(',').filter(Boolean),
       available: driver.st === 'available',
     })
     setEditMsg('')
@@ -374,7 +374,7 @@ export default function Drivers({ app, lang, token }) {
         phone: editForm.phone || null,
         vehicle: editForm.vehicle || null,
         hub: editForm.hub || null,
-        shift: editForm.shift || null,
+        shift: (editForm.shift || []).length ? editForm.shift.join(',') : null,
         available: editForm.available,
       }, token)
       setDrivers((prev) => prev.map((x) => (x.user_id === updated.user_id ? updated : x)))
@@ -467,13 +467,14 @@ export default function Drivers({ app, lang, token }) {
                 </select>
               </label>
               <label style={labelSt}><span style={spanSt}>{d.cols[4]}</span>
-                <select value={editForm.shift} onChange={(e) => setEditForm({ ...editForm, shift: e.target.value })} style={{ ...inputSt, cursor: 'pointer' }}>
-                  <option value="">—</option>
-                  {editForm.shift && !SHIFT_VALUES.includes(editForm.shift) && <option value={editForm.shift}>{editForm.shift}</option>}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 6 }}>
                   {SHIFT_VALUES.map((s) => (
-                    <option key={s} value={s}>{shiftLabel(s, lang)}</option>
+                    <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9, border: `1.5px solid ${editForm.shift.includes(s) ? '#087CF0' : '#DCE6F5'}`, background: editForm.shift.includes(s) ? 'rgba(8,124,240,.08)' : '#fff', cursor: 'pointer', fontSize: 13, color: '#10233F' }}>
+                      <input type="checkbox" checked={editForm.shift.includes(s)} onChange={() => setEditForm(f => ({ ...f, shift: f.shift.includes(s) ? f.shift.filter(x => x !== s) : [...f.shift, s] }))} />
+                      {shiftLabel(s, lang)}
+                    </label>
                   ))}
-                </select>
+                </div>
               </label>
               <label style={labelSt}>
                 <span style={spanSt}>{d.availability}</span>
@@ -601,12 +602,14 @@ export default function Drivers({ app, lang, token }) {
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={FL}>{d.cols[4]}</span>
-              <select value={form.shift} onChange={(e) => setForm({ ...form, shift: e.target.value })} style={{ ...FI, cursor: 'pointer', color: form.shift ? '#001B45' : '#6C82A6' }}>
-                <option value="">—</option>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 6 }}>
                 {SHIFT_VALUES.map((s) => (
-                  <option key={s} value={s}>{shiftLabel(s, lang)}</option>
+                  <label key={s} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 9, border: `1.5px solid ${form.shift.includes(s) ? '#087CF0' : '#DCE6F5'}`, background: form.shift.includes(s) ? 'rgba(8,124,240,.08)' : '#fff', cursor: 'pointer', fontSize: 13, color: '#10233F' }}>
+                    <input type="checkbox" checked={form.shift.includes(s)} onChange={() => setForm(f => ({ ...f, shift: f.shift.includes(s) ? f.shift.filter(x => x !== s) : [...f.shift, s] }))} />
+                    {shiftLabel(s, lang)}
+                  </label>
                 ))}
-              </select>
+              </div>
             </label>
 
             <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #DCE6F5', paddingTop: 18 }}>
@@ -750,7 +753,7 @@ export default function Drivers({ app, lang, token }) {
                   <span className="app-table-text">{driver.id}</span>
                   <span className="app-table-text">{driver.v}</span>
                   <span className="app-table-text">{driver.hub}</span>
-                  <span className="app-table-text">{shiftLabel(driver.shift, lang)}</span>
+                  <span className="app-table-text">{String(driver.shift || '').split(',').filter(Boolean).map(v => shiftLabel(v, lang)).join(' · ') || '—'}</span>
                   <span className="app-status" style={{ background: docStyle.bg, color: docStyle.fg }}>{d.docStates[driver.doc]}</span>
                   <span className="app-status" style={{ background: stStyle.bg, color: stStyle.fg }}>{d.statuses[driver.st]}</span>
                   <span>

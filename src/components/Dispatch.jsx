@@ -1,6 +1,6 @@
 import React from 'react'
 import { api } from '../api'
-import { Pagination, usePagination } from './Shared'
+import { Pagination, usePagination, SortControl, sortRows } from './Shared'
 
 const STATUS_COLORS = {
   pending: { bg: '#EEF4FC', fg: '#10233F' },
@@ -319,7 +319,7 @@ function ShipmentDetail({ d, lang, shipment, drivers, onClose }) {
   )
 }
 
-export default function Dispatch({ app, lang, token }) {
+export default function Dispatch({ app, lang, token, query: externalQuery, onQueryChange, onOpenManifest }) {
   const d = app.dispatch
   const [shipments, setShipments] = React.useState([])
   const [drivers, setDrivers] = React.useState([])
@@ -328,10 +328,30 @@ export default function Dispatch({ app, lang, token }) {
   const [updateError, setUpdateError] = React.useState('')
   const [updatingId, setUpdatingId] = React.useState(null)
   const [assigningId, setAssigningId] = React.useState(null)
-  const [query, setQuery] = React.useState('')
+  const isControlled = typeof externalQuery !== 'undefined'
+  const [internalQuery, setInternalQuery] = React.useState('')
+  const query = isControlled ? externalQuery : internalQuery
+  const setQuery = isControlled ? onQueryChange : setInternalQuery
   const [filter, setFilter] = React.useState('all')
   const [selected, setSelected] = React.useState(null)
   const [assignTarget, setAssignTarget] = React.useState(null)
+  const [manifests, setManifests] = React.useState([])
+
+  React.useEffect(() => {
+    if (!token) return
+    api.getManifests(token)
+      .then((list) => setManifests(Array.isArray(list) ? list : []))
+      .catch(() => {})
+  }, [token])
+
+  const CLOSED_MANI = ['COMPLETADO', 'COMPLETADO_CON_INCIDENCIAS', 'TRANSFERIDO']
+  const [maniSort, setManiSort] = React.useState('recent')
+  const activeManifests = sortRows(
+    manifests.filter((m) => !CLOSED_MANI.includes(m.estado)),
+    maniSort,
+    { date: 'fechaCreacion', text: 'codigo' }
+  )
+  const maniPager = usePagination(activeManifests, 5)
 
   const fetchShipments = React.useCallback(async () => {
     if (!token) return
@@ -386,7 +406,7 @@ export default function Dispatch({ app, lang, token }) {
     return ids
   }, [shipments])
 
-  const pager = usePagination(filtered, 10, `${filter}|${query}`)
+  const pager = usePagination(filtered, 5, `${filter}|${query}`)
 
   const formatTracking = (s) => {
     if (s.parsed_tracking) {
@@ -445,6 +465,38 @@ export default function Dispatch({ app, lang, token }) {
           {updateError}
         </div>
       )}
+
+      <div className="app-card" style={{ marginBottom: 20 }}>
+        <div className="app-card-head" style={{ flexWrap: 'wrap', gap: 12 }}>
+          <span className="app-card-title">{d.maniT || 'Manifiestos activos'}</span>
+          <SortControl value={maniSort} onChange={setManiSort} labels={app.sort} />
+          <button onClick={onOpenManifest} style={{
+            marginLeft: 'auto', padding: '9px 16px', background: '#087CF0', border: 'none',
+            borderRadius: 9, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          }}>{d.newM || 'Crear manifiesto'}</button>
+        </div>
+        {activeManifests.length === 0 ? (
+          <div style={{ padding: '18px 22px', fontSize: 14, color: '#6C82A6' }}>{d.maniEmpty || 'No hay manifiestos activos.'}</div>
+        ) : (
+          <div>
+            {maniPager.pageItems.map((m) => (
+              <div key={m.id} style={{ padding: '14px 22px', borderTop: '1px solid #E3EBF7', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 13, fontWeight: 700, color: '#001B45' }}>{m.codigo}</span>
+                <span style={{ display: 'inline-flex', padding: '4px 11px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: m.estado === 'EN_RUTA' ? 'rgba(8,124,240,.1)' : 'rgba(217,154,0,.14)', color: m.estado === 'EN_RUTA' ? '#0768C9' : '#8A6300' }}>{m.estado}</span>
+                <span style={{ fontSize: 13, color: '#6C82A6' }}>
+                  {m.chofer?.nombre || '—'} · {(m.detalles || []).length} {d.pkgUnit || 'paquetes'} · {Math.round((m.progreso || 0) * 100)}%
+                </span>
+                <button onClick={() => onOpenManifest(m.id)} style={{
+                  marginLeft: 'auto', background: 'rgba(8,124,240,.08)', border: '1.5px solid #087CF0',
+                  borderRadius: 8, padding: '7px 16px', cursor: 'pointer', fontSize: 13,
+                  fontWeight: 600, color: '#0768C9', whiteSpace: 'nowrap',
+                }}>{d.editM || 'Editar'}</button>
+              </div>
+            ))}
+            <Pagination pager={maniPager} labels={app.pager} showPerPage={false} />
+          </div>
+        )}
+      </div>
 
       <div className="app-card">
         <div className="app-card-head" style={{ flexWrap: 'wrap', gap: 12 }}>

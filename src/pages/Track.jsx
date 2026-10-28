@@ -14,8 +14,8 @@ export default function Track({ t }) {
   const onTrack = async (forcedCode = '') => {
     const raw = (forcedCode || code || '').trim().toUpperCase()
     if (!raw) { setTrackError(t.trk.errEmpty); setTrackState('empty'); return }
-    if (!/^TR3-\d{6}-[A-Z]{4}-\d{5}$/.test(raw)) { setTrackError(t.trk.errFormat); setTrackState('empty'); return }
-    setCode(raw)
+    if (!/^TR3S?-\d{6}-[A-Z]{4}-G?\d{5,6}$/.test(raw)) { setTrackError(t.trk.errFormat); setTrackState('empty'); return }
+    setCode('')
     setTrackError(''); setTrackState('loading')
     try {
       const data = await api.trackQuote(raw)
@@ -55,7 +55,7 @@ export default function Track({ t }) {
   }
 
   const parseDateFromCode = (code) => {
-    const m = (code || '').match(/^TR3-(\d{6})-[A-Z]{4}-\d{5}$/)
+    const m = (code || '').match(/^TR3S?-(\d{6})-[A-Z]{4}-G?\d{5,6}$/)
     if (!m) return null
     const y = 2000 + parseInt(m[1].slice(0, 2), 10)
     const mo = parseInt(m[1].slice(2, 4), 10) - 1
@@ -115,6 +115,7 @@ export default function Track({ t }) {
           <input
             value={code}
             onChange={e => setCode(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') onTrack() }}
             placeholder={t.trk.ph}
             aria-label={t.trk.guide}
             style={{
@@ -124,7 +125,7 @@ export default function Track({ t }) {
               background: '#fff', color: '#001B45', outline: 'none',
             }}
           />
-          <button onClick={onTrack} style={{
+          <button onClick={() => onTrack()} style={{
             padding: '16px 26px', background: '#087CF0', border: 'none',
             borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
           }}>{trackState === 'loading' ? t.common.loading : t.trk.btn}</button>

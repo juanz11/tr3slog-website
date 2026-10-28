@@ -170,6 +170,57 @@ export function Pagination({ pager, labels, showPerPage = true }) {
   )
 }
 
+const SORT_FALLBACK = {
+  by: 'Ordenar',
+  recent: 'Más reciente',
+  oldest: 'Más antiguo',
+  az: 'A–Z',
+  za: 'Z–A',
+}
+
+/**
+ * Sorts `rows` client-side. `date`/`text` are field names or getter
+ * functions; date modes also accept plain numbers (e.g. sequential ids).
+ */
+export function sortRows(rows, mode, { date, text } = {}) {
+  const val = (r, getter) => (typeof getter === 'function' ? getter(r) : r[getter] ?? r.raw?.[getter])
+  const dval = (r) => {
+    const v = val(r, date)
+    if (v == null) return 0
+    const n = typeof v === 'number' ? v : new Date(v).getTime()
+    return Number.isNaN(n) ? 0 : n
+  }
+  const tval = (r) => String(val(r, text) ?? '').toLowerCase()
+
+  const list = [...rows]
+  if (mode === 'recent') list.sort((a, b) => dval(b) - dval(a))
+  else if (mode === 'oldest') list.sort((a, b) => dval(a) - dval(b))
+  else if (mode === 'az') list.sort((a, b) => tval(a).localeCompare(tval(b)))
+  else if (mode === 'za') list.sort((a, b) => tval(b).localeCompare(tval(a)))
+  return list
+}
+
+export function SortControl({ value, onChange, labels }) {
+  const t = { ...SORT_FALLBACK, ...(labels || {}) }
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label={t.by}
+      style={{
+        padding: '9px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10,
+        background: '#fff', fontSize: 13, fontWeight: 600, color: '#10233F',
+        cursor: 'pointer',
+      }}
+    >
+      <option value="recent">{t.recent}</option>
+      <option value="oldest">{t.oldest}</option>
+      <option value="az">{t.az}</option>
+      <option value="za">{t.za}</option>
+    </select>
+  )
+}
+
 export function ImageSlot({ placeholder, src, alt, height = 180 }) {
   if (src) {
     return (

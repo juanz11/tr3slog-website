@@ -1,6 +1,6 @@
 import React from 'react'
 import { api } from '../api'
-import { Pagination, usePagination, usePolling } from './Shared'
+import { Pagination, usePagination, usePolling, SortControl, sortRows } from './Shared'
 
 const CITY_CODES = {
   'san juan': 'PRSJ', 'santo domingo': 'DOSD', 'punta cana': 'DOPC', 'miami': 'MIAM',
@@ -88,7 +88,11 @@ function DetailView({ app, shipment, onClose }) {
     return new Date(created.getTime() + i * 86400000)
   }
 
-  const charges = shipment.charges || []
+  const fmtMoney = (n) => `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const charges = Array.isArray(shipment.charges) && shipment.charges.length
+    ? shipment.charges
+    : (shipment.amount != null ? [{ label: 'Cargo de envío', amount: fmtMoney(shipment.amount) }] : [])
+  const totalCharge = shipment.amount != null ? fmtMoney(shipment.amount) : (shipment.total || '—')
   const documents = shipment.documents || []
   const showProof = idx === 2 && shipment.delivery_proof
 
@@ -244,6 +248,19 @@ function DetailView({ app, shipment, onClose }) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {shipment.driver && (
+            <div style={cardBase}>
+              <div style={sectionTitle}>Conductor asignado</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {shipment.driver.name && <div><div style={label}>Nombre</div><div style={value}>{shipment.driver.name}</div></div>}
+                {shipment.driver.phone && <div><div style={label}>Teléfono</div><div style={value}>{shipment.driver.phone}</div></div>}
+                {shipment.driver.email && <div><div style={label}>Correo</div><div style={value}>{shipment.driver.email}</div></div>}
+                {shipment.driver.driver_profile?.vehicle && <div><div style={label}>Vehículo</div><div style={value}>{typeof shipment.driver.driver_profile.vehicle === 'object' ? [shipment.driver.driver_profile.vehicle.brand, shipment.driver.driver_profile.vehicle.model, shipment.driver.driver_profile.vehicle.plate].filter(Boolean).join(' · ') : shipment.driver.driver_profile.vehicle}</div></div>}
+                {shipment.assigned_at && <div><div style={label}>Asignado</div><div style={value}>{fmt(new Date(shipment.assigned_at))}</div></div>}
+              </div>
+            </div>
+          )}
+
           <div style={cardBase}>
             <div style={sectionTitle}>Cargos</div>
             {charges.length ? charges.map((c, i) => (
@@ -253,7 +270,7 @@ function DetailView({ app, shipment, onClose }) {
             )) : <div style={{ fontSize: 14, color: '#6C82A6', padding: '8px 0' }}>Cargos aún no disponibles.</div>}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, paddingTop: 14, borderTop: '1px solid #DCE6F5' }}>
               <span style={{ fontWeight: 600 }}>Total</span>
-              <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 18 }}>{shipment.total || '—'}</span>
+              <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 18 }}>{totalCharge}</span>
             </div>
           </div>
 
@@ -295,17 +312,23 @@ function DetailView({ app, shipment, onClose }) {
   )
 }
 
-export default function ShipmentsList({ app, token, query: externalQuery, onQueryChange }) {
+export default function ShipmentsList({ app, token, query: externalQuery, onQueryChange, selectId }) {
   const s = app.ship
   const isControlled = typeof externalQuery !== 'undefined'
   const [internalQuery, setInternalQuery] = React.useState('')
   const query = isControlled ? externalQuery : internalQuery
   const setQuery = isControlled ? onQueryChange : setInternalQuery
   const [filter, setFilter] = React.useState(0)
+  const [sortMode, setSortMode] = React.useState('recent')
   const [shipments, setShipments] = React.useState([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState('')
   const [selected, setSelected] = React.useState(null)
+
+  React.useEffect(() => {
+    if (!selectId || !token) return
+    api.getShipment(selectId, token).then(setSelected).catch(() => {})
+  }, [selectId])
 
   const load = React.useCallback(async (isPoll) => {
     if (!token) {
@@ -336,7 +359,12 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
     return matchesFilter && matchesQuery
   })
 
-  const pager = usePagination(filtered, 10, `${filter}|${query}`)
+  const sorted = sortRows(filtered, sortMode, {
+    date: (r) => r.raw?.created_at || r.raw?.updated_at,
+    text: (r) => r.id,
+  })
+
+  const pager = usePagination(sorted, 10, `${filter}|${query}|${sortMode}`)
 
   if (selected) {
     return <DetailView app={app} shipment={selected} onClose={() => setSelected(null)} />
@@ -372,6 +400,7 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
                 if (e.key === 'Enter' && filtered.length) {
                   const exact = filtered.find((r) => r.id.toLowerCase() === (query || '').toLowerCase())
                   setSelected((exact || filtered[0]).raw)
+                  setQuery('')
                 }
               }}
               placeholder={s.searchPh}
@@ -397,6 +426,7 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
               )
             })}
           </div>
+          <SortControl value={sortMode} onChange={setSortMode} labels={app.sort} />
         </div>
 
         <div style={{ overflowX: 'auto' }}>

@@ -246,10 +246,14 @@ function CreatePanel({ create, setCreate, token, shipments, setShipments, shipQu
   )
 }
 
-export default function Manifest({ token }) {
+export default function Manifest({ token, selectId }) {
   const [view, setView] = React.useState('digital')
   const [list, setList] = React.useState([])
   const [sel, setSel] = React.useState(null)
+  const [editStops, setEditStops] = React.useState(null)
+  const [editBusy, setEditBusy] = React.useState(false)
+  const [editAdd, setEditAdd] = React.useState('')
+  const [viewStop, setViewStop] = React.useState(null)
   const [loading, setLoading] = React.useState(true)
   const [err, setErr] = React.useState('')
   const [toast, setToast] = React.useState('')
@@ -283,6 +287,10 @@ export default function Manifest({ token }) {
 
   React.useEffect(() => { if (token) load(); else setLoading(false) }, [token, load])
 
+  React.useEffect(() => {
+    if (selectId) setSel(Number(selectId))
+  }, [selectId])
+
   const loadDrivers = async () => {
     if (drivers) return
     try {
@@ -295,6 +303,31 @@ export default function Manifest({ token }) {
   }
 
   const m = list.find(x => x.id === sel) || null
+  const isEditable = m && ['CREADO', 'ASIGNADO'].includes(m.estado)
+
+  const openStopsEdit = () => {
+    setEditStops((m.detalles || []).map(d => ({ shipment_id: d.pedidoId, tracking_code: d.codigoSeguimiento })))
+    setEditAdd('')
+    api.getShipments(token)
+      .then(r => setShipments(Array.isArray(r) ? r : (r && r.data) || []))
+      .catch(() => {})
+  }
+
+  const saveStops = async () => {
+    if (!editStops || !editStops.length) return
+    setEditBusy(true)
+    try {
+      await api.updateManifestStops(m.id, editStops, token)
+      setEditStops(null)
+      await load()
+      notify('Paradas actualizadas')
+    } catch (e) {
+      notify(e.message)
+    } finally {
+      setEditBusy(false)
+    }
+  }
+
   const driverName = (id) => {
     const d = (drivers || []).find(x => x.user_id === id)
     return d ? d.name : (id ? `#${id}` : '—')
@@ -407,7 +440,8 @@ export default function Manifest({ token }) {
           {m && chip(ESTADOS[m.estado] || m.estado, TONE[MANIFEST_TONE[m.estado]] || TONE.neutral)}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {btn(T.newManifest, false, false, () => setCreate(c => ({ ...c, open: !c.open })))}
-            {btn(T.assign, true, !m || m.estado !== 'CREADO', () => { setAssign(a => ({ ...a, open: !a.open })); loadDrivers() })}
+            {btn(T.assign, true, !isEditable, () => { setAssign(a => ({ ...a, open: !a.open })); loadDrivers() })}
+            {m && isEditable && btn('Editar paradas', false, false, openStopsEdit)}
             {btn(T.print, false, !m, printManifest)}
           </div>
         </div>
@@ -426,7 +460,7 @@ export default function Manifest({ token }) {
           />
         )}
 
-        {assign.open && m && m.estado === 'CREADO' && (
+        {assign.open && m && isEditable && (
           <div style={{ padding: '14px 22px', borderBottom: '1px solid #E3EBF7', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
             <select style={{ ...inputStyle, flex: '1 1 200px' }} value={assign.driverId} onChange={e => setAssign(a => ({ ...a, driverId: e.target.value, vehicleId: '' }))}>
               <option value="">{T.driverPh}</option>
@@ -437,6 +471,65 @@ export default function Manifest({ token }) {
               {(selectedDriver?.vehicles || []).map(v => <option key={v.id} value={v.id}>{v.label || `#${v.id}`}{v.plate ? ` · ${v.plate}` : ''}</option>)}
             </select>
             {btn(T.assignShort, true, assign.busy || !assign.driverId || !assign.vehicleId, doAssign)}
+          </div>
+        )}
+
+        {editStops && m && (
+          <div style={{ padding: '14px 22px', borderBottom: '1px solid #E3EBF7', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#001B45' }}>Editar paradas ({editStops.length})</div>
+            <div style={{ border: '1px solid #DCE6F5', borderRadius: 9, overflow: 'hidden', background: '#fff' }}>
+              {editStops.map((s, i) => {
+                const ped = (m.detalles || []).find(d => d.codigoSeguimiento === s.tracking_code)?.pedido
+                const sh = (shipments || []).find(x => (x.tracking_number || `ENV-${x.id}`) === s.tracking_code)
+                const who = ped?.destinatario || sh?.recipient_name || '—'
+                const where = [ped?.origen || sh?.origin, ped?.destino || sh?.destination].filter(Boolean).join(' → ') || '—'
+                const tel = ped?.telefono || sh?.recipient_phone
+                const st = ped?.estado || sh?.status
+                const move = (dir) => setEditStops(list => {
+                  const a = [...list]
+                  const j = i + dir
+                  if (j < 0 || j >= a.length) return a
+                  ;[a[i], a[j]] = [a[j], a[i]]
+                  return a
+                })
+                return (
+                  <div key={s.tracking_code + i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 14px', borderTop: i ? '1px solid #F0F5FB' : 'none' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <button type="button" onClick={() => move(-1)} disabled={i === 0} style={{ background: 'none', border: 'none', padding: 0, cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#C9D6E8' : '#087CF0', fontSize: 12, lineHeight: 1 }}>▲</button>
+                      <button type="button" onClick={() => move(1)} disabled={i === editStops.length - 1} style={{ background: 'none', border: 'none', padding: 0, cursor: i === editStops.length - 1 ? 'default' : 'pointer', color: i === editStops.length - 1 ? '#C9D6E8' : '#087CF0', fontSize: 12, lineHeight: 1 }}>▼</button>
+                    </div>
+                    <span style={{ fontWeight: 700, color: '#001B45', fontSize: 13, minWidth: 20 }}>{i + 1}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12.5, color: '#10233F' }}>{s.tracking_code}</div>
+                      <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>{who} · {where}{tel ? ` · ${tel}` : ''}{st ? ` · ${st}` : ''}</div>
+                    </div>
+                    <button type="button" onClick={() => setViewStop({ ped, sh, code: s.tracking_code })}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#087CF0', whiteSpace: 'nowrap' }}>Ver detalles</button>
+                    <button type="button" onClick={() => setEditStops(list => list.filter(x => x.tracking_code !== s.tracking_code))}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#A93226', whiteSpace: 'nowrap' }}>Quitar</button>
+                  </div>
+                )
+              })}
+              {!editStops.length && <div style={{ padding: 16, fontSize: 13, color: '#6C82A6' }}>Sin paradas — agrega envíos abajo.</div>}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+              <select style={{ ...inputStyle, flex: '1 1 240px' }} value={editAdd} onChange={e => setEditAdd(e.target.value)}>
+                <option value="">Agregar envío…</option>
+                {(shipments || [])
+                  .filter(s => !editStops.some(x => x.tracking_code === (s.tracking_number || `ENV-${s.id}`)))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>{s.tracking_number || `ENV-${s.id}`} · {s.destination || '—'}{s.recipient_name ? ` · ${s.recipient_name}` : ''}</option>
+                  ))}
+              </select>
+              {btn('Agregar', false, !editAdd, () => {
+                const s = (shipments || []).find(x => String(x.id) === String(editAdd))
+                if (s) setEditStops(list => [...list, { shipment_id: s.id, tracking_code: s.tracking_number || `ENV-${s.id}` }])
+                setEditAdd('')
+              })}
+              <span style={{ flex: 1 }} />
+              {btn('Guardar paradas', true, editBusy || !editStops.length, saveStops)}
+              {btn(T.cancel, false, false, () => setEditStops(null))}
+            </div>
           </div>
         )}
 
@@ -478,8 +571,8 @@ export default function Manifest({ token }) {
                     {[
                       [T.manifestLabel, m.codigo],
                       [T.statusLabel, ESTADOS[m.estado] || m.estado],
-                      [T.driverLabel, driverName(m.choferId)],
-                      [T.vehicleLabel, vehicleName(m.vehiculoId)],
+                      [T.driverLabel, (m.chofer?.nombre || driverName(m.choferId)) + (m.chofer?.telefono ? ` · ${m.chofer.telefono}` : '')],
+                      [T.vehicleLabel, (m.vehiculo?.nombre || vehicleName(m.vehiculoId)) + (m.vehiculo?.placa ? ` · ${m.vehiculo.placa}` : '')],
                       [T.createdLabel, fmtDT(m.fechaCreacion)],
                       [T.startedLabel, fmtDT(m.fechaInicioRuta)],
                       [T.closedLabel, fmtDT(m.fechaCierre)],
@@ -496,6 +589,11 @@ export default function Manifest({ token }) {
                 <Qr value={m.codigo} size={112} label={m.codigo} />
               </div>
 
+              {isEditable && !editStops && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                  <button onClick={openStopsEdit} style={{ background: 'none', border: '1.5px solid #087CF0', borderRadius: 9, padding: '8px 16px', color: '#087CF0', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Editar paradas</button>
+                </div>
+              )}
               <div style={{ border: '1px solid #DCE6F5', borderRadius: 8, overflow: 'hidden' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '36px minmax(170px, 1.4fr) 60px minmax(110px, 1fr) minmax(120px, 1fr) minmax(140px, 1.2fr)', gap: 12, alignItems: 'center', padding: '10px 14px', background: '#001B45', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
                   {T.detailCols.map((h, i) => <span key={i} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{h}</span>)}
@@ -503,7 +601,14 @@ export default function Manifest({ token }) {
                 {(m.detalles || []).map((d, i) => (
                   <div key={d.id || i} style={{ display: 'grid', gridTemplateColumns: '36px minmax(170px, 1.4fr) 60px minmax(110px, 1fr) minmax(120px, 1fr) minmax(140px, 1.2fr)', gap: 12, alignItems: 'center', padding: '10px 14px', borderTop: '1px solid #E3EBF7', fontSize: 13 }}>
                     <span style={{ fontWeight: 700, color: '#001B45' }}>{d.secuenciaVisita || i + 1}</span>
-                    <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12.5, color: '#10233F' }}>{d.codigoSeguimiento}</span>
+                    <span>
+                      <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12.5, color: '#10233F' }}>{d.codigoSeguimiento}</span>
+                      {d.pedido && (
+                        <div style={{ fontSize: 11.5, color: '#6C82A6', marginTop: 3, lineHeight: 1.5 }}>
+                          {d.pedido.destinatario || '—'}{d.pedido.destino ? ` · ${d.pedido.destino}` : ''}{d.pedido.telefono ? ` · ${d.pedido.telefono}` : ''}
+                        </div>
+                      )}
+                    </span>
                     <span><Qr value={d.codigoSeguimiento} size={44} /></span>
                     <span>{chip(DETALLES[d.estado] || d.estado, TONE[DETAIL_TONE[d.estado]] || TONE.neutral)}</span>
                     <span style={{ color: '#6C82A6', fontSize: 12 }}>{fmtDT(d.horaVisita)}</span>
@@ -557,6 +662,44 @@ export default function Manifest({ token }) {
           )}
         </div>
       </div>
+
+      {viewStop && (() => {
+        const ped = viewStop.ped || {}
+        const sh = viewStop.sh || {}
+        const Field = ({ l, v }) => v ? (
+          <div><div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 3 }}>{l}</div>
+          <div style={{ fontSize: 13, color: '#10233F', fontWeight: 500 }}>{v}</div></div>
+        ) : null
+        return (
+          <div onClick={() => setViewStop(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(4,17,38,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto', padding: '24px 28px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 700, fontSize: 15, color: '#001B45' }}>{viewStop.code}</div>
+                <button onClick={() => setViewStop(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6C82A6', lineHeight: 1 }}>×</button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 18px' }}>
+                <Field l="Destinatario" v={ped.destinatario || sh.recipient_name} />
+                <Field l="Empresa" v={sh.recipient_company} />
+                <Field l="Estado" v={ped.estado || sh.status} />
+                <Field l="Ruta" v={[ped.origen || sh.origin, ped.destino || sh.destination].filter(Boolean).join(' → ')} />
+                <Field l="Dirección" v={sh.recipient_address} />
+                <Field l="Ciudad" v={sh.recipient_city} />
+                <Field l="País" v={sh.recipient_country} />
+                <Field l="ZIP" v={sh.recipient_zip} />
+                <Field l="Teléfono" v={ped.telefono || sh.recipient_phone} />
+                <Field l="Correo" v={ped.email || sh.recipient_email} />
+                <Field l="Remitente" v={sh.sender_name} />
+                <Field l="Tel. remitente" v={sh.sender_phone} />
+                <Field l="Servicio" v={sh.service_type} />
+                <Field l="Modalidad" v={sh.delivery_mode} />
+                <Field l="Método de pago" v={sh.payment_method} />
+                <Field l="Monto" v={sh.amount != null ? `$${sh.amount}` : null} />
+                <Field l="Notas" v={sh.notes} />
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {toast && (
         <div style={{ position: 'fixed', bottom: 24, right: 24, background: '#001B45', color: '#fff', padding: '12px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600, boxShadow: '0 10px 30px rgba(0,27,69,.25)', zIndex: 50 }}>

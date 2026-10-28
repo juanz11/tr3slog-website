@@ -28,7 +28,7 @@ export const appI18n = {
       dashboard: 'Panel',
       shipments: 'Mis envíos',
       create: 'Crear envío',
-      payments: 'Pagos y facturas',
+      payments: 'Pagos y Recibos',
       addresses: 'Direcciones',
       support: 'Soporte',
       profile: 'Perfil',
@@ -94,7 +94,7 @@ export const appI18n = {
       activeT: 'Envíos activos',
       seeAll: 'Ver todos',
       quickT: 'Acciones rápidas',
-      quick: ['Nuevo envío', 'Programar recogida', 'Rastrear envío', 'Contactar soporte'],
+      quick: ['Nuevo envío', 'Rastrear envío', 'Contactar soporte'],
       activityT: 'Actividad reciente',
       activity: [
         { t: 'Entregado a Daniela Cruz', m: 'TR3-260729-EUAL-08744 · hace 12 min' },
@@ -263,7 +263,7 @@ export const appI18n = {
       },
     },
     payments: {
-      title: 'Pagos y facturas',
+      title: 'Pagos y Recibos',
       totalDue: 'Total por pagar',
       pay: 'Pagar',
       pending: 'Pagos pendientes',
@@ -359,6 +359,9 @@ export const appI18n = {
       statusChecked: 'Última consulta',
       statusErr: 'No se pudo consultar el estado.',
       statuses: { open: 'Abierto', pending: 'En revisión', resolved: 'Resuelto', closed: 'Cerrado' },
+      hide: 'Ocultar',
+      show: 'Mostrar',
+      hiddenT: 'Casos ocultos',
       open: [],
     },
     users: {
@@ -401,6 +404,11 @@ export const appI18n = {
     dispatch: {
       greeting: 'Envíos y despacho',
       title: 'Envíos y despacho',
+      maniT: 'Manifiestos activos',
+      newM: 'Crear manifiesto',
+      editM: 'Editar',
+      maniEmpty: 'No hay manifiestos activos.',
+      pkgUnit: 'paquetes',
       listTitle: 'Envíos activos',
       loading: 'Actualizando…',
       autoRefresh: 'Actualiza cada',
@@ -654,6 +662,7 @@ export const appI18n = {
       pwdLocked: 'Demasiados intentos. Te enviamos un enlace de recuperación a tu correo.',
       pwdError: 'No se pudo actualizar la contraseña.',
     },
+    sort: { by: 'Ordenar', recent: 'Más reciente', oldest: 'Más antiguo', az: 'A–Z', za: 'Z–A' },
     empty: 'Pantalla en construcción.'
   },
   en: {
@@ -685,7 +694,7 @@ export const appI18n = {
       dashboard: 'Dashboard',
       shipments: 'My shipments',
       create: 'Create shipment',
-      payments: 'Payments & invoices',
+      payments: 'Payments & receipts',
       addresses: 'Addresses',
       support: 'Support',
       profile: 'Profile',
@@ -751,7 +760,7 @@ export const appI18n = {
       activeT: 'Active shipments',
       seeAll: 'See all',
       quickT: 'Quick actions',
-      quick: ['New shipment', 'Schedule pickup', 'Track shipment', 'Contact support'],
+      quick: ['New shipment', 'Track shipment', 'Contact support'],
       activityT: 'Recent activity',
       activity: [
         { t: 'Delivered to Daniela Cruz', m: 'TR3-260729-EUAL-08744 · 12 min ago' },
@@ -920,7 +929,7 @@ export const appI18n = {
       },
     },
     payments: {
-      title: 'Payments & invoices',
+      title: 'Payments & receipts',
       totalDue: 'Total due',
       pay: 'Pay',
       pending: 'Pending payments',
@@ -1016,6 +1025,9 @@ export const appI18n = {
       statusChecked: 'Last checked',
       statusErr: 'Could not check the status.',
       statuses: { open: 'Open', pending: 'In review', resolved: 'Resolved', closed: 'Closed' },
+      hide: 'Hide',
+      show: 'Show',
+      hiddenT: 'Hidden cases',
       open: [],
     },
     users: {
@@ -1058,6 +1070,11 @@ export const appI18n = {
     dispatch: {
       greeting: 'Shipments & dispatch',
       title: 'Shipments & dispatch',
+      maniT: 'Active manifests',
+      newM: 'Create manifest',
+      editM: 'Edit',
+      maniEmpty: 'No active manifests.',
+      pkgUnit: 'packages',
       listTitle: 'Active shipments',
       loading: 'Updating…',
       autoRefresh: 'Refreshes every',
@@ -1311,6 +1328,7 @@ export const appI18n = {
       pwdLocked: 'Too many attempts. We sent a recovery link to your email.',
       pwdError: 'Could not update password.',
     },
+    sort: { by: 'Sort', recent: 'Newest', oldest: 'Oldest', az: 'A–Z', za: 'Z–A' },
     empty: 'Screen under construction.'
   },
   'zh-CN': {
@@ -1341,7 +1359,7 @@ export const appI18n = {
       dashboard: '面板',
       shipments: '我的运单',
       create: '创建运单',
-      payments: '付款与账单',
+      payments: '付款与收据',
       addresses: '地址',
       support: '支持',
       profile: '个人资料',
@@ -1407,7 +1425,7 @@ export const appI18n = {
       activeT: '在途运单',
       seeAll: '查看全部',
       quickT: '快捷操作',
-      quick: ['新建运单', '预约取件', '查询运单', '联系客服'],
+      quick: ['新建运单', '查询运单', '联系客服'],
       activityT: '最近动态',
       activity: [
         { t: '已送达 Daniela Cruz', m: 'TR3-260729-EUAL-08744 · 12 分钟前' },
@@ -1576,7 +1594,7 @@ export const appI18n = {
       },
     },
     payments: {
-      title: '付款与账单',
+      title: '付款与收据',
       totalDue: '待付总额',
       pay: '支付',
       pending: '待付款项',
@@ -1672,6 +1690,9 @@ export const appI18n = {
       statusChecked: '上次查询',
       statusErr: '无法查询工单状态。',
       statuses: { open: '待处理', pending: '审核中', resolved: '已解决', closed: '已关闭' },
+      hide: '隐藏',
+      show: '显示',
+      hiddenT: '已隐藏的工单',
       open: [],
     },
     users: {
@@ -1714,6 +1735,11 @@ export const appI18n = {
     dispatch: {
       greeting: '货运与调度',
       title: '货运与调度',
+      maniT: '进行中的舱单',
+      newM: '创建舱单',
+      editM: '编辑',
+      maniEmpty: '暂无进行中的舱单。',
+      pkgUnit: '件',
       listTitle: '在途货运',
       loading: '更新中…',
       autoRefresh: '每',
@@ -1967,6 +1993,7 @@ export const appI18n = {
       pwdLocked: '尝试次数过多。恢复链接已发送至您的邮箱。',
       pwdError: '无法更新密码。',
     },
+    sort: { by: '排序', recent: '最新', oldest: '最早', az: 'A–Z', za: 'Z–A' },
     empty: '页面建设中。'
   },
 }

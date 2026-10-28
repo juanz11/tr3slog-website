@@ -1,5 +1,5 @@
 import React from 'react'
-import { Pagination, usePagination } from './Shared'
+import { Pagination, usePagination, SortControl, sortRows } from './Shared'
 import { api } from '../api'
 
 const fmtMoney = (n) => `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -23,8 +23,13 @@ function rowOf(s) {
   }
 }
 
-function Table({ p, pagerLabels, rows, statusIdx, actionLabel, onAction }) {
-  const pager = usePagination(rows, 10)
+function Table({ p, pagerLabels, sortLabels, rows, statusIdx, actionLabel, onAction }) {
+  const [sortMode, setSortMode] = React.useState('recent')
+  const sorted = sortRows(rows, sortMode, {
+    date: (r) => r.raw?.invoiced_at || r.raw?.created_at,
+    text: (r) => r.invoice,
+  })
+  const pager = usePagination(sorted, 10, sortMode)
 
   return (
     <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}>
@@ -32,7 +37,11 @@ function Table({ p, pagerLabels, rows, statusIdx, actionLabel, onAction }) {
         padding: '18px 22px', borderBottom: '1px solid #DCE6F5',
         fontFamily: 'Montserrat, "Noto Sans SC", sans-serif',
         fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase',
-      }}>{p.completed}</div>
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <span>{p.completed}</span>
+        <span style={{ marginLeft: 'auto' }}><SortControl value={sortMode} onChange={setSortMode} labels={sortLabels} /></span>
+      </div>
       <div style={{ overflowX: 'auto' }}>
         <div style={{ minWidth: 700 }}>
           <div style={{
@@ -192,7 +201,7 @@ export default function Payments({ app, token, user }) {
       {loading ? (
         <div style={{ padding: 30, textAlign: 'center', color: '#6C82A6', fontSize: 14 }}>…</div>
       ) : (
-        <Table p={p} pagerLabels={app.pager} rows={rows} statusIdx={1} actionLabel={p.view} onAction={openInvoice} />
+        <Table p={p} pagerLabels={app.pager} sortLabels={app.sort} rows={rows} statusIdx={1} actionLabel={p.view} onAction={openInvoice} />
       )}
 
       {view && invShipment && (

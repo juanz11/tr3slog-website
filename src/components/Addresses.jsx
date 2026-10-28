@@ -1,7 +1,7 @@
 import React from 'react'
 import Script from 'next/script'
 import { api } from '../api'
-import { Pagination, usePagination } from './Shared'
+import { Pagination, usePagination, SortControl, sortRows } from './Shared'
 import { COUNTRY_NAMES, PHONE_FORMATS, detectDialCountry } from '../lib/countries'
 
 const COUNTRY_OPTIONS = [
@@ -71,6 +71,7 @@ function backendToRow(addr) {
     ins: addr.delivery_instructions || '',
     type: typeIdx >= 0 ? typeIdx : 0,
     primary: !!addr.is_default,
+    created: addr.created_at || null,
   }
 }
 const SPAN2 = ['address', 'instructions']
@@ -87,7 +88,9 @@ function initialPrimary(rows) {
 export default function Addresses({ app, token }) {
   const a = app.addr
   const [rows, setRows] = React.useState([])
-  const pager = usePagination(rows, 10)
+  const [sortMode, setSortMode] = React.useState('recent')
+  const sorted = sortRows(rows, sortMode, { date: 'created', text: 'n' })
+  const pager = usePagination(sorted, 10, sortMode)
   const [primaryId, setPrimaryId] = React.useState(null)
   const [formMode, setFormMode] = React.useState(null)
   const [formVals, setFormVals] = React.useState({ type: 0 })
@@ -516,6 +519,9 @@ export default function Addresses({ app, token }) {
       )}
 
       <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 22px', borderBottom: '1px solid #DCE6F5' }}>
+          <SortControl value={sortMode} onChange={setSortMode} labels={app.sort} />
+        </div>
         <div style={{ overflowX: 'auto' }}>
           <div style={{ minWidth: 760 }}>
             <div style={{

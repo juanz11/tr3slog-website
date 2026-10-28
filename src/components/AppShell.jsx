@@ -69,6 +69,15 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const navKeys = Object.keys(nav)
   const [activeKey, setActiveKey] = React.useState(navKeys[0])
   const [hquery, setHquery] = React.useState('')
+  const [searchInput, setSearchInput] = React.useState('')
+  const [openShipmentId, setOpenShipmentId] = React.useState(null)
+  const [openManifestId, setOpenManifestId] = React.useState(null)
+
+  const submitSearch = () => {
+    setHquery(searchInput.trim())
+    setSearchInput('')
+    setActiveKey(isAdmin ? 'dispatch' : 'shipments')
+  }
   const [mobileOpen, setMobileOpen] = React.useState(false)
   const [token, setToken] = React.useState(null)
   const [pendingQuotes, setPendingQuotes] = React.useState(0)
@@ -93,6 +102,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
       setNavTick((t) => t + 1)
     }
     else if (k !== activeKey) setActiveKey(k)
+    setHquery('')
+    setOpenShipmentId(null)
     if (k === 'requests') markRequestsSeen()
   }
 
@@ -320,13 +331,13 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
               <path d="M20 20l-4.5-4.5"></path>
             </svg>
             <input
-              value={hquery}
-              onChange={(e) => setHquery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') { setActiveKey('shipments') } }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { submitSearch() } }}
               placeholder={app.shell.searchPh}
               aria-label={app.shell.searchHint}
             />
-            <button onClick={() => { setActiveKey('shipments') }} className="app-search-btn">{app.shell.searchHint}</button>
+            <button onClick={submitSearch} className="app-search-btn">{app.shell.searchHint}</button>
           </div>
           {!isCreate && !isAdmin && (
             <button onClick={() => setActiveKey('create')} style={{ marginLeft: 'auto', padding: '12px 18px', background: '#087CF0', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -352,7 +363,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           {isCreate ? (
             <ShipmentCreate app={app} token={token} user={user} onTrack={(code) => { setHquery(code); setActiveKey('shipments') }} />
           ) : isShipments ? (
-            <ShipmentsList app={app} token={token} query={hquery} onQueryChange={setHquery} />
+            <ShipmentsList app={app} token={token} query={hquery} onQueryChange={setHquery} selectId={openShipmentId} />
           ) : isPayments ? (
             <Payments app={app} token={token} user={user} />
           ) : isAddresses ? (
@@ -362,7 +373,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isQuotes ? (
             <Quotes app={app} lang={lang} token={token} />
           ) : isDispatch ? (
-            <Dispatch app={app} lang={lang} token={token} />
+            <Dispatch app={app} lang={lang} token={token} query={hquery} onQueryChange={setHquery} onOpenManifest={(id) => { setOpenManifestId(id ?? null); setActiveKey('manifest') }} />
           ) : isRequests ? (
             <ShipmentRequests app={app} lang={lang} token={token} />
           ) : isDrivers ? (
@@ -378,7 +389,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isRoles ? (
             <Roles lang={lang} token={token} />
           ) : isManifest ? (
-            <Manifest app={app} token={token} />
+            <Manifest app={app} token={token} selectId={openManifestId} />
           ) : isHub ? (
             <Hub
               token={token}
@@ -390,7 +401,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isProfile ? (
             <Profile app={app} user={user} token={token} onUserUpdate={onUserUpdate} />
           ) : isDash ? (
-            <Dashboard app={app} lang={lang} token={token} shipments={shipments} onGo={setActiveKey} pendingQuotes={pendingQuotes} hquery={hquery} isAdmin={isAdmin} />
+            <Dashboard app={app} lang={lang} token={token} shipments={shipments} onGo={setActiveKey} onOpenShipment={(id) => { setOpenShipmentId(id); setActiveKey('shipments') }} pendingQuotes={pendingQuotes} hquery={hquery} isAdmin={isAdmin} />
           ) : (
             <div className="app-empty">{app.empty}</div>
           )}
@@ -431,7 +442,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   )
 }
 
-function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, isAdmin }) {
+function Dashboard({ app, lang, token, shipments, onGo, onOpenShipment, pendingQuotes, hquery, isAdmin }) {
   const d = app.dash
   const q = app.quotes
   const [quotes, setQuotes] = React.useState([])
@@ -632,7 +643,7 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
                 const tone = STATUS_TONE[r.statusIdx] || STATUS_TONE[0]
                 const statusText = app.ship.statuses[r.statusIdx] || '—'
                 return (
-                  <button key={i} onClick={() => {}} className="app-table-row">
+                  <button key={i} onClick={() => onOpenShipment?.(r.raw.id)} className="app-table-row" style={{ cursor: 'pointer' }}>
                     <span className="app-table-id">{r.id}</span>
                     <span className="app-table-text">{r.route}</span>
                     <span className="app-status" style={{ background: tone.bg, color: tone.fg }}>
@@ -653,7 +664,7 @@ function Dashboard({ app, lang, token, shipments, onGo, pendingQuotes, hquery, i
             <div className="app-card-title" style={{ marginBottom: 14 }}>{d.quickT}</div>
             <div className="app-quick-grid">
               {d.quick.map((q, i) => {
-                const targets = ['create', 'create', 'shipments', 'support']
+                const targets = ['create', 'shipments', 'support']
                 if (isAdmin && targets[i] === 'create') return null
                 return (
                   <button key={i} onClick={() => onGo?.(targets[i])} className="app-quick-btn">{q}</button>
