@@ -204,7 +204,7 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
   const [err, setErr] = React.useState('')
   const [toast, setToast] = React.useState('')
   const [scan, setScan] = React.useState({ code: '', phase: 'in', notes: '', location: '', condition: 'ok', step: 0, busy: false, manualCode: false })
-  const [adj, setAdj] = React.useState({ open: false, codigo: '', type: 'FALTANTE', reason: '', busy: false })
+  const [adj, setAdj] = React.useState({ open: false, codigo: '', type: 'FALTANTE', reason: '', expected: '', actual: '', busy: false })
   const toastRef = React.useRef(null)
 
   const notify = (m) => {
@@ -287,7 +287,7 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
     if (!adj.codigo.trim() || !adj.reason.trim()) return
     setAdj(a => ({ ...a, busy: true }))
     try {
-      await api.createHubAdjustment(m.id, { codigo: adj.codigo.trim(), type: adj.type, reason: adj.reason.trim() }, token)
+      await api.createHubAdjustment(m.id, { codigo: adj.codigo.trim(), type: adj.type, reason: adj.reason.trim(), expected_value: adj.expected.trim() || undefined, actual_value: adj.actual.trim() || undefined }, token)
       notify(T.adjOk)
       setAdj({ open: false, codigo: '', type: 'FALTANTE', reason: '', busy: false })
       await loadDetail(m.id)
@@ -369,6 +369,42 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                 </div>
               )}
 
+              {/* Info del manifiesto */}
+              {m && (
+                <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '14px 18px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 22px', fontSize: 13 }}>
+                    <span><span style={{ color: '#6C82A6' }}>Manifiesto: </span><b style={{ fontFamily: 'ui-monospace, Menlo, monospace', color: '#001B45' }}>{m.codigo}</b></span>
+                    <span><span style={{ color: '#6C82A6' }}>Estado: </span><b>{ESTADOS[m.estado] || m.estado}</b></span>
+                    {m.chofer?.nombre && <span><span style={{ color: '#6C82A6' }}>Chofer: </span><b>{m.chofer.nombre}{m.chofer.telefono ? ` · ${m.chofer.telefono}` : ''}</b></span>}
+                    {(m.vehiculo?.nombre || m.vehiculo?.placa) && <span><span style={{ color: '#6C82A6' }}>Vehículo: </span><b>{[m.vehiculo.nombre, m.vehiculo.placa].filter(Boolean).join(' · ')}</b></span>}
+                    <span><span style={{ color: '#6C82A6' }}>Bultos: </span><b>{(m.detalles || []).length}</b></span>
+                    <span><span style={{ color: '#6C82A6' }}>Progreso: </span><b>{Math.round((m.progreso || 0) * 100)}%</b></span>
+                  </div>
+                </div>
+              )}
+
+              {/* Paquetes del manifiesto */}
+              {m && !!(m.detalles || []).length && (
+                <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 16px', background: '#001B45', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Paquetes asignados</div>
+                  {(m.detalles || []).map((d, i) => (
+                    <div key={d.id || i} style={{ padding: '10px 16px', borderTop: i ? '1px solid #F0F5FB' : 'none', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 700, color: '#001B45', fontSize: 12, minWidth: 20 }}>{d.secuenciaVisita || i + 1}</span>
+                      <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12.5, color: '#10233F' }}>{d.codigoSeguimiento}</span>
+                      {chip(d.estado, TONE.neutral)}
+                      {d.pedido && (
+                        <span style={{ fontSize: 12, color: '#6C82A6', flex: 1, minWidth: 0 }}>
+                          {d.pedido.destinatario || '—'}{d.pedido.destino ? ` · ${d.pedido.destino}` : ''}{d.pedido.telefono ? ` · ${d.pedido.telefono}` : ''}
+                          {d.pedido.peso ? <span style={{ color: '#0768C9', fontWeight: 600 }}> · {d.pedido.peso}</span> : ''}
+                          {d.pedido.piezas ? <span> · {d.pedido.piezas} pzas</span> : ''}
+                          {d.pedido.notas ? <span style={{ color: '#8A6300', fontWeight: 600 }}> · Nota: {d.pedido.notas}</span> : ''}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Stepper del flujo */}
               <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '18px 20px' }}>
                 <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 14 }}>{T.flowTitle}</div>
@@ -441,6 +477,20 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                         )}
                         {btn(T.continueBtn, true, !scan.code.trim(), () => setScan(s => ({ ...s, step: 2 })))}
                       </div>
+                      {(() => {
+                        const det = (m?.detalles || []).find(d => d.codigoSeguimiento === scan.code)
+                        const p = det?.pedido
+                        if (!p || (!p.destinatario && !p.notas)) return null
+                        return (
+                          <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 9, background: 'rgba(8,124,240,.06)', border: '1px solid #DCE6F5', fontSize: 12.5 }}>
+                            <div style={{ color: '#10233F', fontWeight: 600 }}>
+                              {[p.destinatario, [p.origen, p.destino].filter(Boolean).join(' → ')].filter(Boolean).join(' · ')}
+                              {p.telefono ? ` · ${p.telefono}` : ''}
+                            </div>
+                            {p.notas && <div style={{ marginTop: 4, color: '#8A6300', fontWeight: 600 }}>Nota: {p.notas}</div>}
+                          </div>
+                        )
+                      })()}
                     </div>
                   )}
 
@@ -554,6 +604,10 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                     <select style={inputStyle} value={adj.type} onChange={e => setAdj(a => ({ ...a, type: e.target.value }))}>
                       {['FALTANTE', 'SOBRANTE', 'AVERIADO', 'OTRO'].map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
+                    <input style={{ ...inputStyle, flex: '0 1 120px' }} placeholder="Esperado" value={adj.expected}
+                      onChange={e => setAdj(a => ({ ...a, expected: e.target.value }))} />
+                    <input style={{ ...inputStyle, flex: '0 1 120px' }} placeholder="Real" value={adj.actual}
+                      onChange={e => setAdj(a => ({ ...a, actual: e.target.value }))} />
                     <input style={{ ...inputStyle, flex: '1 1 220px' }} placeholder={T.adjReason} value={adj.reason}
                       onChange={e => setAdj(a => ({ ...a, reason: e.target.value }))} />
                     {btn(T.adjNew, true, adj.busy || !adj.codigo.trim() || !adj.reason.trim(), doAdj)}
@@ -569,7 +623,14 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                         <React.Fragment key={a.id}>
                           <div style={{ ...cell, fontFamily: 'ui-monospace, Menlo, monospace' }}>{a.codigoSeguimiento}</div>
                           <div style={cell}>{a.tipo}</div>
-                          <div style={cell}>{a.motivo}</div>
+                          <div style={cell}>
+                            {a.motivo}
+                            {(a.esperado || a.real) && (
+                              <div style={{ fontSize: 11.5, color: '#A93226', fontWeight: 600, marginTop: 2 }}>
+                                Declarado: {a.esperado || '—'} → Real: {a.real || '—'}
+                              </div>
+                            )}
+                          </div>
                           <div style={cell}>{chip(a.estado, TONE[ADJ_TONE[a.estado]] || TONE.neutral)}</div>
                           <div style={cell}>{a.registradoPorNombre || '—'}</div>
                           <div style={cell}>{a.resueltoPorNombre || '—'}</div>

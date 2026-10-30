@@ -694,7 +694,7 @@ export default function Manifest({ token, selectId }) {
                 <Field l="Modalidad" v={sh.delivery_mode} />
                 <Field l="Método de pago" v={sh.payment_method} />
                 <Field l="Monto" v={sh.amount != null ? `$${sh.amount}` : null} />
-                <Field l="Notas" v={sh.notes} />
+                <Field l="Notas" v={ped.notas || sh.notes} />
               </div>
             </div>
           </div>
