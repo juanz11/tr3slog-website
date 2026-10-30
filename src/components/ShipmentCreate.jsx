@@ -4,6 +4,9 @@ import { COUNTRY_NAMES, PHONE_FORMATS, detectDialCountry } from '../lib/countrie
 import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { DeliveryIcon } from './PricingCalc'
+import Script from 'next/script'
+
+const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   || 'pk_test_51U9oCHLy571aG6WWmqNdtAiM9E7ZVDjTeB2Qs62VvLjOhv0Y253OGaFztaJseVBUhhkiZ3Q3CxaY8Fy9S2VHOg8L00mmeKsQQK'
@@ -322,6 +325,41 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
 }
 
 function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharges, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, isAfterHours, afterHoursMsg, onBack, onNext, onFinish }) {
+  const placesContainers = React.useRef({})
+  const [placesReady, setPlacesReady] = React.useState(false)
+  const [placesError, setPlacesError] = React.useState(false)
+  const [manualAddr, setManualAddr] = React.useState({})
+
+  React.useEffect(() => {
+    if (window.google?.maps?.places) setPlacesReady(true)
+  }, [])
+
+  React.useEffect(() => {
+    if (!placesReady || !GOOGLE_MAPS_KEY || placesError || !section) return
+    const container = placesContainers.current[section]
+    if (!container || data[section]?.addressId !== 'manual' || manualAddr[section] || container.firstChild) return
+    const widget = document.createElement('gmp-place-autocomplete')
+    widget.setAttribute('aria-label', 'Dirección')
+    widget.style.cssText = 'width:100%;display:block;--gmpx-color-surface:transparent;--gmpx-color-on-surface:#001B45;--gmpx-color-outline:transparent;background:transparent;border:none;outline:none;'
+    widget.addEventListener('gmp-select', async ({ placePrediction }) => {
+      try {
+        const place = placePrediction.toPlace()
+        await place.fetchFields({ fields: ['formattedAddress', 'addressComponents'] })
+        const part = (t) => place.addressComponents?.find((cc) => cc.types.includes(t))
+        const text = (t) => part(t)?.longText || ''
+        const country = part('country')?.shortText?.toUpperCase() || ''
+        if (place.formattedAddress) onChange('address', place.formattedAddress)
+        if (country) onChange('country', country)
+        const city = text('locality') || text('postal_town') || text('administrative_area_level_2')
+        if (city) onChange('city', city)
+        const zip = [text('postal_code'), text('postal_code_suffix')].filter(Boolean).join('-')
+        if (zip) onChange('zip', zip)
+      } catch { setPlacesError(true) }
+    })
+    widget.addEventListener('gmp-error', () => setPlacesError(true))
+    container.appendChild(widget)
+  }, [placesReady, placesError, manualAddr, section, data[section]?.addressId, onChange])
+
   const isLastStep = step === c.steps.length - 1
   const isComplete = section
     ? (section === 'package'
@@ -392,6 +430,14 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        {GOOGLE_MAPS_KEY && (
+          <Script
+            id="google-places-sc"
+            src={`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_KEY)}&libraries=places&v=weekly`}
+            onReady={() => setPlacesReady(true)}
+            onError={() => setPlacesError(true)}
+          />
+        )}
         {config.keys.map((key) => (
           <React.Fragment key={key}>
             <label style={{ gridColumn: (config.span2.includes(key) || key === 'method') ? 'span 2' : 'span 1', display: 'block' }}>
@@ -600,6 +646,19 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
                       </button>
                     )
                   })}
+                </div>
+              </div>
+            ) : key === 'address' && section && GOOGLE_MAPS_KEY && !placesError && !manualAddr[section] ? (
+              <div>
+                <div
+                  ref={(el) => { placesContainers.current[section] = el }}
+                  style={{ border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#EEF4FC', minHeight: 52, padding: '2px 10px' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                  <button type="button" onClick={() => setManualAddr((m) => ({ ...m, [section]: true }))}
+                    style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: '#6C82A6', cursor: 'pointer', textDecoration: 'underline' }}>
+                    Escribir manualmente
+                  </button>
                 </div>
               </div>
             ) : (

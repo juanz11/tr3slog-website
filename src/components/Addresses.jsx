@@ -151,19 +151,27 @@ export default function Addresses({ app, token }) {
   const placesContainer = React.useRef(null)
   const [placesReady, setPlacesReady] = React.useState(false)
   const [placesError, setPlacesError] = React.useState(false)
+  const [manualAddr, setManualAddr] = React.useState(false)
 
   React.useEffect(() => {
-    if (!formOpen || !placesReady || !placesContainer.current) return
+    if (!formOpen || !placesReady || manualAddr || !placesContainer.current) return
     const Autocomplete = window.google?.maps?.places?.PlaceAutocompleteElement
-    if (!Autocomplete) {
-      setPlacesError(true)
-      return
-    }
+    if (!Autocomplete) { setPlacesError(true); return }
     let active = true
     let selection = 0
-    const widget = new Autocomplete({ includedRegionCodes: ['do', 'cr'] })
+    let widget = null
+    try { widget = new Autocomplete() } catch { /* constructor no disponible en esta versión */ }
+    if (!widget) widget = document.createElement('gmp-place-autocomplete')
+    try { widget.includedRegionCodes = ['do', 'cr'] } catch { /* propiedad opcional */ }
     widget.setAttribute('aria-label', a.f.address)
     widget.style.width = '100%'
+    widget.style.setProperty('display', 'block')
+    widget.style.setProperty('--gmpx-color-surface', 'transparent')
+    widget.style.setProperty('--gmpx-color-on-surface', '#001B45')
+    widget.style.setProperty('--gmpx-color-outline', 'transparent')
+    widget.style.setProperty('background', 'transparent')
+    widget.style.setProperty('border', 'none')
+    widget.style.setProperty('outline', 'none')
     const onError = () => { if (active) setPlacesError(true) }
     const onSelect = async ({ placePrediction }) => {
       const request = ++selection
@@ -174,13 +182,12 @@ export default function Addresses({ app, token }) {
         const part = (type) => place.addressComponents?.find((c) => c.types.includes(type))
         const text = (type) => part(type)?.longText || ''
         const country = part('country')?.shortText?.toUpperCase() || ''
-        if (!COUNTRY_OPTIONS.some((c) => c.code === country)) return onError()
         setFormVals((v) => ({
           ...v,
-          address: place.formattedAddress || '',
-          country,
-          city: text('locality') || text('postal_town') || text('administrative_area_level_2'),
-          zip: [text('postal_code'), text('postal_code_suffix')].filter(Boolean).join('-'),
+          address: place.formattedAddress || v.address,
+          ...(COUNTRY_OPTIONS.some((c) => c.code === country) ? { country } : {}),
+          city: text('locality') || text('postal_town') || text('administrative_area_level_2') || v.city,
+          zip: [text('postal_code'), text('postal_code_suffix')].filter(Boolean).join('-') || v.zip,
         }))
         setErr(false)
         setLoadError(null)
@@ -198,7 +205,7 @@ export default function Addresses({ app, token }) {
       widget.removeEventListener('gmp-error', onError)
       widget.remove()
     }
-  }, [formOpen, formMode, placesReady, a.f.address])
+  }, [formOpen, formMode, placesReady, manualAddr, a.f.address])
 
   const pendingRow = removeId ? rows.find((r) => r.id === removeId) : null
 
@@ -409,23 +416,14 @@ export default function Addresses({ app, token }) {
             }}>{a.cancelBtn}</button>
           </div>
 
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{a.f.address} · Google Maps</div>
-            {GOOGLE_MAPS_KEY ? (
-              <>
-                <Script
-                  id="google-places"
-                  src={`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_KEY)}&libraries=places&v=weekly`}
-                  onReady={() => setPlacesReady(true)}
-                  onError={() => setPlacesError(true)}
-                />
-                <div ref={placesContainer} />
-                {placesError && <p role="status" style={{ color: '#A93226', fontSize: 13 }}>Google Maps: búsqueda no disponible. Ingrese la dirección manualmente.</p>}
-              </>
-            ) : (
-              <p role="status" style={{ color: '#6C82A6', fontSize: 13 }}>Google Maps: configure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY para activar la búsqueda.</p>
-            )}
-          </div>
+          {GOOGLE_MAPS_KEY && (
+            <Script
+              id="google-places"
+              src={`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_KEY)}&libraries=places&v=weekly`}
+              onReady={() => setPlacesReady(true)}
+              onError={() => setPlacesError(true)}
+            />
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             {FIELD_KEYS.map((k) => (
@@ -476,6 +474,23 @@ export default function Addresses({ app, token }) {
                         borderRadius: 11, background: '#EEF4FC', fontSize: 15, color: '#001B45', outline: 'none',
                       }}
                     />
+                  </div>
+                ) : k === 'address' && GOOGLE_MAPS_KEY && !placesError && !manualAddr ? (
+                  <div>
+                    <div
+                      ref={placesContainer}
+                      style={{
+                        border: `1.5px solid ${err && !(formVals[k] || '').trim() ? '#C0392B' : '#DCE6F5'}`,
+                        borderRadius: 11, background: '#EEF4FC', minHeight: 52,
+                        padding: '2px 10px',
+                      }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                      <button type="button" onClick={() => setManualAddr(true)}
+                        style={{ background: 'none', border: 'none', padding: 0, fontSize: 11.5, color: '#6C82A6', cursor: 'pointer', textDecoration: 'underline' }}>
+                        Escribir manualmente
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <input
