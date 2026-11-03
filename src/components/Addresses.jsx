@@ -80,6 +80,11 @@ const REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'contact']
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 const ADDRESS_DRAFT_KEY = 'tr3slog-address-draft'
 
+/** Limpieza única de borradores antiguos guardados en versiones previas. */
+if (typeof window !== 'undefined') {
+  try { window.localStorage.removeItem(ADDRESS_DRAFT_KEY) } catch (e) {}
+}
+
 function initialPrimary(rows) {
   const found = rows.find((r) => r.primary)
   return found ? found.id : null
@@ -99,31 +104,6 @@ export default function Addresses({ app, token }) {
   const [removeId, setRemoveId] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
   const [loadError, setLoadError] = React.useState(null)
-  const addressDraftLoaded = React.useRef(false)
-
-  React.useEffect(() => {
-    if (addressDraftLoaded.current) return
-    try {
-      const raw = localStorage.getItem(ADDRESS_DRAFT_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw)
-        if (parsed.formMode) setFormMode(parsed.formMode)
-        if (parsed.formVals) setFormVals(parsed.formVals)
-      }
-    } catch (e) {}
-    addressDraftLoaded.current = true
-  }, [])
-
-  React.useEffect(() => {
-    if (!addressDraftLoaded.current) return
-    try {
-      if (formMode === null) {
-        localStorage.removeItem(ADDRESS_DRAFT_KEY)
-      } else {
-        localStorage.setItem(ADDRESS_DRAFT_KEY, JSON.stringify({ formMode, formVals }))
-      }
-    } catch (e) {}
-  }, [formMode, formVals])
 
   const loadAddresses = React.useCallback(async () => {
     if (!token) return

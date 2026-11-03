@@ -13,6 +13,11 @@ const STATUS_TONES = {
 
 export const caseNumber = (t) => t?.id ? `CS-${String(t.id).padStart(6, '0')}` : '—'
 
+const extractShipCode = (msg) => {
+  const m = String(msg || '').match(/Env[ií]o relacionado:\s*([A-Z0-9-]+)/i)
+  return m ? m[1] : null
+}
+
 export default function Support({ app, token }) {
   const s = app.support
   const [subjectType, setSubjectType] = React.useState('')
@@ -28,17 +33,21 @@ export default function Support({ app, token }) {
   const [sending, setSending] = React.useState(false)
   const [shipments, setShipments] = React.useState([])
   const [cases, setCases] = React.useState([])
+  const [casesLoaded, setCasesLoaded] = React.useState(false)
   const [refreshing, setRefreshing] = React.useState(null)
   const [lastTicket, setLastTicket] = React.useState(null)
   const [showHidden, setShowHidden] = React.useState(false)
   const [sortMode, setSortMode] = React.useState('recent')
 
-  React.useEffect(() => {
+  const hiddenMap = () => {
     try {
       const raw = localStorage.getItem(CASES_KEY)
-      if (raw) setCases(JSON.parse(raw))
-    } catch (e) {}
-  }, [])
+      const list = raw ? JSON.parse(raw) : []
+      return new Map(list.map((c) => [c.id, c.hidden]))
+    } catch (e) {
+      return new Map()
+    }
+  }
 
   const saveCases = (list) => {
     setCases(list)
@@ -73,7 +82,27 @@ export default function Support({ app, token }) {
         setShipments(rows)
       })
       .catch(() => setShipments([]))
+    loadTickets()
   }, [token])
+
+  const loadTickets = () => {
+    if (!token) return
+    api.getSupportTickets(token)
+      .then((data) => {
+        const rows = Array.isArray(data) ? data : (data && data.data) || []
+        const hidden = hiddenMap()
+        saveCases(rows.map((t) => ({
+          id: t.id,
+          subject: t.subject,
+          status: t.status,
+          ship: extractShipCode(t.message),
+          created_at: t.created_at,
+          hidden: hidden.get(t.id) || false,
+        })))
+      })
+      .catch(() => saveCases([]))
+      .finally(() => setCasesLoaded(true))
+  }
 
   const submit = async () => {
     if (sending) return
@@ -90,8 +119,8 @@ export default function Support({ app, token }) {
       setSent(true)
       if (res?.ticket) {
         setLastTicket(res.ticket)
-        saveCases([{ id: res.ticket.id, subject, status: res.ticket.status, ship }, ...cases])
       }
+      loadTickets()
       setSubjectType('')
       setCustomSubject('')
       setShip('')
@@ -250,7 +279,7 @@ export default function Support({ app, token }) {
               <span style={{ marginLeft: 'auto' }}><SortControl value={sortMode} onChange={setSortMode} labels={app.sort} /></span>
             </div>
             <div style={{ padding: '18px 22px', borderTop: '1px solid #E3EBF7', fontSize: 14, lineHeight: 1.6, color: '#10233F' }}>
-              {cases.length === 0 ? s.openEmpty : s.openNote}
+              {casesLoaded && cases.length === 0 ? s.openEmpty : (cases.length > 0 ? s.openNote : '')}
             </div>
             {sortedCases.filter((c) => !c.hidden).map((c) => {
               const tone = STATUS_TONES[c.status] || STATUS_TONES.open

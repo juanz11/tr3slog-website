@@ -251,6 +251,10 @@ export const api = {
     body: JSON.stringify(data),
   }).then(handle),
 
+  getSupportTickets: (token) => fetch(`${API_URL}/support`, {
+    headers: headers(token),
+  }).then(handle),
+
   createSupport: (data, token) => fetch(`${API_URL}/support`, {
     method: 'POST',
     headers: headers(token),

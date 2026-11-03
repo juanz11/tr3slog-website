@@ -38,6 +38,12 @@ function TechIcon({ spec, color, size }) {
 
 export default function Home({ t, go }) {
   const trust = t.home.trust.map(l => ({ l, v: '——' }))
+  const [trackCode, setTrackCode] = React.useState('')
+
+  const submitTrack = () => {
+    const code = trackCode.trim()
+    go(code ? `track?code=${encodeURIComponent(code)}` : 'track')
+  }
   const services = t.svc.items.map((s, i) => ({ t: s.t, d: s.d, slotId: 'tr3-svc-' + i }))
   const howSteps = t.how.steps.map((s, i) => ({
     t: s.t, d: s.d, n: '0' + (i + 1), ring: i === 3 ? '#D99A00' : '#087CF0',
@@ -95,6 +101,9 @@ export default function Home({ t, go }) {
               }}>{t.home.trackTitle}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 <input
+                  value={trackCode}
+                  onChange={e => setTrackCode(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') submitTrack() }}
                   placeholder={t.home.trackPh}
                   aria-label={t.trk.guide}
                   style={{
@@ -104,7 +113,7 @@ export default function Home({ t, go }) {
                     color: '#001B45', background: '#EEF4FC', outline: 'none',
                   }}
                 />
-                <button onClick={() => go('track')} style={{
+                <button onClick={submitTrack} style={{
                   padding: '15px 22px', background: '#087CF0', border: 'none',
                   borderRadius: 11, color: '#fff', fontSize: 14, fontWeight: 600,
                   cursor: 'pointer', flex: '0 0 auto',

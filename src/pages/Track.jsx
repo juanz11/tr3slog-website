@@ -14,8 +14,8 @@ export default function Track({ t }) {
   const onTrack = async (forcedCode = '') => {
     const raw = (forcedCode || code || '').trim().toUpperCase()
     if (!raw) { setTrackError(t.trk.errEmpty); setTrackState('empty'); return }
-    if (!/^TR3S?-\d{6}-[A-Z]{4}-G?\d{5,6}$/.test(raw)) { setTrackError(t.trk.errFormat); setTrackState('empty'); return }
-    setCode('')
+    if (!/^TR3-\d{6}-[A-Z]{4}-\d{5}$/.test(raw) && !/^TR3S?-\d{6}-[A-Z0-9]{4}-[A-Z0-9]{5,7}$/.test(raw)) { setTrackError(t.trk.errFormat); setTrackState('empty'); return }
+    setCode(raw)
     setTrackError(''); setTrackState('loading')
     try {
       const data = await api.trackQuote(raw)
