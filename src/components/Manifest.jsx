@@ -35,6 +35,7 @@ const T = {
   derivedBanner: id => `Manifiesto derivado del traspaso del manifiesto #${id}.`,
   assistanceBanner: 'Aguardando asistencia vial: el traspaso fue rechazado y el manifiesto volvió a ruta.',
   detailCols: ['#', 'Tracking', 'QR', 'Estado', 'Hora visita', 'Motivo / GPS'],
+  routeOrder: 'Orden de la ruta',
   requestsTitle: 'Solicitudes de traspaso',
   derivedTitle: 'Manifiestos derivados',
   pkgUnit: 'bultos',
@@ -594,6 +595,40 @@ export default function Manifest({ token, selectId }) {
                   <button onClick={openStopsEdit} style={{ background: 'none', border: '1.5px solid #087CF0', borderRadius: 9, padding: '8px 16px', color: '#087CF0', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Editar paradas</button>
                 </div>
               )}
+
+              {(m.detalles || []).length > 0 && (
+                <div>
+                  <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase', color: '#001B45', marginBottom: 10 }}>
+                    {T.routeOrder}
+                  </div>
+                  <div style={{ border: '1px solid #DCE6F5', borderRadius: 10, padding: '14px 18px', background: '#FBFDFF' }}>
+                    {(m.detalles || []).map((d, i, arr) => {
+                      const tone = TONE[DETAIL_TONE[d.estado]] || TONE.neutral
+                      const last = i === arr.length - 1
+                      return (
+                        <div key={d.id || i} style={{ display: 'flex', gap: 14, alignItems: 'stretch' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 28, flexShrink: 0 }}>
+                            <div style={{ width: 26, height: 26, borderRadius: '50%', background: tone.bg, border: `2px solid ${tone.fg}`, color: tone.fg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                              {d.secuenciaVisita || i + 1}
+                            </div>
+                            {!last && <div style={{ width: 2, flex: 1, minHeight: 16, background: '#DCE6F5', margin: '3px 0' }} />}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0, paddingBottom: last ? 0 : 12 }}>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12.5, fontWeight: 600, color: '#10233F' }}>{d.codigoSeguimiento}</span>
+                              {chip(DETALLES[d.estado] || d.estado, tone)}
+                            </div>
+                            <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 3, lineHeight: 1.5 }}>
+                              {[d.pedido?.destinatario, d.pedido?.destino || d.ubicacion].filter(Boolean).join(' · ') || '—'}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div style={{ border: '1px solid #DCE6F5', borderRadius: 8, overflow: 'hidden' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '36px minmax(170px, 1.4fr) 60px minmax(110px, 1fr) minmax(120px, 1fr) minmax(140px, 1.2fr)', gap: 12, alignItems: 'center', padding: '10px 14px', background: '#001B45', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
                   {T.detailCols.map((h, i) => <span key={i} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{h}</span>)}
