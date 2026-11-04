@@ -487,6 +487,9 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                               {[p.destinatario, [p.origen, p.destino].filter(Boolean).join(' → ')].filter(Boolean).join(' · ')}
                               {p.telefono ? ` · ${p.telefono}` : ''}
                             </div>
+                            <div style={{ marginTop: 4, color: '#0768C9', fontWeight: 600 }}>
+                              Declarado:{p.peso ? ` ${p.peso}` : ' —'}{p.piezas ? ` · ${p.piezas} pzas` : ''}
+                            </div>
                             {p.notas && <div style={{ marginTop: 4, color: '#8A6300', fontWeight: 600 }}>Nota: {p.notas}</div>}
                           </div>
                         )

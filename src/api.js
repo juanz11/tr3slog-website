@@ -321,6 +321,18 @@ export const api = {
     body: JSON.stringify({ stops }),
   }).then(handle),
 
+  createTransferRequest: (data, token) => fetch(`${API_URL}/transfer-requests`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  resolveTransferRequest: (id, data, token) => fetch(`${API_URL}/transfer-requests/${id}/resolve`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
   assignManifest: (id, data, token) => fetch(`${API_URL}/manifests/${id}/assignment`, {
     method: 'PATCH',
     headers: headers(token),

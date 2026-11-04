@@ -306,6 +306,39 @@ export default function Manifest({ token, selectId }) {
   const m = list.find(x => x.id === sel) || null
   const isEditable = m && ['CREADO', 'ASIGNADO'].includes(m.estado)
 
+  const MANI_CLOSED = ['COMPLETADO', 'COMPLETADO_CON_INCIDENCIAS', 'TRANSFERIDO']
+  const SHIP_DONE = ['delivered', 'entregado', 'entregada', 'cancelled', 'cancelado', 'no_entregado', 'devuelto', 'returned']
+  const takenTrackings = React.useMemo(() => new Set(
+    list.filter(x => !MANI_CLOSED.includes(x.estado))
+        .flatMap(x => (x.detalles || []).map(d => d.codigoSeguimiento))
+  ), [list])
+  const selectableShipments = shipments.filter(s =>
+    !takenTrackings.has(s.tracking_number) &&
+    !SHIP_DONE.includes(String(s.status || '').toLowerCase())
+  )
+
+  const [resolveDriver, setResolveDriver] = React.useState({})
+  const [resolveBusy, setResolveBusy] = React.useState(null)
+
+  React.useEffect(() => {
+    if ((m?.solicitudes || []).some(s => s.estado === 'PENDIENTE')) loadDrivers()
+  }, [m])
+
+  const resolveTransfer = async (s, approve) => {
+    const driverId = resolveDriver[s.id]
+    if (approve && !driverId) { notify('Elige el conductor de reemplazo'); return }
+    setResolveBusy(s.id)
+    try {
+      await api.resolveTransferRequest(s.id, { approve, replacement_driver_id: driverId ? Number(driverId) : undefined }, token)
+      await load()
+      notify(approve ? 'Traspaso aprobado — manifiesto derivado creado' : 'Traspaso rechazado')
+    } catch (e) {
+      notify(e.message)
+    } finally {
+      setResolveBusy(null)
+    }
+  }
+
   const openStopsEdit = () => {
     setEditStops((m.detalles || []).map(d => ({ shipment_id: d.pedidoId, tracking_code: d.codigoSeguimiento })))
     setEditAdd('')
@@ -452,7 +485,7 @@ export default function Manifest({ token, selectId }) {
             create={create}
             setCreate={setCreate}
             token={token}
-            shipments={shipments}
+            shipments={selectableShipments}
             setShipments={setShipments}
             shipQuery={shipQuery}
             setShipQuery={setShipQuery}
@@ -516,7 +549,7 @@ export default function Manifest({ token, selectId }) {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
               <select style={{ ...inputStyle, flex: '1 1 240px' }} value={editAdd} onChange={e => setEditAdd(e.target.value)}>
                 <option value="">Agregar envío…</option>
-                {(shipments || [])
+                {(selectableShipments || [])
                   .filter(s => !editStops.some(x => x.tracking_code === (s.tracking_number || `ENV-${s.id}`)))
                   .map(s => (
                     <option key={s.id} value={s.id}>{s.tracking_number || `ENV-${s.id}`} · {s.destination || '—'}{s.recipient_name ? ` · ${s.recipient_name}` : ''}</option>
@@ -660,10 +693,21 @@ export default function Manifest({ token, selectId }) {
                   <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>{T.requestsTitle}</div>
                   <div style={{ border: '1px solid #DCE6F5', borderRadius: 8, overflow: 'hidden' }}>
                     {(m.solicitudes || []).map((s, i) => (
-                      <div key={s.id || i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 14px', borderTop: i ? '1px solid #E3EBF7' : 'none', fontSize: 13 }}>
+                      <div key={s.id || i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 14px', borderTop: i ? '1px solid #E3EBF7' : 'none', fontSize: 13, flexWrap: 'wrap' }}>
                         <span style={{ flex: 1, minWidth: 0 }}>{s.motivoIncidencia}</span>
                         <span style={{ color: '#6C82A6', fontSize: 12 }}>{(s.items || []).length} {T.pkgUnit}</span>
-                        {chip(SOLICITUD[s.estado] || s.estado, TONE[REQ_TONE[s.estado]] || TONE.neutral)}
+                        {s.estado === 'PENDIENTE' ? (
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <select style={{ ...inputStyle, maxWidth: 200 }} value={resolveDriver[s.id] || ''} onChange={e => setResolveDriver(d => ({ ...d, [s.id]: e.target.value }))}>
+                              <option value="">Chofer reemplazo…</option>
+                              {(drivers || []).filter(d => String(d.user_id) !== String(m.choferId)).map(d => (
+                                <option key={d.user_id} value={d.user_id}>{d.name}{d.v ? ` · ${d.v}` : ''}</option>
+                              ))}
+                            </select>
+                            {btn('Aprobar', true, resolveBusy === s.id || !resolveDriver[s.id], () => resolveTransfer(s, true))}
+                            {btn('Rechazar', false, resolveBusy === s.id, () => resolveTransfer(s, false))}
+                          </div>
+                        ) : chip(SOLICITUD[s.estado] || s.estado, TONE[REQ_TONE[s.estado]] || TONE.neutral)}
                       </div>
                     ))}
                   </div>
