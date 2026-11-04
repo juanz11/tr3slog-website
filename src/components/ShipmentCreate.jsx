@@ -1019,7 +1019,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
       }
       const methodOptions = c.payment.methodOptions
         ? Object.keys(c.payment.methodOptions).map((k) => ({ value: k, label: c.payment.methodOptions[k] }))
-        : [{ value: 'card', label: 'Tarjeta' }, { value: 'transfer', label: 'Transferencia' }, { value: 'cash', label: 'Efectivo' }]
+        : [{ value: 'card', label: 'Tarjeta' }, { value: 'transfer', label: 'Transferencia' }]
       return {
         keys: [...baseKeys, ...extraKeys],
         fields: c.payment.fields,

@@ -123,11 +123,12 @@ function QuoteDetail({ q, lang, quote, onClose }) {
   )
 }
 
-export default function Quotes({ app, lang, token }) {
+export default function Quotes({ app, lang, token, customer }) {
   const q = app.quotes
   const [quotes, setQuotes] = React.useState([])
   const [loading, setLoading] = React.useState(false)
   const [readOnly, setReadOnly] = React.useState(false)
+  const [loadError, setLoadError] = React.useState('')
   const [updating, setUpdating] = React.useState(null)
   const [selected, setSelected] = React.useState(null)
 
@@ -135,16 +136,22 @@ export default function Quotes({ app, lang, token }) {
     if (!token) return
     setLoading(true)
     try {
-      const data = await api.getQuotes(token)
+      const data = await (customer ? api.getMyQuotes(token) : api.getQuotes(token))
       setQuotes(Array.isArray(data) ? data : data.data || [])
       setReadOnly(false)
+      setLoadError('')
     } catch (e) {
-      setQuotes(DEMO_QUOTES)
-      setReadOnly(true)
+      if (customer) {
+        setQuotes([])
+        setLoadError(e.message || q.error)
+      } else {
+        setQuotes(DEMO_QUOTES)
+        setReadOnly(true)
+      }
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, customer])
 
   React.useEffect(() => {
     fetchQuotes()
@@ -184,17 +191,22 @@ export default function Quotes({ app, lang, token }) {
         <span style={{ background: '#087CF0', width: 9 }}></span>
       </div>
       <div className="app-greeting">{q.greeting}</div>
-      <h1 className="app-h1">{q.title}</h1>
+      <h1 className="app-h1">{customer ? q.myTitle : q.title}</h1>
 
-      {readOnly && (
+      {readOnly && !customer && (
         <div style={{ padding: 14, background: 'rgba(8,124,240,.1)', color: '#0768C9', borderRadius: 11, marginBottom: 20, fontSize: 14 }}>
           Mostrando cotizaciones de referencia. El backend no permite editar el estado.
+        </div>
+      )}
+      {loadError && (
+        <div style={{ padding: 14, background: 'rgba(192,57,43,.08)', color: '#A93226', borderRadius: 11, marginBottom: 20, fontSize: 14 }}>
+          {q.error}
         </div>
       )}
 
       <div className="app-card">
         <div className="app-card-head">
-          <span className="app-card-title">{q.listTitle}</span>
+          <span className="app-card-title">{customer ? q.myList : q.listTitle}</span>
           <span style={{ fontSize: 13, color: '#6C82A6' }}>
             {loading ? q.loading : `${q.autoRefresh} 30s`}
           </span>
@@ -232,24 +244,30 @@ export default function Quotes({ app, lang, token }) {
                     )}
                   </span>
                   <span className="app-table-text">{formatDate(quote.created_at)}</span>
-                  <select
-                    className="app-status"
-                    value={quote.status}
-                    disabled={readOnly || updating === quote.id}
-                    onChange={(e) => handleStatusChange(quote.id, e.target.value)}
-                    style={{
-                      backgroundColor: style.bg,
-                      color: style.fg,
-                      border: 'none',
-                      borderRadius: 100,
-                      cursor: 'pointer',
-                      opacity: updating === quote.id ? 0.6 : 1,
-                    }}
-                  >
-                    {statusOptions.map((s) => (
-                      <option key={s} value={s}>{statusLabel(s)}</option>
-                    ))}
-                  </select>
+                  {customer ? (
+                    <span className="app-status" style={{ background: style.bg, color: style.fg }}>
+                      {statusLabel(quote.status)}
+                    </span>
+                  ) : (
+                    <select
+                      className="app-status"
+                      value={quote.status}
+                      disabled={readOnly || updating === quote.id}
+                      onChange={(e) => handleStatusChange(quote.id, e.target.value)}
+                      style={{
+                        backgroundColor: style.bg,
+                        color: style.fg,
+                        border: 'none',
+                        borderRadius: 100,
+                        cursor: 'pointer',
+                        opacity: updating === quote.id ? 0.6 : 1,
+                      }}
+                    >
+                      {statusOptions.map((s) => (
+                        <option key={s} value={s}>{statusLabel(s)}</option>
+                      ))}
+                    </select>
+                  )}
                   <span style={{ justifySelf: 'end' }}>
                     <button
                       onClick={() => setSelected(quote)}

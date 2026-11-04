@@ -31,7 +31,7 @@ const DOC_COLORS = {
 const FILTER_KEYS = ['all', 'active', 'route', 'available', 'suspended', 'docsSoon']
 
 const emptyVehicle = () => ({
-  type: '', label: '', plate: '', cargoCapacity: '',
+  type: '', label: '', plate: '', cargoCapacity: '', ownership: '',
   registrationNumber: '', insuranceNumber: '', insuranceExpires: '',
   inspectionNumber: '', inspectionExpires: '', permitNumber: '', permitExpires: '',
   files: {},
@@ -134,14 +134,13 @@ export default function Drivers({ app, lang, token }) {
   const [filter, setFilter] = React.useState('all')
   const a = authI18n[lang] || authI18n.es
   const [open, setOpen] = React.useState(false)
-  const [form, setForm] = React.useState({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: [], password: '' })
+  const [form, setForm] = React.useState({ firstName: '', lastName: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: [], password: '' })
   const [docs, setDocs] = React.useState({ idNumber: '', idExpires: '', licenseNumber: '', licenseExpires: '' })
   const [docFiles, setDocFiles] = React.useState({ photo: null, idFile: null, licenseFile: null })
   const [vehicles, setVehicles] = React.useState([])
   const [formError, setFormError] = React.useState('')
   const [formLoading, setFormLoading] = React.useState(false)
   const [newId, setNewId] = React.useState('')
-  const [clients, setClients] = React.useState([])
   const [zones, setZones] = React.useState([])
   const [selected, setSelected] = React.useState(null)
   const [rejectingId, setRejectingId] = React.useState(null)
@@ -183,27 +182,13 @@ export default function Drivers({ app, lang, token }) {
   }))
 
   const resetForm = () => {
-    setForm({ user_id: '', name: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: [], password: '' })
+    setForm({ firstName: '', lastName: '', phone: '', country: '', email: '', vehicle: '', hub: '', shift: [], password: '' })
     setDocs({ idNumber: '', idExpires: '', licenseNumber: '', licenseExpires: '' })
     setDocFiles({ photo: null, idFile: null, licenseFile: null })
     setVehicles([])
     setFormError('')
     setNewId('')
   }
-
-  const fetchClients = React.useCallback(async () => {
-    if (!token) return
-    try {
-      const data = await api.getClients(token)
-      setClients(Array.isArray(data) ? data : [])
-    } catch (e) {
-      setClients([])
-    }
-  }, [token])
-
-  React.useEffect(() => {
-    if (open) fetchClients()
-  }, [open, fetchClients])
 
   React.useEffect(() => {
     if (!token) return
@@ -212,43 +197,17 @@ export default function Drivers({ app, lang, token }) {
       .catch(() => setZones([]))
   }, [token])
 
-  const handleClientChange = (userId) => {
-    if (!userId) {
-      setForm((prev) => ({ ...prev, user_id: '', name: '', phone: '', country: '', email: '', password: '' }))
-      return
-    }
-    const client = clients.find((c) => String(c.id) === userId)
-    if (!client) return
-    setForm((prev) => ({
-      ...prev,
-      user_id: String(client.id),
-      name: client.name || '',
-      phone: client.phone || '',
-      country: '',
-      email: client.email || '',
-      password: '',
-    }))
-  }
-
   const validate = () => {
+    if (!form.firstName.trim() || !form.lastName.trim()) return a.errRequired || 'Complete nombre y apellido'
     if (!/\S+@\S+\.\S+/.test(form.email)) return a.errEmail
-    if (!form.user_id) {
-      if (!form.country) return a.errCountry
-      const fmt = PHONE_FORMATS[form.country]
-      if (fmt && !fmt.pattern.test(form.phone.trim())) {
-        return a.errPhoneFmt
-          .replace('{country}', COUNTRY_NAMES[form.country])
-          .replace('{example}', fmt.example)
-      }
-      if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(form.password)) return a.errPass
-    } else if (form.country && form.phone.trim()) {
-      const fmt = PHONE_FORMATS[form.country]
-      if (fmt && !fmt.pattern.test(form.phone.trim())) {
-        return a.errPhoneFmt
-          .replace('{country}', COUNTRY_NAMES[form.country])
-          .replace('{example}', fmt.example)
-      }
+    if (!form.country) return a.errCountry
+    const fmt = PHONE_FORMATS[form.country]
+    if (fmt && !fmt.pattern.test(form.phone.trim())) {
+      return a.errPhoneFmt
+        .replace('{country}', COUNTRY_NAMES[form.country])
+        .replace('{example}', fmt.example)
     }
+    if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(form.password)) return a.errPass
     if (!docs.idNumber.trim() || !docs.licenseNumber.trim() || !docs.licenseExpires || !docFiles.photo) return d.errDocs
     if (vehicles.some((v) => !v.plate.trim())) return d.errPlate
     return ''
@@ -275,17 +234,14 @@ export default function Drivers({ app, lang, token }) {
     try {
       const phone = buildPhone()
       const fd = new FormData()
-      if (form.user_id) fd.append('user_id', form.user_id)
-      fd.append('name', form.name)
+      fd.append('name', [form.firstName.trim(), form.lastName.trim()].filter(Boolean).join(' '))
       fd.append('phone', phone)
       fd.append('email', form.email)
       if (form.vehicle) fd.append('vehicle', form.vehicle)
       if (form.hub) fd.append('hub', form.hub)
       fd.append('shift', (form.shift || []).join(','))
-      if (!form.user_id) {
-        fd.append('password', form.password)
-        fd.append('password_confirmation', form.password)
-      }
+      fd.append('password', form.password)
+      fd.append('password_confirmation', form.password)
       fd.append('id_document_number', docs.idNumber)
       if (docs.idExpires) fd.append('id_document_expires_at', docs.idExpires)
       fd.append('license_number', docs.licenseNumber)
@@ -298,6 +254,7 @@ export default function Drivers({ app, lang, token }) {
         const label = [v.type ? (d.vehicles.types[v.type] || v.type) : '', v.label.trim()].filter(Boolean).join(' · ')
         if (label) fd.append(`vehicles[${i}][label]`, label)
         if (v.cargoCapacity) fd.append(`vehicles[${i}][cargo_capacity]`, v.cargoCapacity)
+        if (v.ownership) fd.append(`vehicles[${i}][ownership]`, v.ownership)
         if (v.registrationNumber) fd.append(`vehicles[${i}][registration_number]`, v.registrationNumber)
         if (v.insuranceNumber) fd.append(`vehicles[${i}][insurance_number]`, v.insuranceNumber)
         if (v.insuranceExpires) fd.append(`vehicles[${i}][insurance_expires_at]`, v.insuranceExpires)
@@ -485,7 +442,7 @@ export default function Drivers({ app, lang, token }) {
               </label>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 20 }}>
-              <button type="submit" disabled={editBusy} className="app-primary">{editBusy ? 'Procesando…' : d.save}</button>
+              <button type="submit" disabled={editBusy} className="app-primary">{editBusy ? d.processing : d.save}</button>
               {editMsg && <span style={{ fontSize: 13, color: editMsg === d.saved ? '#0F5F36' : '#A93226' }}>{editMsg}</span>}
             </div>
           </form>
@@ -507,7 +464,10 @@ export default function Drivers({ app, lang, token }) {
               {vehs.map((v, i) => (
                 <div key={i} style={{ border: '1px solid #DCE6F5', borderRadius: 12, padding: 18, background: '#F6F9FD' }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: '#001B45' }}>{[v.label, v.plate].filter(Boolean).join(' · ')}</div>
-                  {v.cargo_capacity && <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>{d.vehicles.capacity}: {v.cargo_capacity}</div>}
+                  <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>
+                    {v.ownership ? `${v.ownership === 'personal' ? d.vehicles.ownPersonal : d.vehicles.ownCompany} · ` : ''}
+                    {v.cargo_capacity ? `${d.vehicles.capacity}: ${v.cargo_capacity}` : ''}
+                  </div>
                   {(v.documents || []).length > 0 && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 16, marginTop: 14 }}>
                       {v.documents.map(renderDoc)}
@@ -553,25 +513,18 @@ export default function Drivers({ app, lang, token }) {
           {formError && (
             <div style={{ padding: '12px 16px', borderRadius: 8, background: '#FDECEC', color: '#B91C1C', fontSize: 14 }}>{formError}</div>
           )}
-          <div style={{ maxWidth: 420 }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={FL}>{d.selectClient}</span>
-              <select value={form.user_id} onChange={(e) => handleClientChange(e.target.value)} style={{ ...FI, cursor: 'pointer' }}>
-                <option value="">{d.newDriver}</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={String(c.id)}>{c.name} — {c.email}</option>
-                ))}
-              </select>
-            </label>
-          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '16px 18px' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={FL}>{a.name}</span>
-              <input type="text" required disabled={!!form.user_id} autoComplete="off" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={FI} />
+              <span style={FL}>{a.firstName}</span>
+              <input type="text" required autoComplete="off" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} style={FI} />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={FL}>{a.lastName}</span>
+              <input type="text" required autoComplete="off" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} style={FI} />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={FL}>{a.email}</span>
-              <input type="email" required disabled={!!form.user_id} autoComplete="off" name="driver_reg_email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={FI} />
+              <input type="email" required autoComplete="off" name="driver_reg_email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={FI} />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={FL}>{a.phone}</span>
@@ -585,12 +538,10 @@ export default function Drivers({ app, lang, token }) {
                 <input type="tel" inputMode="tel" autoComplete="off" name="driver_reg_phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder={form.country && PHONE_FORMATS[form.country] ? PHONE_FORMATS[form.country].example : d.phonePh} style={{ ...FI, flex: 1, minWidth: 0 }} />
               </div>
             </label>
-            {!form.user_id && (
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span style={FL}>{a.password}</span>
-                <input type="password" required autoComplete="new-password" name="driver_reg_password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} style={FI} />
-              </label>
-            )}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={FL}>{a.password}</span>
+              <input type="password" required autoComplete="new-password" name="driver_reg_password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} style={FI} />
+            </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={FL}>{d.cols[3]}</span>
               <select value={form.hub} onChange={(e) => setForm({ ...form, hub: e.target.value })} style={{ ...FI, cursor: 'pointer', color: form.hub ? '#001B45' : '#6C82A6' }}>
@@ -671,6 +622,14 @@ export default function Drivers({ app, lang, token }) {
                       <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.capacity}</span>
                       <input type="text" value={v.cargoCapacity} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, cargoCapacity: e.target.value } : x))} placeholder={d.vehicles.capacityPh} style={{ padding: '10px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', fontSize: 13, color: '#001B45', outline: 'none', width: '100%', boxSizing: 'border-box' }} />
                     </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.vehicles.ownership}</span>
+                      <select value={v.ownership} onChange={(e) => setVehicles(vehicles.map((x, j) => j === i ? { ...x, ownership: e.target.value } : x))} style={{ padding: '10px 12px', border: '1.5px solid #DCE6F5', borderRadius: 10, background: '#fff', font: 'inherit', fontSize: 13, color: v.ownership ? '#001B45' : '#6C82A6', outline: 'none' }}>
+                        <option value="">{d.vehicles.ownershipPh}</option>
+                        <option value="personal">{d.vehicles.ownPersonal}</option>
+                        <option value="company">{d.vehicles.ownCompany}</option>
+                      </select>
+                    </label>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
                     {VEHICLE_DOCS.map((vd) => (
@@ -689,7 +648,7 @@ export default function Drivers({ app, lang, token }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-            <button type="submit" disabled={formLoading} className="app-primary">{formLoading ? 'Procesando…' : d.registerBtn}</button>
+            <button type="submit" disabled={formLoading} className="app-primary">{formLoading ? d.processing : d.registerBtn}</button>
             <button type="button" onClick={() => { setOpen(false); resetForm() }} style={{ padding: '14px 24px', border: '1.5px solid #DCE6F5', borderRadius: 11, background: '#fff', color: '#10233F', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>{app.addr.cancelBtn}</button>
           </div>
         </form>
@@ -749,7 +708,10 @@ export default function Drivers({ app, lang, token }) {
               const docStyle = DOC_COLORS[driver.doc] || DOC_COLORS.ok
               return (
                 <div key={driver.id} className="app-table-row" style={{ gridTemplateColumns: '1.1fr .8fr 1.1fr 1fr .9fr .9fr .8fr .7fr', alignItems: 'center' }}>
-                  <span className="app-table-id">{driver.n}</span>
+                  <span className="app-table-id" style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}>
+                    <span style={{ width: 30, height: 30, borderRadius: '50%', background: '#001B45', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, flex: '0 0 auto' }}>{driver.n}</span>
+                    {driver.name || driver.n}
+                  </span>
                   <span className="app-table-text">{driver.id}</span>
                   <span className="app-table-text">{driver.v}</span>
                   <span className="app-table-text">{driver.hub}</span>

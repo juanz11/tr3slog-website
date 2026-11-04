@@ -205,21 +205,25 @@ function ShipmentDetail({ d, lang, shipment, drivers, onClose }) {
   const secTitle = { fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase', margin: '0 0 14px', color: '#001B45' }
   const grid = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px' }
 
-  const PartyCard = ({ title, p, fallbackCity }) => (
-    <div style={card}>
-      <div style={secTitle}>{title}</div>
-      <div style={grid}>
-        <DetailField label={f.name} value={p.name} />
-        <DetailField label={f.company} value={p.company} />
-        <DetailField label={f.address} value={p.address} wide />
-        <DetailField label={f.city} value={p.city || fallbackCity} />
-        <DetailField label={f.country} value={p.country} />
-        <DetailField label={f.zip} value={p.zip} />
-        <DetailField label={f.phone} value={p.phone} />
-        <DetailField label={f.email} value={p.email} wide />
+  const PartyCard = ({ title, p, fallbackCity }) => {
+    const hasAny = [p.name, p.company, p.address, p.city, p.zip, p.phone, p.email].some(Boolean)
+    const address = p.address || (!hasAny ? fallbackCity : '') || '—'
+    return (
+      <div style={card}>
+        <div style={secTitle}>{title}</div>
+        <div style={grid}>
+          <DetailField label={f.name} value={p.name || '—'} />
+          <DetailField label={f.company} value={p.company} />
+          <DetailField label={f.address} value={address} wide />
+          <DetailField label={f.city} value={p.city || fallbackCity || '—'} />
+          <DetailField label={f.country} value={p.country || '—'} />
+          <DetailField label={f.zip} value={p.zip} />
+          <DetailField label={f.phone} value={p.phone || '—'} />
+          <DetailField label={f.email} value={p.email} wide />
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(16,35,63,.45)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>

@@ -44,7 +44,7 @@ export default function Home({ t, go }) {
     const code = trackCode.trim()
     go(code ? `track?code=${encodeURIComponent(code)}` : 'track')
   }
-  const services = t.svc.items.map((s, i) => ({ t: s.t, d: s.d, slotId: 'tr3-svc-' + i }))
+  const services = t.svc.items.map((s, i) => ({ t: s.t, d: s.d, soon: s.soon, slotId: 'tr3-svc-' + i }))
   const howSteps = t.how.steps.map((s, i) => ({
     t: s.t, d: s.d, n: '0' + (i + 1), ring: i === 3 ? '#D99A00' : '#087CF0',
   }))
@@ -215,7 +215,10 @@ export default function Home({ t, go }) {
                   height={180}
                 />
                 <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-                  <h3 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 19, margin: 0 }}>{s.t}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <h3 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 19, margin: 0 }}>{s.t}</h3>
+                    {s.soon && <span style={{ background: '#FFF4D6', border: '1px solid #F0D48A', color: '#8A6100', borderRadius: 999, padding: '3px 9px', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>{t.common.soon}</span>}
+                  </div>
                   <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: '#10233F' }}>{s.d}</p>
                   <button onClick={() => go('services')} style={{
                     marginTop: 'auto', alignSelf: 'flex-start', background: 'none',

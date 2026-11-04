@@ -88,6 +88,10 @@ const TONE = {
   warn: { bg: 'rgba(217,154,0,.16)', fg: '#6C5220' },
   bad: { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
 }
+const HUB_ACTIVE_STATES = ['CREADO', 'ASIGNADO', 'EN_RUTA', 'EN_SOLICITUD_TRASPASO']
+const HUB_DISPATCHED_LIMIT = 20
+const isHubPending = (x) => !x.hubDespachadoAt && HUB_ACTIVE_STATES.includes(x.estado)
+
 const ESTADOS = {
   CREADO: 'Creado', ASIGNADO: 'Asignado', EN_RUTA: 'En ruta',
   EN_SOLICITUD_TRASPASO: 'Traspaso solicitado', COMPLETADO: 'Completado',
@@ -219,7 +223,8 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
       const rows = await api.getHubManifests(token)
       const arr = Array.isArray(rows) ? rows : []
       setList(arr)
-      setSel(prev => (keepSel && arr.some(r => r.id === prev)) ? prev : (arr[0] ? arr[0].id : null))
+      const firstPending = arr.find(isHubPending) || arr[0]
+      setSel(prev => (keepSel && arr.some(r => r.id === prev)) ? prev : (firstPending ? firstPending.id : null))
       setErr('')
     } catch (e) {
       setErr(e.message || 'Error')
@@ -240,6 +245,27 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
 
   React.useEffect(() => { if (token) loadList(); else setLoading(false) }, [token, loadList])
   React.useEffect(() => { loadDetail(sel) }, [sel, loadDetail])
+
+  const [scope, setScope] = React.useState('pending')
+  const pendingList = list.filter(isHubPending)
+  const toReceive = pendingList.filter(x => !x.hubRecibidoAt)
+  const inHub = pendingList.filter(x => x.hubRecibidoAt)
+  const dispatchedList = list
+    .filter(x => x.hubDespachadoAt)
+    .sort((a, b) => new Date(b.hubDespachadoAt) - new Date(a.hubDespachadoAt))
+    .slice(0, HUB_DISPATCHED_LIMIT)
+
+  const changeScope = (next) => {
+    setScope(next)
+    const pool = next === 'pending' ? pendingList : dispatchedList
+    if (!pool.some(x => x.id === sel)) setSel(pool[0] ? pool[0].id : null)
+  }
+
+  const hubOptionLabel = (x) => [
+    x.codigo,
+    x.chofer?.nombre,
+    `${(x.detalles || []).length} bultos`,
+  ].filter(Boolean).join(' · ')
 
   const m = detail?.manifest || null
   const rec = detail?.conciliacion || null
@@ -328,10 +354,34 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
           <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase' }}>
             {T.manifestLabel}
           </div>
-          <select value={sel ?? ''} onChange={e => setSel(Number(e.target.value))} style={{ ...inputStyle, maxWidth: 260 }} aria-label={T.manifestLabel}>
-            {list.map(x => <option key={x.id} value={x.id}>{x.codigo}{x.hubDespachadoAt ? ' · DESPACHADO' : ''}</option>)}
-            {!list.length && <option value="">—</option>}
+          <div role="tablist" style={{ display: 'inline-flex', border: '1.5px solid #DCE6F5', borderRadius: 100, overflow: 'hidden' }}>
+            {[['pending', `Pendientes (${pendingList.length})`], ['dispatched', 'Despachados']].map(([k, label]) => (
+              <button key={k} type="button" role="tab" aria-selected={scope === k} onClick={() => changeScope(k)}
+                style={{ padding: '7px 14px', border: 'none', background: scope === k ? '#001B45' : '#fff', color: scope === k ? '#fff' : '#10233F', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <select value={sel ?? ''} onChange={e => setSel(Number(e.target.value))} style={{ ...inputStyle, maxWidth: 340 }} aria-label={T.manifestLabel}>
+            {scope === 'pending' ? (
+              <>
+                {!!toReceive.length && (
+                  <optgroup label={`Por recibir (${toReceive.length})`}>
+                    {toReceive.map(x => <option key={x.id} value={x.id}>{hubOptionLabel(x)}</option>)}
+                  </optgroup>
+                )}
+                {!!inHub.length && (
+                  <optgroup label={`En hub · por despachar (${inHub.length})`}>
+                    {inHub.map(x => <option key={x.id} value={x.id}>{hubOptionLabel(x)}</option>)}
+                  </optgroup>
+                )}
+              </>
+            ) : dispatchedList.map(x => <option key={x.id} value={x.id}>{hubOptionLabel(x)} · {fmtDT(x.hubDespachadoAt)}</option>)}
+            {(scope === 'pending' ? pendingList : dispatchedList).length === 0 && (
+              <option value="">{scope === 'pending' ? 'No hay manifiestos pendientes' : 'No hay manifiestos despachados'}</option>
+            )}
           </select>
+          {scope === 'dispatched' && <span style={{ fontSize: 11.5, color: '#6C82A6' }}>Últimos {HUB_DISPATCHED_LIMIT}</span>}
           {m && chip(ESTADOS[m.estado] || m.estado, TONE.info)}
           {rec && (rec.despachadoAt
             ? chip(`${T.dispatched} · ${fmtDT(rec.despachadoAt)}`, TONE.ok)

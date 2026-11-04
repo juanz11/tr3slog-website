@@ -93,6 +93,10 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getMyQuotes: (token) => fetch(`${API_URL}/quotes/mine`, {
+    headers: headers(token),
+  }).then(handle),
+
   getPendingQuotesCount: (token) => fetch(`${API_URL}/quotes/pending-count`, {
     headers: headers(token),
   }).then(handle),

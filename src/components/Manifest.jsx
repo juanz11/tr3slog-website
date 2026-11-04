@@ -1,7 +1,7 @@
 import React from 'react'
 import { api } from '../api'
 
-const T = {
+const T_ES = {
   title: 'Manifiestos de ruta',
   subtitle: 'Crear manifiestos, asignar chofer y vehículo, y seguir el estado real de cada bulto.',
   manifestTitle: 'Manifiesto de carga',
@@ -45,9 +45,205 @@ const T = {
   statsActive: { k: 'En ruta / asignados', d: 'Operación activa' },
   statsPending: { k: 'Bultos pendientes', d: 'Del manifiesto seleccionado' },
   statsIssues: { k: 'Con incidencias', d: 'Fallos o traspasos' },
+  err: 'Error',
+  noDriver: 'Sin chofer',
+  pickReplacement: 'Elige el conductor de reemplazo',
+  transferOk: 'Traspaso aprobado — manifiesto derivado creado',
+  transferNo: 'Traspaso rechazado',
+  stopsSaved: 'Paradas actualizadas',
+  popupBlocked: 'Popup bloqueado',
+  scopeActive: n => `Activos (${n})`,
+  scopeClosed: 'Cerrados',
+  noActive: 'No hay manifiestos activos',
+  noClosed: 'No hay manifiestos cerrados',
+  lastN: n => `Últimos ${n}`,
+  editStops: 'Editar paradas',
+  add: 'Agregar',
+  saveStops: 'Guardar paradas',
+  approveBtn: 'Aprobar',
+  rejectBtn: 'Rechazar',
+  replPh: 'Chofer reemplazo…',
+  sfRecipient: 'Destinatario', sfCompany: 'Empresa', sfStatus: 'Estado', sfRoute: 'Ruta',
+  sfAddress: 'Dirección', sfCity: 'Ciudad', sfCountry: 'País', sfZip: 'ZIP',
+  sfPhone: 'Teléfono', sfEmail: 'Correo', sfSender: 'Remitente', sfSenderPhone: 'Tel. remitente',
+  sfService: 'Servicio', sfMode: 'Modalidad', sfPay: 'Método de pago', sfAmount: 'Monto',
+  histT: 'Historial del manifiesto',
+  evCreated: 'Manifiesto creado',
+  evHubIn: 'Recibido en hub',
+  evStart: 'Inicio de ruta',
+  evStopOk: 'Parada entregada',
+  evStopFail: 'Entrega fallida',
+  evTransferReq: 'Traspaso solicitado',
+  evTransferOk: 'Traspaso aprobado',
+  evTransferNo: 'Traspaso rechazado',
+  evHubOut: 'Despachado del hub',
+  evClosed: 'Manifiesto cerrado',
 }
 
-const ESTADOS = {
+const T_EN = {
+  title: 'Route manifests',
+  subtitle: 'Create manifests, assign driver and vehicle, and track the real status of each package.',
+  manifestTitle: 'Cargo manifest',
+  manifestLabel: 'Manifest',
+  driverLabel: 'Driver',
+  vehicleLabel: 'Vehicle',
+  createdLabel: 'Created',
+  startedLabel: 'Route start',
+  closedLabel: 'Closed',
+  packagesLabel: 'Packages',
+  progressLabel: 'Progress',
+  statusLabel: 'Status',
+  newManifest: 'New manifest',
+  assign: 'Assign driver & vehicle',
+  assignShort: 'Assign',
+  create: 'Create',
+  cancel: 'Cancel',
+  print: 'Print',
+  tabDigital: 'Digital view',
+  tabPrinted: 'Print view',
+  loading: 'Loading manifests…',
+  empty: 'No manifests. Create the first one with "New manifest".',
+  codeHint: 'Code (optional, auto-generated)',
+  stopsHint: 'One tracking per line',
+  stopsRequired: 'Add at least one tracking code.',
+  pickBoth: 'Select driver and vehicle.',
+  driverPh: 'Driver…',
+  vehiclePh: 'Vehicle…',
+  created: c => `Manifest ${c} created.`,
+  assigned: 'Manifest assigned to driver.',
+  derivedBanner: id => `Manifest derived from transfer of manifest #${id}.`,
+  assistanceBanner: 'Awaiting roadside assistance: the transfer was rejected and the manifest is back on route.',
+  detailCols: ['#', 'Tracking', 'QR', 'Status', 'Visit time', 'Reason / GPS'],
+  routeOrder: 'Route order',
+  requestsTitle: 'Transfer requests',
+  derivedTitle: 'Derived manifests',
+  pkgUnit: 'packages',
+  qrDemo: 'QR represents the real tracking ID registered in the manifest.',
+  qrCopy: 'Printed copy valid only for the version shown in the QR.',
+  statsTotal: { k: 'Manifests', d: 'All statuses' },
+  statsActive: { k: 'On route / assigned', d: 'Active operation' },
+  statsPending: { k: 'Pending packages', d: 'From selected manifest' },
+  statsIssues: { k: 'With issues', d: 'Failures or transfers' },
+  err: 'Error',
+  noDriver: 'No driver',
+  pickReplacement: 'Choose the replacement driver',
+  transferOk: 'Transfer approved — derived manifest created',
+  transferNo: 'Transfer rejected',
+  stopsSaved: 'Stops updated',
+  popupBlocked: 'Popup blocked',
+  scopeActive: n => `Active (${n})`,
+  scopeClosed: 'Closed',
+  noActive: 'No active manifests',
+  noClosed: 'No closed manifests',
+  lastN: n => `Last ${n}`,
+  editStops: 'Edit stops',
+  add: 'Add',
+  saveStops: 'Save stops',
+  approveBtn: 'Approve',
+  rejectBtn: 'Reject',
+  replPh: 'Replacement driver…',
+  sfRecipient: 'Recipient', sfCompany: 'Company', sfStatus: 'Status', sfRoute: 'Route',
+  sfAddress: 'Address', sfCity: 'City', sfCountry: 'Country', sfZip: 'ZIP',
+  sfPhone: 'Phone', sfEmail: 'Email', sfSender: 'Sender', sfSenderPhone: 'Sender phone',
+  sfService: 'Service', sfMode: 'Delivery mode', sfPay: 'Payment method', sfAmount: 'Amount',
+  histT: 'Manifest history',
+  evCreated: 'Manifest created',
+  evHubIn: 'Received at hub',
+  evStart: 'Route started',
+  evStopOk: 'Stop delivered',
+  evStopFail: 'Delivery failed',
+  evTransferReq: 'Transfer requested',
+  evTransferOk: 'Transfer approved',
+  evTransferNo: 'Transfer rejected',
+  evHubOut: 'Dispatched from hub',
+  evClosed: 'Manifest closed',
+}
+
+const T_ZH = {
+  title: '路线舱单',
+  subtitle: '创建舱单、分配司机和车辆，并跟踪每件货物的真实状态。',
+  manifestTitle: '货运舱单',
+  manifestLabel: '舱单',
+  driverLabel: '司机',
+  vehicleLabel: '车辆',
+  createdLabel: '创建时间',
+  startedLabel: '路线开始',
+  closedLabel: '关闭时间',
+  packagesLabel: '包裹',
+  progressLabel: '进度',
+  statusLabel: '状态',
+  newManifest: '新建舱单',
+  assign: '分配司机和车辆',
+  assignShort: '分配',
+  create: '创建',
+  cancel: '取消',
+  print: '打印',
+  tabDigital: '数字视图',
+  tabPrinted: '打印视图',
+  loading: '正在加载舱单…',
+  empty: '暂无舱单。点击"新建舱单"创建第一个。',
+  codeHint: '编号（可选，自动生成）',
+  stopsHint: '每行一个运单号',
+  stopsRequired: '请至少添加一个运单号。',
+  pickBoth: '请选择司机和车辆。',
+  driverPh: '司机…',
+  vehiclePh: '车辆…',
+  created: c => `舱单 ${c} 已创建。`,
+  assigned: '舱单已分配给司机。',
+  derivedBanner: id => `由舱单 #${id} 的转移派生的舱单。`,
+  assistanceBanner: '等待道路救援：转移被拒绝，舱单已恢复在途。',
+  detailCols: ['#', '运单号', '二维码', '状态', '到访时间', '原因 / GPS'],
+  routeOrder: '路线顺序',
+  requestsTitle: '转移请求',
+  derivedTitle: '派生舱单',
+  pkgUnit: '件',
+  qrDemo: '二维码代表舱单中登记的真实运单号。',
+  qrCopy: '打印件仅对二维码所示版本有效。',
+  statsTotal: { k: '舱单', d: '所有状态' },
+  statsActive: { k: '在途 / 已分配', d: '进行中业务' },
+  statsPending: { k: '待处理包裹', d: '所选舱单' },
+  statsIssues: { k: '有异常', d: '失败或转移' },
+  err: '错误',
+  noDriver: '无司机',
+  pickReplacement: '请选择替代司机',
+  transferOk: '转移已批准——已创建派生舱单',
+  transferNo: '转移已拒绝',
+  stopsSaved: '停靠点已更新',
+  popupBlocked: '弹窗被拦截',
+  scopeActive: n => `进行中（${n}）`,
+  scopeClosed: '已关闭',
+  noActive: '没有进行中的舱单',
+  noClosed: '没有已关闭的舱单',
+  lastN: n => `最近 ${n} 条`,
+  editStops: '编辑停靠点',
+  add: '添加',
+  saveStops: '保存停靠点',
+  approveBtn: '批准',
+  rejectBtn: '拒绝',
+  replPh: '替代司机…',
+  sfRecipient: '收件人', sfCompany: '公司', sfStatus: '状态', sfRoute: '路线',
+  sfAddress: '地址', sfCity: '城市', sfCountry: '国家', sfZip: '邮编',
+  sfPhone: '电话', sfEmail: '邮箱', sfSender: '寄件人', sfSenderPhone: '寄件人电话',
+  sfService: '服务', sfMode: '配送方式', sfPay: '付款方式', sfAmount: '金额',
+  histT: '舱单历史',
+  evCreated: '舱单已创建',
+  evHubIn: '已到仓库',
+  evStart: '路线开始',
+  evStopOk: '停靠点已送达',
+  evStopFail: '投递失败',
+  evTransferReq: '已请求转移',
+  evTransferOk: '转移已批准',
+  evTransferNo: '转移已拒绝',
+  evHubOut: '已从仓库发出',
+  evClosed: '舱单已关闭',
+}
+
+const T_BY_LANG = { es: T_ES, en: T_EN, 'zh-CN': T_ZH }
+
+const ACTIVE_STATES = ['CREADO', 'ASIGNADO', 'EN_RUTA', 'EN_SOLICITUD_TRASPASO']
+const CLOSED_LIMIT = 20
+
+const ESTADOS_ES = {
   CREADO: 'Creado',
   ASIGNADO: 'Asignado',
   EN_RUTA: 'En ruta',
@@ -56,13 +252,51 @@ const ESTADOS = {
   COMPLETADO_CON_INCIDENCIAS: 'Completado con incidencias',
   TRANSFERIDO: 'Transferido',
 }
-const DETALLES = {
+const DETALLES_ES = {
   PENDIENTE: 'Pendiente',
   ENTREGADO: 'Entregado',
   NO_ENTREGADO: 'No entregado',
   TRANSFERIDO: 'Transferido',
 }
-const SOLICITUD = { PENDIENTE: 'Pendiente', APROBADA: 'Aprobada', RECHAZADA: 'Rechazada' }
+const SOLICITUD_ES = { PENDIENTE: 'Pendiente', APROBADA: 'Aprobada', RECHAZADA: 'Rechazada' }
+
+const ESTADOS_EN = {
+  CREADO: 'Created',
+  ASIGNADO: 'Assigned',
+  EN_RUTA: 'On route',
+  EN_SOLICITUD_TRASPASO: 'Transfer requested',
+  COMPLETADO: 'Completed',
+  COMPLETADO_CON_INCIDENCIAS: 'Completed with issues',
+  TRANSFERIDO: 'Transferred',
+}
+const DETALLES_EN = {
+  PENDIENTE: 'Pending',
+  ENTREGADO: 'Delivered',
+  NO_ENTREGADO: 'Not delivered',
+  TRANSFERIDO: 'Transferred',
+}
+const SOLICITUD_EN = { PENDIENTE: 'Pending', APROBADA: 'Approved', RECHAZADA: 'Rejected' }
+
+const ESTADOS_ZH = {
+  CREADO: '已创建',
+  ASIGNADO: '已分配',
+  EN_RUTA: '在途',
+  EN_SOLICITUD_TRASPASO: '已请求转移',
+  COMPLETADO: '已完成',
+  COMPLETADO_CON_INCIDENCIAS: '已完成（有异常）',
+  TRANSFERIDO: '已转移',
+}
+const DETALLES_ZH = {
+  PENDIENTE: '待处理',
+  ENTREGADO: '已送达',
+  NO_ENTREGADO: '未送达',
+  TRANSFERIDO: '已转移',
+}
+const SOLICITUD_ZH = { PENDIENTE: '待处理', APROBADA: '已批准', RECHAZADA: '已拒绝' }
+
+const ESTADOS_BY_LANG = { es: ESTADOS_ES, en: ESTADOS_EN, 'zh-CN': ESTADOS_ZH }
+const DETALLES_BY_LANG = { es: DETALLES_ES, en: DETALLES_EN, 'zh-CN': DETALLES_ZH }
+const SOLICITUD_BY_LANG = { es: SOLICITUD_ES, en: SOLICITUD_EN, 'zh-CN': SOLICITUD_ZH }
 
 const TONE = {
   neutral: { bg: '#EEF4FC', fg: '#10233F' },
@@ -155,7 +389,7 @@ const btn = (label, primary, off, run) => (
 
 const inputStyle = { padding: '10px 12px', borderRadius: 9, border: '1.5px solid #DCE6F5', font: 'inherit', fontSize: 13, background: '#fff', color: '#10233F', minWidth: 0 }
 
-function CreatePanel({ create, setCreate, token, shipments, setShipments, shipQuery, setShipQuery, onCreate, onCancel }) {
+function CreatePanel({ create, setCreate, token, shipments, setShipments, shipQuery, setShipQuery, onCreate, onCancel, t }) {
   React.useEffect(() => {
     if (!create.open || !token) return
     let cancelled = false
@@ -204,7 +438,7 @@ function CreatePanel({ create, setCreate, token, shipments, setShipments, shipQu
 
   return (
     <div style={{ padding: '14px 22px', borderBottom: '1px solid #E3EBF7', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <input style={inputStyle} placeholder={T.codeHint} value={create.code} onChange={e => setCreate(c => ({ ...c, code: e.target.value }))} />
+      <input style={inputStyle} placeholder={t.codeHint} value={create.code} onChange={e => setCreate(c => ({ ...c, code: e.target.value }))} />
 
       <div style={{ fontSize: 13, fontWeight: 700, color: '#001B45' }}>Envíos a incluir</div>
       <input style={inputStyle} placeholder="Buscar por tracking, destino o destinatario…" value={shipQuery} onChange={e => setShipQuery(e.target.value)} />
@@ -240,14 +474,18 @@ function CreatePanel({ create, setCreate, token, shipments, setShipments, shipQu
       </div>
 
       <div style={{ display: 'flex', gap: 10 }}>
-        {btn(T.create, true, create.busy, onCreate)}
-        {btn(T.cancel, false, false, onCancel)}
+        {btn(t.create, true, create.busy, onCreate)}
+        {btn(t.cancel, false, false, onCancel)}
       </div>
     </div>
   )
 }
 
-export default function Manifest({ token, selectId }) {
+export default function Manifest({ token, selectId, lang }) {
+  const T = T_BY_LANG[lang] || T_ES
+  const ESTADOS = ESTADOS_BY_LANG[lang] || ESTADOS_ES
+  const DETALLES = DETALLES_BY_LANG[lang] || DETALLES_ES
+  const SOLICITUD = SOLICITUD_BY_LANG[lang] || SOLICITUD_ES
   const [view, setView] = React.useState('digital')
   const [list, setList] = React.useState([])
   const [sel, setSel] = React.useState(null)
@@ -277,10 +515,11 @@ export default function Manifest({ token, selectId }) {
       const rows = await api.getManifests(token)
       const arr = Array.isArray(rows) ? rows : []
       setList(arr)
-      setSel(prev => (keepSel && arr.some(r => r.id === prev)) ? prev : (arr[0] ? arr[0].id : null))
+      const firstActive = arr.find(r => ACTIVE_STATES.includes(r.estado)) || arr[0]
+      setSel(prev => (keepSel && arr.some(r => r.id === prev)) ? prev : (firstActive ? firstActive.id : null))
       setErr('')
     } catch (e) {
-      setErr(e.message || 'Error')
+      setErr(e.message || T.err)
     } finally {
       setLoading(false)
     }
@@ -291,6 +530,34 @@ export default function Manifest({ token, selectId }) {
   React.useEffect(() => {
     if (selectId) setSel(Number(selectId))
   }, [selectId])
+
+  const [scope, setScope] = React.useState('active')
+  const activeList = list.filter(x => ACTIVE_STATES.includes(x.estado))
+  const closedList = list
+    .filter(x => !ACTIVE_STATES.includes(x.estado))
+    .sort((a, b) => new Date(b.fechaCierre || b.fechaCreacion || 0) - new Date(a.fechaCierre || a.fechaCreacion || 0))
+    .slice(0, CLOSED_LIMIT)
+
+  // El manifiesto seleccionado siempre debe estar visible en el selector.
+  React.useEffect(() => {
+    const cur = list.find(x => x.id === sel)
+    if (!cur) return
+    const isActive = ACTIVE_STATES.includes(cur.estado)
+    if (isActive && scope !== 'active') setScope('active')
+    if (!isActive && scope !== 'closed') setScope('closed')
+  }, [sel, list])
+
+  const changeScope = (next) => {
+    setScope(next)
+    const pool = next === 'active' ? activeList : closedList
+    if (!pool.some(x => x.id === sel)) setSel(pool[0] ? pool[0].id : null)
+  }
+
+  const optionLabel = (x) => [
+    x.codigo,
+    x.chofer?.nombre || (x.estado === 'CREADO' ? T.noDriver : null),
+    `${(x.detalles || []).length} ${T.pkgUnit}`,
+  ].filter(Boolean).join(' · ')
 
   const loadDrivers = async () => {
     if (drivers) return
@@ -305,6 +572,32 @@ export default function Manifest({ token, selectId }) {
 
   const m = list.find(x => x.id === sel) || null
   const isEditable = m && ['CREADO', 'ASIGNADO'].includes(m.estado)
+
+  const history = React.useMemo(() => {
+    if (!m) return []
+    const ev = []
+    if (m.fechaCreacion) ev.push({ at: m.fechaCreacion, l: T.evCreated })
+    if (m.hubRecibidoAt) ev.push({ at: m.hubRecibidoAt, l: T.evHubIn })
+    if (m.fechaInicioRuta) ev.push({
+      at: m.fechaInicioRuta, l: T.evStart,
+      d: [m.chofer?.nombre, m.vehiculo ? [m.vehiculo.nombre, m.vehiculo.placa].filter(Boolean).join(' · ') : null].filter(Boolean).join(' — '),
+    })
+    ;(m.detalles || []).forEach((d, i) => {
+      if (!d.horaVisita) return
+      ev.push({
+        at: d.horaVisita,
+        l: d.estado === 'NO_ENTREGADO' ? T.evStopFail : T.evStopOk,
+        d: `#${d.secuenciaVisita || i + 1} ${d.codigoSeguimiento}${d.motivoFallo ? ` · ${d.motivoFallo}` : ''}`,
+      })
+    })
+    ;(m.solicitudes || []).forEach((s) => {
+      if (s.fechaSolicitud) ev.push({ at: s.fechaSolicitud, l: T.evTransferReq, d: s.motivoIncidencia })
+      if (s.fechaResolucion) ev.push({ at: s.fechaResolucion, l: s.estado === 'APROBADA' ? T.evTransferOk : T.evTransferNo, d: s.motivoResolucion })
+    })
+    if (m.hubDespachadoAt) ev.push({ at: m.hubDespachadoAt, l: T.evHubOut })
+    if (m.fechaCierre) ev.push({ at: m.fechaCierre, l: T.evClosed, d: ESTADOS[m.estado] || m.estado })
+    return ev.sort((a, b) => new Date(a.at) - new Date(b.at))
+  }, [m, T, ESTADOS])
 
   const MANI_CLOSED = ['COMPLETADO', 'COMPLETADO_CON_INCIDENCIAS', 'TRANSFERIDO']
   const SHIP_DONE = ['delivered', 'entregado', 'entregada', 'cancelled', 'cancelado', 'no_entregado', 'devuelto', 'returned']
@@ -326,12 +619,12 @@ export default function Manifest({ token, selectId }) {
 
   const resolveTransfer = async (s, approve) => {
     const driverId = resolveDriver[s.id]
-    if (approve && !driverId) { notify('Elige el conductor de reemplazo'); return }
+    if (approve && !driverId) { notify(T.pickReplacement); return }
     setResolveBusy(s.id)
     try {
       await api.resolveTransferRequest(s.id, { approve, replacement_driver_id: driverId ? Number(driverId) : undefined }, token)
       await load()
-      notify(approve ? 'Traspaso aprobado — manifiesto derivado creado' : 'Traspaso rechazado')
+      notify(approve ? T.transferOk : T.transferNo)
     } catch (e) {
       notify(e.message)
     } finally {
@@ -354,7 +647,7 @@ export default function Manifest({ token, selectId }) {
       await api.updateManifestStops(m.id, editStops, token)
       setEditStops(null)
       await load()
-      notify('Paradas actualizadas')
+      notify(T.stopsSaved)
     } catch (e) {
       notify(e.message)
     } finally {
@@ -432,7 +725,7 @@ export default function Manifest({ token, selectId }) {
       + '<div class="top"><div><b style="letter-spacing:.08em;color:#001B45">TR3SLOG</b><h1>' + esc(T.manifestTitle) + '</h1><div class="g">' + meta + '</div></div><div style="text-align:center">' + qrSvgString(m.codigo, 120) + '<div class="m" style="font-size:10px">' + esc(m.codigo) + '</div></div></div>'
       + '<table><thead><tr>' + head + '</tr></thead><tbody>' + body + '</tbody></table><div class="f"><span>' + esc(T.qrDemo) + '</span><span>' + esc(T.qrCopy) + '</span></div></body></html>'
     const w = window.open('', '_blank')
-    if (!w) { notify('Popup bloqueado'); return }
+    if (!w) { notify(T.popupBlocked); return }
     w.document.write(doc); w.document.close()
     setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} }, 350)
   }
@@ -467,15 +760,35 @@ export default function Manifest({ token, selectId }) {
           <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase' }}>
             {T.manifestLabel}
           </div>
-          <select value={sel ?? ''} onChange={e => setSel(Number(e.target.value))} style={{ ...inputStyle, maxWidth: 260 }} aria-label={T.manifestLabel}>
-            {list.map(x => <option key={x.id} value={x.id}>{x.codigo}</option>)}
-            {!list.length && <option value="">—</option>}
+          <div role="tablist" style={{ display: 'inline-flex', border: '1.5px solid #DCE6F5', borderRadius: 100, overflow: 'hidden' }}>
+            {[['active', T.scopeActive(activeList.length)], ['closed', T.scopeClosed]].map(([k, label]) => (
+              <button key={k} type="button" role="tab" aria-selected={scope === k} onClick={() => changeScope(k)}
+                style={{ padding: '7px 14px', border: 'none', background: scope === k ? '#001B45' : '#fff', color: scope === k ? '#fff' : '#10233F', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <select value={sel ?? ''} onChange={e => setSel(Number(e.target.value))} style={{ ...inputStyle, maxWidth: 340 }} aria-label={T.manifestLabel}>
+            {scope === 'active'
+              ? ACTIVE_STATES.map(st => {
+                  const group = activeList.filter(x => x.estado === st)
+                  return group.length ? (
+                    <optgroup key={st} label={`${ESTADOS[st]} (${group.length})`}>
+                      {group.map(x => <option key={x.id} value={x.id}>{optionLabel(x)}</option>)}
+                    </optgroup>
+                  ) : null
+                })
+              : closedList.map(x => <option key={x.id} value={x.id}>{optionLabel(x)} · {ESTADOS[x.estado] || x.estado}</option>)}
+            {(scope === 'active' ? activeList : closedList).length === 0 && (
+              <option value="">{scope === 'active' ? T.noActive : T.noClosed}</option>
+            )}
           </select>
+          {scope === 'closed' && <span style={{ fontSize: 11.5, color: '#6C82A6' }}>{T.lastN(CLOSED_LIMIT)}</span>}
           {m && chip(ESTADOS[m.estado] || m.estado, TONE[MANIFEST_TONE[m.estado]] || TONE.neutral)}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             {btn(T.newManifest, false, false, () => setCreate(c => ({ ...c, open: !c.open })))}
             {btn(T.assign, true, !isEditable, () => { setAssign(a => ({ ...a, open: !a.open })); loadDrivers() })}
-            {m && isEditable && btn('Editar paradas', false, false, openStopsEdit)}
+            {m && isEditable && btn(T.editStops, false, false, openStopsEdit)}
             {btn(T.print, false, !m, printManifest)}
           </div>
         </div>
@@ -491,6 +804,7 @@ export default function Manifest({ token, selectId }) {
             setShipQuery={setShipQuery}
             onCreate={doCreate}
             onCancel={() => { setCreate({ open: false, code: '', stops: [], busy: false }); setShipQuery('') }}
+            t={T}
           />
         )}
 
@@ -555,13 +869,13 @@ export default function Manifest({ token, selectId }) {
                     <option key={s.id} value={s.id}>{s.tracking_number || `ENV-${s.id}`} · {s.destination || '—'}{s.recipient_name ? ` · ${s.recipient_name}` : ''}</option>
                   ))}
               </select>
-              {btn('Agregar', false, !editAdd, () => {
+              {btn(T.add, false, !editAdd, () => {
                 const s = (shipments || []).find(x => String(x.id) === String(editAdd))
                 if (s) setEditStops(list => [...list, { shipment_id: s.id, tracking_code: s.tracking_number || `ENV-${s.id}` }])
                 setEditAdd('')
               })}
               <span style={{ flex: 1 }} />
-              {btn('Guardar paradas', true, editBusy || !editStops.length, saveStops)}
+              {btn(T.saveStops, true, editBusy || !editStops.length, saveStops)}
               {btn(T.cancel, false, false, () => setEditStops(null))}
             </div>
           </div>
@@ -625,7 +939,7 @@ export default function Manifest({ token, selectId }) {
 
               {isEditable && !editStops && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-                  <button onClick={openStopsEdit} style={{ background: 'none', border: '1.5px solid #087CF0', borderRadius: 9, padding: '8px 16px', color: '#087CF0', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Editar paradas</button>
+                  <button onClick={openStopsEdit} style={{ background: 'none', border: '1.5px solid #087CF0', borderRadius: 9, padding: '8px 16px', color: '#087CF0', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{T.editStops}</button>
                 </div>
               )}
 
@@ -704,8 +1018,8 @@ export default function Manifest({ token, selectId }) {
                                 <option key={d.user_id} value={d.user_id}>{d.name}{d.v ? ` · ${d.v}` : ''}</option>
                               ))}
                             </select>
-                            {btn('Aprobar', true, resolveBusy === s.id || !resolveDriver[s.id], () => resolveTransfer(s, true))}
-                            {btn('Rechazar', false, resolveBusy === s.id, () => resolveTransfer(s, false))}
+                            {btn(T.approveBtn, true, resolveBusy === s.id || !resolveDriver[s.id], () => resolveTransfer(s, true))}
+                            {btn(T.rejectBtn, false, resolveBusy === s.id, () => resolveTransfer(s, false))}
                           </div>
                         ) : chip(SOLICITUD[s.estado] || s.estado, TONE[REQ_TONE[s.estado]] || TONE.neutral)}
                       </div>
@@ -723,6 +1037,21 @@ export default function Manifest({ token, selectId }) {
                         style={{ padding: '9px 14px', border: '1.5px solid #DCE6F5', borderRadius: 9, background: '#fff', color: '#0768C9', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'ui-monospace, Menlo, monospace' }}>
                         {d.codigo}
                       </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {history.length > 0 && (
+                <div>
+                  <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>{T.histT}</div>
+                  <div style={{ border: '1px solid #DCE6F5', borderRadius: 10, padding: '6px 18px', background: '#FBFDFF' }}>
+                    {history.map((e, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '8px 0', borderTop: i ? '1px solid #EEF2F9' : 'none' }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#087CF0', marginTop: 6, flexShrink: 0 }} />
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: '#10233F' }}>{e.l}{e.d ? ` — ${e.d}` : ''}</span>
+                        <span style={{ fontSize: 12, color: '#6C82A6', whiteSpace: 'nowrap' }}>{fmtDT(e.at)}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -757,22 +1086,22 @@ export default function Manifest({ token, selectId }) {
                 <button onClick={() => setViewStop(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6C82A6', lineHeight: 1 }}>×</button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 18px' }}>
-                <Field l="Destinatario" v={ped.destinatario || sh.recipient_name} />
-                <Field l="Empresa" v={sh.recipient_company} />
-                <Field l="Estado" v={ped.estado || sh.status} />
-                <Field l="Ruta" v={[ped.origen || sh.origin, ped.destino || sh.destination].filter(Boolean).join(' → ')} />
-                <Field l="Dirección" v={sh.recipient_address} />
-                <Field l="Ciudad" v={sh.recipient_city} />
-                <Field l="País" v={sh.recipient_country} />
-                <Field l="ZIP" v={sh.recipient_zip} />
-                <Field l="Teléfono" v={ped.telefono || sh.recipient_phone} />
-                <Field l="Correo" v={ped.email || sh.recipient_email} />
-                <Field l="Remitente" v={sh.sender_name} />
-                <Field l="Tel. remitente" v={sh.sender_phone} />
-                <Field l="Servicio" v={sh.service_type} />
-                <Field l="Modalidad" v={sh.delivery_mode} />
-                <Field l="Método de pago" v={sh.payment_method} />
-                <Field l="Monto" v={sh.amount != null ? `$${sh.amount}` : null} />
+                <Field l={T.sfRecipient} v={ped.destinatario || sh.recipient_name} />
+                <Field l={T.sfCompany} v={sh.recipient_company} />
+                <Field l={T.sfStatus} v={ped.estado || sh.status} />
+                <Field l={T.sfRoute} v={[ped.origen || sh.origin, ped.destino || sh.destination].filter(Boolean).join(' → ')} />
+                <Field l={T.sfAddress} v={sh.recipient_address} />
+                <Field l={T.sfCity} v={sh.recipient_city} />
+                <Field l={T.sfCountry} v={sh.recipient_country} />
+                <Field l={T.sfZip} v={sh.recipient_zip} />
+                <Field l={T.sfPhone} v={ped.telefono || sh.recipient_phone} />
+                <Field l={T.sfEmail} v={ped.email || sh.recipient_email} />
+                <Field l={T.sfSender} v={sh.sender_name} />
+                <Field l={T.sfSenderPhone} v={sh.sender_phone} />
+                <Field l={T.sfService} v={sh.service_type} />
+                <Field l={T.sfMode} v={sh.delivery_mode} />
+                <Field l={T.sfPay} v={sh.payment_method} />
+                <Field l={T.sfAmount} v={sh.amount != null ? `$${sh.amount}` : null} />
                 <Field l="Notas" v={ped.notas || sh.notes} />
               </div>
             </div>

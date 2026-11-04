@@ -371,7 +371,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isSupport ? (
             <Support app={app} token={token} />
           ) : isQuotes ? (
-            <Quotes app={app} lang={lang} token={token} />
+            <Quotes app={app} lang={lang} token={token} customer={!isAdmin} />
           ) : isDispatch ? (
             <Dispatch app={app} lang={lang} token={token} query={hquery} onQueryChange={setHquery} onOpenManifest={(id) => { setOpenManifestId(id ?? null); setActiveKey('manifest') }} />
           ) : isRequests ? (
@@ -389,7 +389,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isRoles ? (
             <Roles lang={lang} token={token} />
           ) : isManifest ? (
-            <Manifest app={app} token={token} selectId={openManifestId} />
+            <Manifest app={app} token={token} lang={lang} selectId={openManifestId} />
           ) : isHub ? (
             <Hub
               token={token}
@@ -581,8 +581,10 @@ function Dashboard({ app, lang, token, shipments, onGo, onOpenShipment, pendingQ
   const activeNote = d.kpis[0].n.replace(/\d+/, String(inTransit))
   const kpis = [
     { ...d.kpis[0], v: String(shipments.length), n: activeNote },
-    { ...d.kpis[1], v: String(deliveredThisMonth) },
-    ...(isAdmin ? [{ ...d.kpis[2], v: onTimeRate, n: onTimeNote }] : []),
+    ...(isAdmin ? [
+      { ...d.kpis[1], v: String(deliveredThisMonth) },
+      { ...d.kpis[2], v: onTimeRate, n: onTimeNote },
+    ] : []),
     { ...d.kpis[3], v: String(pendingQuotes) },
   ]
 

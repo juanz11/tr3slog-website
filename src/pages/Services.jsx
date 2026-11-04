@@ -30,7 +30,10 @@ export default function Services({ t, go }) {
                   height={200}
                 />
                 <div style={{ padding: 26, display: 'flex', flexDirection: 'column', gap: 14 }}>
-                  <h2 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 22, margin: 0 }}>{s.t}</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <h2 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 22, margin: 0 }}>{s.t}</h2>
+                    {s.soon && <span style={{ background: '#FFF4D6', border: '1px solid #F0D48A', color: '#8A6100', borderRadius: 999, padding: '3px 9px', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>{t.common.soon}</span>}
+                  </div>
                   <p style={{ margin: 0, fontSize: 15, lineHeight: 1.7, color: '#10233F' }}>{s.d}</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {s.b.map((b, bi) => (
@@ -40,11 +43,19 @@ export default function Services({ t, go }) {
                       </div>
                     ))}
                   </div>
-                  <button onClick={() => go('quote')} style={{
-                    alignSelf: 'flex-start', marginTop: 4, padding: '12px 18px',
-                    background: '#087CF0', border: 'none', borderRadius: 10,
-                    color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  }}>{t.common.quote}</button>
+                  {s.soon ? (
+                    <span style={{
+                      alignSelf: 'flex-start', marginTop: 4, padding: '12px 18px',
+                      background: '#EEF4FC', border: '1px solid #DCE6F5', borderRadius: 10,
+                      color: '#6C82A6', fontSize: 13, fontWeight: 600,
+                    }}>{t.common.soon}</span>
+                  ) : (
+                    <button onClick={() => go('quote')} style={{
+                      alignSelf: 'flex-start', marginTop: 4, padding: '12px 18px',
+                      background: '#087CF0', border: 'none', borderRadius: 10,
+                      color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}>{t.common.quote}</button>
+                  )}
                 </div>
               </div>
             ))}
