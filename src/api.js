@@ -475,4 +475,9 @@ export const api = {
     headers: headers(token),
     body: JSON.stringify(data), // { approve, reason? }
   }).then(handle),
+
+  /* Bitácora propia: escaneos registrados por el usuario actual. */
+  hubMyScans: (token) => fetch(`${API_URL}/hub/my-scans`, {
+    headers: headers(token),
+  }).then(handle),
 }

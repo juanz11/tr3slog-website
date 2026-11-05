@@ -16,7 +16,7 @@ import PricingCalc from './PricingCalc'
 import Users from './Users'
 import Roles from './Roles'
 import Manifest from './Manifest'
-import Hub from './Hub'
+import Hub, { HubScans } from './Hub'
 import { AdminDashboardScreen } from './AdminConsole'
 import adminDict from '../lib/adminDict'
 import Profile from './Profile'
@@ -59,7 +59,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
       : isOperations
         ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => !['console', 'ops', 'users', 'roles', 'pricing', 'hub'].includes(k)))
         : isHubStaff
-          ? { hub: app.navA.hub, profile: app.navA.profile }
+          ? { hub: app.navA.hub, despachos: app.navA.despachos, profile: app.navA.profile }
           : isFinance
             ? { pricing: app.navA.pricing, profile: app.navA.profile }
           : isAdministrative
@@ -169,7 +169,9 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
 
   const accountInitials = (user?.name || 'US').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
   const accountName = user?.name || user?.email || 'Usuario'
-  const accountRole = isAdmin ? app.shell.admin : app.shell.portal
+  const isCustomerUser = !isAdmin && !isAdministrative && !isHubStaff && !isFinance &&
+    (userRoles.length === 0 || userRoles.some((r) => ['customer', 'company', 'executive_client'].includes(r)))
+  const accountRole = isAdmin ? app.shell.admin : isHubStaff ? (app.navA?.hub || 'Hub / almacén') : isFinance ? (app.navA?.finance || 'Finanzas') : app.shell.portal
 
   const [shipments, setShipments] = React.useState([])
 
@@ -200,6 +202,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isRoles = activeKey === 'roles'
   const isManifest = activeKey === 'manifest'
   const isHub = activeKey === 'hub'
+  const isDespachos = activeKey === 'despachos'
   const isAdash = isAdminRole && activeKey === 'dashboard'
   const isProfile = activeKey === 'profile'
 
@@ -325,7 +328,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
 
       <div className="app-main">
         <header className="app-header">
-          <div className="app-search">
+          <div className="app-search" style={isHubStaff ? { visibility: 'hidden' } : undefined}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8B9DBA" strokeWidth="1.8">
               <circle cx="11" cy="11" r="7"></circle>
               <path d="M20 20l-4.5-4.5"></path>
@@ -339,7 +342,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             />
             <button onClick={submitSearch} className="app-search-btn">{app.shell.searchHint}</button>
           </div>
-          {!isCreate && !isAdmin && (
+          {!isCreate && isCustomerUser && (
             <button onClick={() => setActiveKey('create')} style={{ marginLeft: 'auto', padding: '12px 18px', background: '#087CF0', border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               {app.dash.newShipment}
             </button>
@@ -394,8 +397,11 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             <Hub
               token={token}
               canManage={isAdminRole || userRoles.includes('hub_operation') || userRoles.includes('hub_supervisor')}
-              canResolve={isAdminRole || isOpsSupervisor || userRoles.includes('hub_operation') || userRoles.includes('hub_supervisor')}
+              canResolve={isAdminRole || isOpsSupervisor || userRoles.includes('hub_supervisor')}
+              userId={user?.id}
             />
+          ) : isDespachos ? (
+            <HubScans token={token} />
           ) : isAdash ? (
             <AdminDashboardScreen dict={adminDict} lang={lang} token={token} statuses={app.ship?.statuses || []} />
           ) : isProfile ? (

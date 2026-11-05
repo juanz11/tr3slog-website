@@ -92,6 +92,132 @@ const HUB_ACTIVE_STATES = ['CREADO', 'ASIGNADO', 'EN_RUTA', 'EN_SOLICITUD_TRASPA
 const HUB_DISPATCHED_LIMIT = 20
 const isHubPending = (x) => !x.hubDespachadoAt && HUB_ACTIVE_STATES.includes(x.estado)
 
+const PKG_TYPES = { package: 'Paquete', box: 'Caja', envelope: 'Sobre', pallet: 'Pallet', other: 'Otro' }
+const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+
+const PlacesInput = ({ value, onChange, placeholder, style }) => {
+  const ref = React.useRef(null)
+  const [ready, setReady] = React.useState(false)
+  const [failed, setFailed] = React.useState(false)
+  React.useEffect(() => {
+    if (!GOOGLE_MAPS_KEY) { setFailed(true); return }
+    if (window.google?.maps?.places) { setReady(true); return }
+    const id = 'gmp-places-js'
+    let s = document.getElementById(id)
+    const onLoad = () => setReady(true)
+    if (!s) {
+      s = document.createElement('script')
+      s.id = id
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_KEY)}&libraries=places&v=weekly`
+      s.async = true
+      document.head.appendChild(s)
+    }
+    s.addEventListener('load', onLoad)
+    if (window.google?.maps?.places) setReady(true)
+    return () => s?.removeEventListener?.('load', onLoad)
+  }, [])
+  React.useEffect(() => {
+    if (!ready || !ref.current) return
+    const AC = window.google?.maps?.places?.PlaceAutocompleteElement
+    if (!AC) { setFailed(true); return }
+    let active = true
+    let widget = null
+    try { widget = new AC() } catch { /* noop */ }
+    if (!widget) widget = document.createElement('gmp-place-autocomplete')
+    try { widget.includedRegionCodes = ['do', 'cr'] } catch { /* opcional */ }
+    widget.setAttribute('aria-label', placeholder || 'Dirección')
+    widget.style.width = '100%'
+    const onSelect = async ({ placePrediction }) => {
+      try {
+        const place = placePrediction.toPlace()
+        await place.fetchFields({ fields: ['formattedAddress'] })
+        if (active && place.formattedAddress) onChange(place.formattedAddress)
+      } catch { if (active) setFailed(true) }
+    }
+    const onErr = () => { if (active) setFailed(true) }
+    widget.addEventListener('gmp-select', onSelect)
+    widget.addEventListener('gmp-error', onErr)
+    ref.current.appendChild(widget)
+    return () => { active = false; try { ref.current?.removeChild(widget) } catch { /* noop */ } }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready])
+  if (failed) return <input style={style} placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} />
+  if (!ready) return <input style={style} placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} />
+  return <div ref={ref} style={{ ...style, padding: 0 }} />
+}
+
+const pkgDims = (pkg) => {
+  let d = [pkg.length_cm, pkg.width_cm, pkg.height_cm].map(Number)
+  if (!d.every(v => v > 0) && pkg.dimensions) {
+    const mm = String(pkg.dimensions).match(/([\d.]+)\s*x\s*([\d.]+)\s*x\s*([\d.]+)/i)
+    if (mm) d = [+mm[1], +mm[2], +mm[3]]
+  }
+  return d
+}
+const pkgVol = (pkg) => {
+  const [l, w, h] = pkgDims(pkg)
+  if (pkg.volume_m3) return `${Number(pkg.volume_m3).toFixed(4)} m³`
+  if (l > 0 && w > 0 && h > 0) {
+    const cm3 = l * w * h
+    return `${cm3.toLocaleString('es')} cm³ (${(cm3 / 1e6).toFixed(4)} m³)`
+  }
+  return null
+}
+const pkgLine = (pkg, i) => {
+  const dims = pkgDims(pkg)
+  const dimStr = dims.every(v => v > 0) ? `${dims[0]}×${dims[1]}×${dims[2]} cm` : null
+  const parts = [
+    `Bulto ${i + 1}: ${PKG_TYPES[pkg.type] || pkg.type || '—'}`,
+    pkg.pieces > 1 ? `${pkg.pieces} pzas` : null,
+    dimStr,
+    pkgVol(pkg),
+    pkg.weight ? `${pkg.weight} ${pkg.weight_unit || 'kg'}` : null,
+  ].filter(Boolean)
+  return parts.join(' · ')
+}
+
+const PkgInfo = ({ det }) => {
+  if (!det) return null
+  const p = det.pedido || {}
+  const pkgs = Array.isArray(p.paquetes) ? p.paquetes : []
+  const dims = pkgs[0] ? pkgDims(pkgs[0]) : []
+  const dimStr = dims.length === 3 && dims.every(v => v > 0) ? `${dims[0]}×${dims[1]}×${dims[2]} cm` : null
+  const stat = (label, value) => (
+    <div style={{ flex: '1 1 110px', background: '#F6F9FD', borderRadius: 10, padding: '9px 12px', minWidth: 0 }}>
+      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#6C82A6' }}>{label}</div>
+      <div style={{ fontSize: 15, fontWeight: 800, color: '#001B45', marginTop: 3, fontFamily: 'Montserrat, sans-serif' }}>{value || '—'}</div>
+    </div>
+  )
+  return (
+    <div style={{ borderRadius: 12, border: '1px solid #DCE6F5', overflow: 'hidden' }}>
+      <div style={{ padding: '8px 14px', background: '#001B45', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+        <span>Datos del paquete</span>
+        <span style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>{det.codigoSeguimiento}</span>
+      </div>
+      <div style={{ padding: '13px 16px', background: '#fff' }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: '#001B45', fontFamily: 'Montserrat, sans-serif' }}>{p.destinatario || '—'}</div>
+        <div style={{ fontSize: 12.5, color: '#6C82A6', marginTop: 3 }}>
+          {[p.origen, p.destino].filter(Boolean).join(' → ') || '—'}{p.telefono ? ` · ${p.telefono}` : ''}
+        </div>
+        {p.direccion && <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 2 }}>{p.direccion}</div>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+          {stat('Peso declarado', p.peso ? `${p.peso} kg` : null)}
+          {stat('Piezas', p.piezas)}
+          {stat('Tipo', pkgs[0] ? (PKG_TYPES[pkgs[0].type] || pkgs[0].type) : null)}
+          {stat('Dimensiones', dimStr)}
+          {stat('Volumen', pkgs[0] ? pkgVol(pkgs[0]) : null)}
+          {stat('Monto', p.monto ? `$${p.monto}` : null)}
+        </div>
+        {pkgs.length > 1 && pkgs.slice(1).map((pkg, i) => (
+          <div key={i} style={{ marginTop: 6, fontSize: 12, color: '#5B7BA6', fontWeight: 600 }}>{pkgLine(pkg, i + 1)}</div>
+        ))}
+        {pkgs[0]?.content && <div style={{ marginTop: 10, fontSize: 12, color: '#10233F' }}><span style={{ color: '#6C82A6', fontWeight: 600 }}>Contenido: </span>{pkgs[0].content}</div>}
+        {p.notas && <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#FFF4D6', color: '#8A6100', fontSize: 12, fontWeight: 600 }}>Nota: {p.notas}</div>}
+      </div>
+    </div>
+  )
+}
+
 const ESTADOS = {
   CREADO: 'Creado', ASIGNADO: 'Asignado', EN_RUTA: 'En ruta',
   EN_SOLICITUD_TRASPASO: 'Traspaso solicitado', COMPLETADO: 'Completado',
@@ -200,15 +326,17 @@ const Zone = ({ name, count, tone, icon }) => (
   </div>
 )
 
-export default function Hub({ token, canManage = true, canResolve = true }) {
+export default function Hub({ token, canManage = true, canResolve = true, userId = null }) {
   const [list, setList] = React.useState([])
   const [sel, setSel] = React.useState(null)
   const [detail, setDetail] = React.useState(null) // { manifest, conciliacion, escaneos }
   const [loading, setLoading] = React.useState(true)
   const [err, setErr] = React.useState('')
   const [toast, setToast] = React.useState('')
-  const [scan, setScan] = React.useState({ code: '', phase: 'in', notes: '', location: '', condition: 'ok', step: 0, busy: false, manualCode: false })
+  const [scan, setScan] = React.useState({ code: '', phase: 'in', notes: '', location: '', condition: 'ok', diffs: [{ campo: '', real: '' }], step: 1, busy: false, manualCode: false })
   const [adj, setAdj] = React.useState({ open: false, codigo: '', type: 'FALTANTE', reason: '', expected: '', actual: '', busy: false })
+  const [hview, setHview] = React.useState('entrada')
+  const [showExpected, setShowExpected] = React.useState(false)
   const toastRef = React.useRef(null)
 
   const notify = (m) => {
@@ -279,8 +407,18 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
     const salidas = rec.salidas || []
     if (scan.phase === 'in') return esperados.filter(c => !entradas.includes(c))
     if (scan.phase === 'out') return entradas.filter(c => esperados.includes(c) && !salidas.includes(c))
+    return esperados.filter(c => !entradas.includes(c))
     return entradas.filter(c => esperados.includes(c))
   })()
+
+  // Fase automática del escaneo: recepción mientras falten entradas; luego despacho.
+  React.useEffect(() => {
+    const pendingIn = (rec?.faltantesEntrada || []).length > 0
+    setScan(s => (s.phase === 'inspect' || s.phase === 'move') ? s : { ...s, phase: pendingIn ? 'in' : 'out' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m?.id, (rec?.faltantesEntrada || []).length])
+
+  React.useEffect(() => { setHview('entrada') }, [m?.id])
 
   const doScan = async () => {
     if (!scan.code.trim()) return
@@ -290,11 +428,25 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
         codigo: scan.code.trim(),
         phase: scan.phase,
         notes: scan.notes || undefined,
-        location: scan.phase === 'move' ? scan.location.trim() : undefined,
-        condition: scan.phase === 'inspect' ? scan.condition : undefined,
+        location: scan.location.trim() || undefined,
+        condition: scan.condition !== 'ok' ? scan.condition : (scan.phase === 'inspect' ? scan.condition : undefined),
       }, token)
+      const diffRows = (scan.diffs || []).filter(x => x.campo)
+      if (diffRows.length) {
+        const det = (m?.detalles || []).find(d => d.codigoSeguimiento === scan.code.trim())
+        const p = det?.pedido || {}
+        for (const dv of diffRows) {
+          const declared = { peso: p.peso, piezas: p.piezas, destinatario: p.destinatario, direccion: p.destino, otro: '' }[dv.campo]
+          await api.createHubAdjustment(m.id, {
+            codigo: scan.code.trim(), type: 'OTRO',
+            reason: `Diferencia en ${dv.campo}${dv.real.trim() ? `: ${dv.real.trim()}` : ''}`,
+            expected_value: declared ? String(declared) : undefined,
+            actual_value: dv.real.trim() || undefined,
+          }, token)
+        }
+      }
       notify(T.done)
-      setScan({ code: '', phase: 'in', notes: '', location: '', condition: 'ok', step: 0, busy: false, manualCode: false })
+      setScan({ code: '', phase: (rec?.faltantesEntrada || []).length ? 'in' : 'out', notes: '', location: '', condition: 'ok', diffs: [{ campo: '', real: '' }], step: 1, busy: false, manualCode: false })
       await loadDetail(m.id)
     } catch (e) { notify(e.message); setScan(s => ({ ...s, busy: false })) }
   }
@@ -433,21 +585,58 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                 </div>
               )}
 
+              {/* Módulos del flujo */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[['entrada', '1 · Recibir — escanear entradas'], ['conciliacion', '2 · Revisar — cuadrar y ajustes'], ['despacho', '3 · Despachar — escanear salidas']].map(([k, l]) => (
+                  <button key={k} type="button" onClick={() => setHview(k)}
+                    style={{ padding: '7px 16px', borderRadius: 100, border: `1.5px solid ${hview === k ? '#001B45' : '#DCE6F5'}`, background: hview === k ? '#001B45' : '#fff', color: hview === k ? '#fff' : '#10233F', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{l}</button>
+                ))}
+              </div>
+
+              {hview === 'entrada' && canManage && rec && !rec.recibidoAt && (
+                <div style={{ background: '#FFF4D6', border: '1px solid #F0D48A', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: '#8A6100', flex: 1 }}>¿Llegó el camión? Registra la recepción para pasar el manifiesto a «En hub».</span>
+                  {btn('Marcar recepción', true, false, doReceive)}
+                </div>
+              )}
+
+              {hview === 'entrada' && rec && !rec.despachadoAt && rec.recibidoAt && !(rec.faltantesEntrada || []).length && (rec.esperados || []).length > 0 && (
+                <div style={{ background: 'rgba(19,122,69,.1)', border: '1px solid rgba(19,122,69,.35)', borderRadius: 12, padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: '#0F5F36', flex: 1 }}>Todas las entradas escaneadas — el manifiesto está listo para cuadrar y despachar.</span>
+                  <button type="button" onClick={() => setHview('conciliacion')} style={{ padding: '8px 16px', borderRadius: 10, border: '1.5px solid #0F5F36', background: '#fff', color: '#0F5F36', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Ir a Revisar →</button>
+                  <button type="button" onClick={() => setHview('despacho')} style={{ padding: '8px 16px', borderRadius: 10, border: 'none', background: '#0F5F36', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Ir a Despachar →</button>
+                </div>
+              )}
+
               {/* Paquetes del manifiesto */}
-              {m && !!(m.detalles || []).length && (
+              {m && hview === 'entrada' && !!(m.detalles || []).length && (
                 <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, overflow: 'hidden' }}>
-                  <div style={{ padding: '10px 16px', background: '#001B45', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>Paquetes asignados</div>
-                  {(m.detalles || []).map((d, i) => (
+                  <div style={{ padding: '10px 16px', background: '#001B45', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span>Lo esperado · {(m.detalles || []).length} bulto{(m.detalles || []).length === 1 ? '' : 's'}</span>
+                    <button type="button" onClick={() => setShowExpected(v => !v)}
+                      style={{ marginLeft: 'auto', padding: '3px 12px', borderRadius: 100, border: '1px solid rgba(255,255,255,.35)', background: 'transparent', color: '#fff', fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', cursor: 'pointer' }}>
+                      {showExpected ? 'OCULTAR ▲' : 'VER DETALLE ▼'}
+                    </button>
+                  </div>
+                  {showExpected && (m.detalles || []).map((d, i) => (
                     <div key={d.id || i} style={{ padding: '10px 16px', borderTop: i ? '1px solid #F0F5FB' : 'none', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 700, color: '#001B45', fontSize: 12, minWidth: 20 }}>{d.secuenciaVisita || i + 1}</span>
                       <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12.5, color: '#10233F' }}>{d.codigoSeguimiento}</span>
                       {chip(d.estado, TONE.neutral)}
-                      {d.pedido && (
-                        <span style={{ fontSize: 12, color: '#6C82A6', flex: 1, minWidth: 0 }}>
-                          {d.pedido.destinatario || '—'}{d.pedido.destino ? ` · ${d.pedido.destino}` : ''}{d.pedido.telefono ? ` · ${d.pedido.telefono}` : ''}
-                          {d.pedido.peso ? <span style={{ color: '#0768C9', fontWeight: 600 }}> · {d.pedido.peso}</span> : ''}
-                          {d.pedido.piezas ? <span> · {d.pedido.piezas} pzas</span> : ''}
-                          {d.pedido.notas ? <span style={{ color: '#8A6300', fontWeight: 600 }}> · Nota: {d.pedido.notas}</span> : ''}
+                      {!d.pedido && <span style={{ fontSize: 11.5, color: '#A93226', fontWeight: 600 }}>Sin datos del pedido</span>}
+                      <div style={{ flex: '1 1 100%', marginTop: 2 }}><PkgInfo det={d} /></div>
+                      {canManage && !rec.despachadoAt && (
+                        <span style={{ display: 'inline-flex', gap: 6, marginLeft: 'auto', flexShrink: 0 }}>
+                          <button type="button" title="Inspeccionar: marcar condición (OK, dañado, defectuoso…)"
+                            onClick={() => setScan(s => ({ ...s, phase: 'inspect', code: d.codigoSeguimiento, step: 1 }))}
+                            style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 8, border: '1px solid #B7C8E4', background: '#EEF4FC', color: '#001B45', cursor: 'pointer' }}>
+                            Condición
+                          </button>
+                          <button type="button" title="Registrar diferencia (faltante, sobrante, avería…)"
+                            onClick={() => setAdj(a => ({ ...a, open: true, codigo: d.codigoSeguimiento }))}
+                            style={{ padding: '4px 10px', fontSize: 11, fontWeight: 600, borderRadius: 8, border: '1px solid #F0D48A', background: '#FFF4D6', color: '#8A6100', cursor: 'pointer' }}>
+                            Diferencia
+                          </button>
                         </span>
                       )}
                     </div>
@@ -456,21 +645,24 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
               )}
 
               {/* Stepper del flujo */}
+              {hview === 'entrada' && (
               <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '18px 20px' }}>
                 <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 14 }}>{T.flowTitle}</div>
                 <Stepper steps={T.steps} current={rec.despachadoAt ? 4 : rec.recibidoAt ? (rec.bloqueado ? 2 : 3) : 1} />
               </div>
 
+              )}
+
               {/* Escaneo guiado por pasos */}
-              {!rec.despachadoAt && canManage && (
+              {hview !== 'conciliacion' && !rec.despachadoAt && canManage && (
                 <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px' }}>
-                  <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 14 }}>{T.scanTitle}</div>
+                  <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 14 }}>Paso 2 · {T.scanTitle} — entradas primero, salidas al final</div>
 
                   {/* Indicador de pasos */}
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-                    {[T.stepAction, T.stepPackage, T.stepConfirm].map((label, i) => {
-                      const active = scan.step === i
-                      const done = scan.step > i
+                    {[T.stepPackage, T.stepConfirm].map((label, i) => {
+                      const active = scan.step - 1 === i
+                      const done = scan.step - 1 > i
                       return (
                         <span key={i} style={{
                           padding: '5px 12px', borderRadius: 100, fontSize: 11.5, fontWeight: 600,
@@ -481,26 +673,14 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                     })}
                   </div>
 
-                  {/* Paso 1 — acción */}
-                  {scan.step === 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-                      {[['in', T.phaseIn, T.descIn, TONE.info], ['out', T.phaseOut, T.descOut, TONE.ok], ['move', T.phaseMove, T.descMove, TONE.warn], ['inspect', T.phaseInspect, T.descInspect, TONE.neutral]].map(([p, label, desc, t]) => (
-                        <button key={p} type="button" onClick={() => setScan(s => ({ ...s, phase: p, code: '', step: 1 }))}
-                          style={{ textAlign: 'left', padding: '14px 16px', borderRadius: 12, border: `1.5px solid ${t.fg}33`, background: t.bg, cursor: 'pointer', font: 'inherit' }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: t.fg }}>{label}</div>
-                          <div style={{ fontSize: 11.5, color: '#5B7BA6', marginTop: 4, lineHeight: 1.4 }}>{desc}</div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Paso 2 — paquete */}
+                  {/* Paso 1 — paquete */}
                   {scan.step === 1 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                         {chip({ in: T.phaseIn, out: T.phaseOut, move: T.phaseMove, inspect: T.phaseInspect }[scan.phase], { in: TONE.info, out: TONE.ok, move: TONE.warn, inspect: TONE.neutral }[scan.phase])}
-                        <button type="button" onClick={() => setScan(s => ({ ...s, step: 0 }))}
-                          style={{ background: 'none', border: 'none', fontSize: 12, color: '#087CF0', cursor: 'pointer', fontWeight: 600 }}>{T.back}</button>
+                        <span style={{ fontSize: 11.5, color: '#6C82A6' }}>
+                          {scan.phase === 'in' ? 'Escanea cada bulto que entra' : scan.phase === 'out' ? 'Escanea cada bulto que sale' : ''}
+                        </span>
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                         {!scan.manualCode ? (
@@ -527,23 +707,7 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                         )}
                         {btn(T.continueBtn, true, !scan.code.trim(), () => setScan(s => ({ ...s, step: 2 })))}
                       </div>
-                      {(() => {
-                        const det = (m?.detalles || []).find(d => d.codigoSeguimiento === scan.code)
-                        const p = det?.pedido
-                        if (!p || (!p.destinatario && !p.notas)) return null
-                        return (
-                          <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 9, background: 'rgba(8,124,240,.06)', border: '1px solid #DCE6F5', fontSize: 12.5 }}>
-                            <div style={{ color: '#10233F', fontWeight: 600 }}>
-                              {[p.destinatario, [p.origen, p.destino].filter(Boolean).join(' → ')].filter(Boolean).join(' · ')}
-                              {p.telefono ? ` · ${p.telefono}` : ''}
-                            </div>
-                            <div style={{ marginTop: 4, color: '#0768C9', fontWeight: 600 }}>
-                              Declarado:{p.peso ? ` ${p.peso}` : ' —'}{p.piezas ? ` · ${p.piezas} pzas` : ''}
-                            </div>
-                            {p.notas && <div style={{ marginTop: 4, color: '#8A6300', fontWeight: 600 }}>Nota: {p.notas}</div>}
-                          </div>
-                        )
-                      })()}
+                      <PkgInfo det={(m?.detalles || []).find(d => d.codigoSeguimiento === scan.code)} />
                     </div>
                   )}
 
@@ -556,10 +720,11 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                         <button type="button" onClick={() => setScan(s => ({ ...s, step: 1 }))}
                           style={{ background: 'none', border: 'none', fontSize: 12, color: '#087CF0', cursor: 'pointer', fontWeight: 600 }}>{T.back}</button>
                       </div>
+                      <PkgInfo det={(m?.detalles || []).find(d => d.codigoSeguimiento === scan.code)} />
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                        {scan.phase === 'move' && (
+                        {(scan.phase === 'move' || scan.phase === 'in') && (
                           <>
-                            <input style={{ ...inputStyle, flex: '0 1 200px' }} placeholder={T.locationPh} value={scan.location}
+                            <input style={{ ...inputStyle, flex: '0 1 200px' }} placeholder={scan.phase === 'in' ? 'Ubicación en rack (opcional)…' : T.locationPh} value={scan.location}
                               list="hub-locations" autoFocus
                               onChange={e => setScan(s => ({ ...s, location: e.target.value }))} />
                             <datalist id="hub-locations">
@@ -578,8 +743,55 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                         <input style={{ ...inputStyle, flex: '1 1 200px' }} placeholder={T.notesPh} value={scan.notes}
                           onChange={e => setScan(s => ({ ...s, notes: e.target.value }))} />
                       </div>
+                      {/* Estado del bulto + diferencia contra lo declarado */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', padding: '10px 12px', background: '#F6F9FD', borderRadius: 10 }}>
+                        <select style={{ ...inputStyle, flex: '0 1 160px', cursor: 'pointer' }} value={scan.condition}
+                          onChange={e => setScan(s => ({ ...s, condition: e.target.value }))}>
+                          <option value="ok">Conforme</option>
+                          <option value="damaged">Dañado</option>
+                          <option value="opened">Abierto</option>
+                        </select>
+                        <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {(scan.diffs || []).map((dv, i) => (
+                            <div key={i} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <select style={{ ...inputStyle, flex: '0 1 200px', cursor: 'pointer' }} value={dv.campo}
+                                onChange={e => setScan(s => ({ ...s, diffs: s.diffs.map((x, j) => j === i ? { ...x, campo: e.target.value } : x) }))}>
+                                <option value="">Sin diferencia</option>
+                                <option value="peso">Peso distinto</option>
+                                <option value="piezas">Piezas distintas</option>
+                                <option value="destinatario">Destinatario distinto</option>
+                                <option value="direccion">Dirección distinta</option>
+                                <option value="otro">Otra diferencia</option>
+                              </select>
+                              {dv.campo && (
+                                <>
+                                  {dv.campo === 'direccion' ? (
+                                    <PlacesInput style={{ ...inputStyle, flex: '1 1 280px' }} placeholder="Dirección real (busca en el mapa)…" value={dv.real}
+                                      onChange={v => setScan(s => ({ ...s, diffs: s.diffs.map((x, j) => j === i ? { ...x, real: v } : x) }))} />
+                                  ) : (
+                                    <input type={dv.campo === 'peso' || dv.campo === 'piezas' ? 'number' : 'text'} step="any" min="0"
+                                      style={{ ...inputStyle, flex: dv.campo === 'peso' || dv.campo === 'piezas' ? '0 1 110px' : '1 1 220px' }} placeholder="Valor real observado…" value={dv.real}
+                                      onChange={e => setScan(s => ({ ...s, diffs: s.diffs.map((x, j) => j === i ? { ...x, real: e.target.value } : x) }))} />
+                                  )}
+                                  {(() => {
+                                    const pp = ((m?.detalles || []).find(d => d.codigoSeguimiento === scan.code)?.pedido) || {}
+                                    const dec = { peso: pp.peso ? `${pp.peso} kg` : null, piezas: pp.piezas, destinatario: pp.destinatario, direccion: pp.destino }[dv.campo]
+                                    return dec ? <span style={{ fontSize: 11, color: '#6C82A6', fontWeight: 600 }}>declarado: {dec}</span> : null
+                                  })()}
+                                </>
+                              )}
+                              {scan.diffs.length > 1 && (
+                                <button type="button" onClick={() => setScan(s => ({ ...s, diffs: s.diffs.filter((_, j) => j !== i) }))}
+                                  style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #DCE6F5', background: '#fff', color: '#A93226', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+                              )}
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => setScan(s => ({ ...s, diffs: [...(s.diffs || []), { campo: '', real: '' }] }))}
+                            style={{ alignSelf: 'flex-start', background: 'none', border: 'none', fontSize: 12, color: '#087CF0', cursor: 'pointer', fontWeight: 700 }}>+ Agregar otra diferencia</button>
+                        </div>
+                      </div>
                       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                        {btn(T.scan, true, scan.busy || (scan.phase === 'move' && !scan.location.trim()), doScan)}
+                        {btn(T.scan, true, scan.busy || (scan.phase === 'move' && !scan.location.trim()) || (scan.diffs || []).some(dv => dv.campo && !dv.real.trim()), doScan)}
                       </div>
                     </div>
                   )}
@@ -587,8 +799,9 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
               )}
 
               {/* Conciliación */}
+              {hview === 'conciliacion' && (
               <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45' }}>{T.reconTitle}</div>
+                <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45' }}>Paso 3 · {T.reconTitle}</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center', padding: '10px 14px', background: '#F6F9FD', borderRadius: 10 }}>
                   <Donut pct={(rec.esperados?.length ?? 0) > 0 ? Math.round(((rec.salidas?.length ?? 0) / rec.esperados.length) * 100) : 0} label={T.progressOut} />
                   <ProgressBar label={T.progressIn} value={rec.entradas?.length ?? 0} total={rec.esperados?.length ?? 0} color="#087CF0" />
@@ -624,9 +837,12 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                 </div>
               </div>
 
+              )}
+
               {/* Zonas del almacén */}
+              {hview === 'despacho' && (
               <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px' }}>
-                <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 14 }}>{T.zonesTitle}</div>
+                <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45', marginBottom: 14 }}>Paso 4 · {T.zonesTitle} (estado físico del almacén)</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'stretch' }}>
                   <Zone name={T.zoneIn} count={rec.entradas?.length ?? 0} tone={TONE.info}
                     icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>} />
@@ -637,12 +853,28 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                   <Zone name={T.zoneOut} count={rec.salidas?.length ?? 0} tone={TONE.ok}
                     icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 12h13m0 0l-4-4m4 4l-4 4M17 5h4v14h-4"/></svg>} />
                 </div>
+                {canManage && !rec.despachadoAt && rec.recibidoAt && (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #F0F5FB', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {rec.bloqueado ? (
+                      <button type="button" onClick={() => setHview('conciliacion')}
+                        style={{ flex: 1, textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#A93226', background: 'rgba(192,57,43,.08)', border: '1px solid rgba(192,57,43,.3)', borderRadius: 9, padding: '8px 12px', cursor: 'pointer' }}>
+                        Despacho bloqueado: hay ajustes pendientes → Ir a Revisar
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#6C82A6', flex: 1 }}>Escanea las salidas arriba y luego despacha el manifiesto.</span>
+                    )}
+                    {btn('Despachar manifiesto', true, rec.bloqueado, doDispatch)}
+                  </div>
+                )}
               </div>
 
+              )}
+
               {/* Ajustes */}
+              {hview === 'conciliacion' && (<>
               <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45' }}>{T.adjTitle}</div>
+                  <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45' }}>Paso 5 · {T.adjTitle} (diferencias)</div>
                   {canManage && !rec.despachadoAt && <div style={{ marginLeft: 'auto' }}>{btn(T.adjNew, false, false, () => setAdj(a => ({ ...a, open: !a.open })))}</div>}
                 </div>
                 {adj.open && canManage && !rec.despachadoAt && (
@@ -688,18 +920,20 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                           <div style={cell}>{a.registradoPorNombre || '—'}</div>
                           <div style={cell}>{a.resueltoPorNombre || '—'}</div>
                           <div style={cell}>
-                            {a.estado === 'PENDIENTE' && canResolve ? (
+                            {a.estado === 'PENDIENTE' && (canResolve || a.registradoPor === userId) ? (
                               <div style={{ display: 'flex', gap: 6 }}>
-                                <button type="button" onClick={() => resolveAdj(a.id, true)}
-                                  style={{ padding: '5px 12px', borderRadius: 8, border: '1.5px solid #0F5F36', background: 'rgba(19,122,69,.1)', color: '#0F5F36', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
-                                  {T.approve}
-                                </button>
+                                {canResolve && a.registradoPor !== userId && (
+                                  <button type="button" onClick={() => resolveAdj(a.id, true)}
+                                    style={{ padding: '5px 12px', borderRadius: 8, border: '1.5px solid #0F5F36', background: 'rgba(19,122,69,.1)', color: '#0F5F36', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
+                                    {T.approve}
+                                  </button>
+                                )}
                                 <button type="button" onClick={() => resolveAdj(a.id, false)}
                                   style={{ padding: '5px 12px', borderRadius: 8, border: '1.5px solid #A93226', background: 'rgba(192,57,43,.08)', color: '#A93226', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
-                                  {T.reject}
+                                  {a.registradoPor === userId ? 'Cancelar' : T.reject}
                                 </button>
                               </div>
-                            ) : <span style={{ fontSize: 12, color: '#8B9DBA' }}>{fmtDT(a.fechaResolucion)}</span>}
+                            ) : <span style={{ fontSize: 12, color: '#8B9DBA' }}>{a.estado === 'PENDIENTE' ? '—' : fmtDT(a.fechaResolucion)}</span>}
                           </div>
                         </React.Fragment>
                       ))}
@@ -762,6 +996,7 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
                   </div>
                 </div>
               )}
+              </>)}
             </>
           )}
         </div>
@@ -771,6 +1006,95 @@ export default function Hub({ token, canManage = true, canResolve = true }) {
         <div role="status" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 60, padding: '13px 20px', borderRadius: 12, background: '#001B45', color: '#fff', fontSize: 13, fontWeight: 600, boxShadow: '0 14px 40px rgba(0,10,30,.3)' }}>
           {toast}
         </div>
+      )}
+    </div>
+  )
+}
+
+export function HubScans({ token }) {
+  const [rows, setRows] = React.useState(null)
+  const [err, setErr] = React.useState('')
+  const [q, setQ] = React.useState('')
+  const [fase, setFase] = React.useState('')
+  const [cond, setCond] = React.useState('')
+  const [sort, setSort] = React.useState({ key: 'fecha', dir: -1 })
+  const [page, setPage] = React.useState(1)
+  const PER_PAGE = 15
+  React.useEffect(() => {
+    let on = true
+    api.hubMyScans(token).then(d => { if (on) setRows(d || []) }).catch(e => { if (on) setErr(e.message) })
+    return () => { on = false }
+  }, [token])
+  const FASES = { in: 'Entrada', out: 'Salida', move: 'Movimiento', inspect: 'Inspección' }
+  const CONDS = { ok: 'Conforme', damaged: 'Dañado', opened: 'Abierto' }
+  const filtered = (rows || []).filter(r =>
+    (!q.trim() || [r.codigo, r.manifiesto, r.notas].some(v => (v || '').toLowerCase().includes(q.trim().toLowerCase()))) &&
+    (!fase || r.fase === fase) && (!cond || r.condicion === cond)
+  )
+  const sorted = [...filtered].sort((a, b) => {
+    const av = sort.key === 'fecha' ? (a.fecha || '') : (a[sort.key] || '')
+    const bv = sort.key === 'fecha' ? (b.fecha || '') : (b[sort.key] || '')
+    return String(av).localeCompare(String(bv), 'es', { numeric: true }) * sort.dir
+  })
+  const pages = Math.max(1, Math.ceil(sorted.length / PER_PAGE))
+  const cur = Math.min(page, pages)
+  const visible = sorted.slice((cur - 1) * PER_PAGE, cur * PER_PAGE)
+  React.useEffect(() => { setPage(1) }, [q, fase, cond])
+  const cell = { padding: '10px 12px', borderTop: '1px solid #E3EBF7', fontSize: 13, color: '#10233F' }
+  const th = (key, label) => (
+    <div key={key} onClick={() => setSort(s => ({ key, dir: s.key === key ? -s.dir : 1 }))}
+      style={{ padding: '8px 12px', fontSize: 10, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: sort.key === key ? '#0768C9' : '#6C82A6', cursor: 'pointer', userSelect: 'none' }}>
+      {label}{sort.key === key ? (sort.dir === 1 ? ' ↑' : ' ↓') : ''}
+    </div>
+  )
+  const thStatic = (label) => (
+    <div key={label} style={{ padding: '8px 12px', fontSize: 10, fontWeight: 600, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{label}</div>
+  )
+  return (
+    <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, padding: '16px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#001B45' }}>Mis escaneos y despachos</div>
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Filtrar por código o manifiesto…" style={{ ...inputStyle, flex: '0 1 240px', marginLeft: 'auto' }} />
+        <select value={fase} onChange={e => setFase(e.target.value)} style={{ ...inputStyle, flex: '0 1 150px', cursor: 'pointer' }}>
+          <option value="">Todas las fases</option>
+          {Object.entries(FASES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+        <select value={cond} onChange={e => setCond(e.target.value)} style={{ ...inputStyle, flex: '0 1 150px', cursor: 'pointer' }}>
+          <option value="">Toda condición</option>
+          {Object.entries(CONDS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+      </div>
+      {err && <div style={{ fontSize: 12.5, color: '#A93226', marginBottom: 8 }}>{err}</div>}
+      {!rows ? <div style={{ fontSize: 12.5, color: '#6C82A6' }}>Cargando…</div> : !filtered.length ? (
+        <div style={{ fontSize: 12.5, color: '#6C82A6' }}>Sin escaneos registrados todavía.</div>
+      ) : (
+        <>
+          <div style={{ overflowX: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 0.7fr 0.9fr 0.9fr 1.4fr 1.1fr', minWidth: 820 }}>
+              {th('manifiesto', 'Manifiesto')}{th('codigo', 'Código')}{th('fase', 'Fase')}{thStatic('Condición')}{thStatic('Ubicación')}{thStatic('Notas')}{th('fecha', 'Fecha')}
+            </div>
+            {visible.map(s => (
+              <div key={s.id} style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 0.7fr 0.9fr 0.9fr 1.4fr 1.1fr', minWidth: 820 }}>
+                <div style={{ ...cell, fontWeight: 700, color: '#001B45' }}>{s.manifiesto || `#${s.manifiestoId}`}</div>
+                <div style={{ ...cell, fontFamily: 'ui-monospace, Menlo, monospace' }}>{s.codigo}</div>
+                <div style={cell}>{chip(FASES[s.fase] || s.fase || '—', { in: TONE.info, out: TONE.ok, move: TONE.warn, inspect: TONE.neutral }[s.fase] || TONE.neutral)}</div>
+                <div style={cell}>{CONDS[s.condicion] || '—'}</div>
+                <div style={cell}>{s.ubicacion || '—'}</div>
+                <div style={cell}>{s.notas || '—'}</div>
+                <div style={cell}>{fmtDT(s.fecha)}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: '#6C82A6' }}>{sorted.length} registro{sorted.length === 1 ? '' : 's'} · Página {cur} de {pages}</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+              <button type="button" disabled={cur <= 1} onClick={() => setPage(cur - 1)}
+                style={{ padding: '6px 14px', borderRadius: 8, border: '1.5px solid #DCE6F5', background: '#fff', color: cur <= 1 ? '#B7C8E4' : '#001B45', fontWeight: 600, cursor: cur <= 1 ? 'default' : 'pointer' }}>‹ Anterior</button>
+              <button type="button" disabled={cur >= pages} onClick={() => setPage(cur + 1)}
+                style={{ padding: '6px 14px', borderRadius: 8, border: '1.5px solid #DCE6F5', background: '#fff', color: cur >= pages ? '#B7C8E4' : '#001B45', fontWeight: 600, cursor: cur >= pages ? 'default' : 'pointer' }}>Siguiente ›</button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
