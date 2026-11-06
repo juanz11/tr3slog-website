@@ -144,6 +144,11 @@ function ChipsBlock({ label, items = [], selected = 0, onPick }) {
 function TableBlock({ data = {}, lang, view, common, onToast, onRetry }) {
   const cols = data.cols || [];
   const rows = data.rows || [];
+  const PER_PAGE = 8;
+  const [page, setPage] = useState(1);
+  const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+  const cur = Math.min(page, pages);
+  const visible = rows.slice((cur - 1) * PER_PAGE, cur * PER_PAGE);
   const hasPill = rows.some(r => !!r.pill);
   const header = hasPill && cols.length <= rows.reduce((m, r) => Math.max(m, (r.c || []).length), 0)
     ? cols.concat([PILL_HDR[lang] || 'Status'])
@@ -172,7 +177,7 @@ function TableBlock({ data = {}, lang, view, common, onToast, onRetry }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, ri) => {
+              {visible.map((r, ri) => {
                 const tone = TONE[r.st] || TONE.neutral;
                 return (
                   <tr key={ri}>
@@ -189,6 +194,17 @@ function TableBlock({ data = {}, lang, view, common, onToast, onRetry }) {
               })}
             </tbody>
           </table>
+          {pages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 22px', borderTop: `1px solid ${C.divider}`, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, color: C.textSecondary }}>{rows.length} registro{rows.length === 1 ? '' : 's'} · Página {cur} de {pages}</span>
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+                <button type="button" disabled={cur <= 1} onClick={() => setPage(cur - 1)}
+                  style={{ ...ghostBtn, opacity: cur <= 1 ? .45 : 1, cursor: cur <= 1 ? 'default' : 'pointer' }}>‹ Anterior</button>
+                <button type="button" disabled={cur >= pages} onClick={() => setPage(cur + 1)}
+                  style={{ ...ghostBtn, opacity: cur >= pages ? .45 : 1, cursor: cur >= pages ? 'default' : 'pointer' }}>Siguiente ›</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

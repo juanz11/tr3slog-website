@@ -8,7 +8,7 @@ const LB_PER_KG = 2.20462
 
 const fmt = (n, digits = 2) => Number.isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: digits }) : '—'
 
-const DELIVERY_MODES = ['standard', 'express', 'same_day']
+const DELIVERY_MODES = ['standard', 'same_day']
 
 export function DeliveryIcon({ mode, color = 'currentColor', size = 22 }) {
   const p = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' }
@@ -21,12 +21,42 @@ export default function PricingCalc({ app, lang, token }) {
   const d = app.pricing
   const ENABLED = ['Terrestre']
   const services = (d.services || DEFAULT_SERVICES).filter((s) => ENABLED.includes(s))
-  const [cfg, setCfg] = React.useState({ dim_divisor: 166, service_limits: {}, service_rates: {} })
+  const [cfg, setCfg] = React.useState({ dim_divisor: 166, per_km: 0, service_limits: {}, service_rates: {} })
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState('')
   const [notice, setNoticeRaw] = React.useState('')
   const [calc, setCalc] = React.useState({ service: services[0], delivery: 'standard', length: '', width: '', height: '', dimUnit: 'in', weight: '', weightUnit: 'lb' })
+  const [route, setRoute] = React.useState({ origin: '', destination: '', km: null, text: '', busy: false, err: '' })
+
+  const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+  const ensureGoogle = () => new Promise((res, rej) => {
+    if (window.google?.maps) return res(window.google.maps)
+    if (!GOOGLE_KEY) return rej(new Error('Falta NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'))
+    const id = 'gmp-places-js'
+    let s = document.getElementById(id)
+    if (!s) {
+      s = document.createElement('script')
+      s.id = id
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_KEY)}&libraries=places&v=weekly`
+      s.async = true
+      document.head.appendChild(s)
+    }
+    s.addEventListener('load', () => res(window.google.maps))
+    s.addEventListener('error', () => rej(new Error('No cargó Google Maps')))
+  })
+  const calcDistance = async () => {
+    if (!route.origin.trim() || !route.destination.trim() || route.busy) return
+    setRoute(r => ({ ...r, busy: true, err: '' }))
+    try {
+      const maps = await ensureGoogle()
+      const svc = new maps.DistanceMatrixService()
+      const res = await svc.getDistanceMatrix({ origins: [route.origin], destinations: [route.destination], travelMode: 'DRIVING', unitSystem: maps.UnitSystem.METRIC })
+      const el = res?.rows?.[0]?.elements?.[0]
+      if (el?.status !== 'OK') throw new Error(el?.status === 'ZERO_RESULTS' ? 'Sin ruta entre esos puntos' : (el?.status || 'Sin ruta'))
+      setRoute(r => ({ ...r, km: el.distance.value / 1000, text: el.distance.text, busy: false }))
+    } catch (e) { setRoute(r => ({ ...r, busy: false, err: e.message || 'No se pudo calcular la distancia' })) }
+  }
 
   const setNotice = (msg) => {
     setNoticeRaw(msg)
@@ -38,6 +68,7 @@ export default function PricingCalc({ app, lang, token }) {
     api.getPricingConfig(token)
       .then((res) => setCfg({
         dim_divisor: res.dim_divisor ?? 166,
+        per_km: res.per_km ?? 0,
         service_limits: res.service_limits || {},
         service_rates: res.service_rates || {},
         surcharges: res.surcharges || {},
@@ -80,6 +111,9 @@ export default function PricingCalc({ app, lang, token }) {
   const sur = cfg.surcharges?.[calc.delivery] || {}
   const surchargeAmt = price > 0 ? (sur.type === 'fixed' ? numVal(sur.value) : price * numVal(sur.value) / 100) : 0
   const totalPrice = price + surchargeAmt
+  const kmRate = numVal(rate.per_km) || numVal(cfg.per_km)
+  const kmPrice = route.km ? numVal(rate.base) + route.km * kmRate : 0
+  const kmSurAmt = kmPrice > 0 ? (sur.type === 'fixed' ? numVal(sur.value) : kmPrice * numVal(sur.value) / 100) : 0
   const hasInput = volIn3 > 0 || actualLb > 0
 
   const save = async () => {
@@ -90,6 +124,7 @@ export default function PricingCalc({ app, lang, token }) {
       const res = await api.updatePricingConfig(cfg, token)
       setCfg({
         dim_divisor: res.dim_divisor ?? cfg.dim_divisor,
+        per_km: res.per_km ?? cfg.per_km,
         service_limits: res.service_limits || cfg.service_limits,
         service_rates: res.service_rates || cfg.service_rates,
         surcharges: res.surcharges || cfg.surcharges,
@@ -172,60 +207,6 @@ export default function PricingCalc({ app, lang, token }) {
         </div>
       </div>
 
-      {/* Calculator */}
-      <div className="app-card" style={{ padding: 20, marginBottom: 20 }}>
-        <div style={cardTitle}>{d.calcT}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 16 }}>
-          <div>
-            <label style={fieldLabel}>{d.f.service}</label>
-            <select value={calc.service} onChange={(e) => setCalc({ ...calc, service: e.target.value })} style={{ ...input, cursor: 'pointer' }}>
-              {services.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          {['length', 'width', 'height'].map((k) => (
-            <div key={k}>
-              <label style={fieldLabel}>{d.f[k]}</label>
-              <input inputMode="decimal" placeholder="0" value={calc[k]}
-                onChange={(e) => setCalc({ ...calc, [k]: num(e.target.value) })} style={input} />
-            </div>
-          ))}
-          <div>
-            <label style={fieldLabel}>{d.f.dimUnit}</label>
-            <div style={{ display: 'flex', border: '1.5px solid #DCE6F5', borderRadius: 11, overflow: 'hidden' }}>
-              {['in', 'cm'].map((u) => (
-                <button key={u} type="button" onClick={() => setCalc({ ...calc, dimUnit: u })} style={{ ...unitBtn(calc.dimUnit === u), flex: 1, padding: '12px 0' }}>{u}</button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label style={fieldLabel}>{d.f.weight}</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input inputMode="decimal" placeholder="0" value={calc.weight}
-                onChange={(e) => setCalc({ ...calc, weight: num(e.target.value) })} style={{ ...input, flex: 1 }} />
-              <div style={{ display: 'flex', border: '1.5px solid #DCE6F5', borderRadius: 11, overflow: 'hidden', flex: '0 0 auto' }}>
-                {['lb', 'kg'].map((u) => (
-                  <button key={u} type="button" onClick={() => setCalc({ ...calc, weightUnit: u })} style={unitBtn(calc.weightUnit === u)}>{u}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {hasInput && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
-            <Result label={d.r.actual} value={`${fmt(actualLb)} lb`} sub={`${fmt(actualLb / LB_PER_KG)} kg`} />
-            <Result label={d.r.dim} value={volIn3 > 0 ? `${fmt(dimLb)} lb` : '—'} sub={volIn3 > 0 ? `${fmt(volIn3, 0)} in³ ÷ ${fmt(divisor, 0)}` : ''} />
-            <Result label={d.r.billable} value={`${fmt(billableLb)} lb`} sub={`${fmt(billableLb / LB_PER_KG)} kg`} />
-            <Result label={d.r.girth} value={W || H ? `${fmt(girth)} in` : '—'} sub="2 × (W + H)" />
-            <Result label={d.r.total} value={totalSize > 0 ? `${fmt(totalSize)} in` : '—'} sub={limit ? `${d.r.limit} ${fmt(limit, 0)} in` : ''} tone={totalSize > 0 && limit ? (oversized ? '#A93226' : '#0F5F36') : '#001B45'} />
-            <Result label={d.r.status} value={totalSize > 0 && limit ? (oversized ? d.r.oversized : d.r.accepted) : '—'} tone={totalSize > 0 && limit ? (oversized ? '#A93226' : '#0F5F36') : '#6C82A6'} />
-            <Result label={d.r.price} value={price > 0 ? `$${fmt(price)}` : '—'} sub={price > 0 ? `${fmt(numVal(rate.base))} + ${fmt(billableLb)} × ${fmt(numVal(rate.per_lb))}` : ''} />
-            <Result label={d.r.surcharge} value={price > 0 ? (surchargeAmt > 0 ? `+$${fmt(surchargeAmt)}` : '$0') : '—'} sub={d.delivery[calc.delivery]} />
-            <Result label={d.r.totalPrice} value={totalPrice > 0 ? `$${fmt(totalPrice)}` : '—'} tone="#0F5F36" />
-          </div>
-        )}
-      </div>
-
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
         {/* Parameters */}
         <div className="app-card" style={{ padding: 20 }}>
@@ -233,7 +214,17 @@ export default function PricingCalc({ app, lang, token }) {
           <label style={fieldLabel}>{d.f.dimDivisor}</label>
           <input inputMode="decimal" value={cfg.dim_divisor}
             onChange={(e) => setCfg({ ...cfg, dim_divisor: num(e.target.value) })} style={inputSm} />
-          <p style={{ margin: '10px 0 0', fontSize: 12, color: '#8B9DBA', lineHeight: 1.6 }}>{d.divisorHint}</p>
+          <p style={{ margin: '10px 0 16px', fontSize: 12, color: '#8B9DBA', lineHeight: 1.6 }}>{d.divisorHint}</p>
+          <label style={fieldLabel}>Tarifa por km ($/km)</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14, color: '#8B9DBA' }}>$</span>
+            <input inputMode="decimal" value={cfg.per_km ?? ''} placeholder="1.00"
+              onChange={(e) => setCfg({ ...cfg, per_km: num(e.target.value) })} style={inputSm} />
+            <span style={{ fontSize: 13, color: '#8B9DBA', whiteSpace: 'nowrap' }}>/ km</span>
+          </div>
+          <p style={{ margin: '10px 0 0', fontSize: 12, color: '#8B9DBA', lineHeight: 1.6 }}>
+            Cuánto cobras por cada kilómetro recorrido. Ej: 1 → un envío de 50 km cobra $50 de distancia + base del servicio.
+          </p>
         </div>
 
         {/* Limits per service */}
@@ -282,15 +273,16 @@ export default function PricingCalc({ app, lang, token }) {
           <div style={cardTitle}>{d.ratesT}</div>
           <div className="app-table-scroll">
             <div className="app-table" style={{ minWidth: 560 }}>
-              <div className="app-table-head" style={{ gridTemplateColumns: '1.4fr 1fr 1fr' }}>
+              <div className="app-table-head" style={{ gridTemplateColumns: '1.4fr 1fr 1fr 1fr' }}>
                 <span>{d.f.service}</span>
                 <span>{d.f.base}</span>
                 <span>{d.f.perLb}</span>
+                <span>$/km por servicio (opcional)</span>
               </div>
               {services.map((svc) => {
                 const r = cfg.service_rates?.[svc] || {}
                 return (
-                  <div key={svc} className="app-table-row" style={{ gridTemplateColumns: '1.4fr 1fr 1fr', alignItems: 'center' }}>
+                  <div key={svc} className="app-table-row" style={{ gridTemplateColumns: '1.4fr 1fr 1fr 1fr', alignItems: 'center' }}>
                     <span className="app-table-text" style={{ fontWeight: 600 }}>{svc}</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ fontSize: 13, color: '#8B9DBA' }}>$</span>
@@ -302,12 +294,104 @@ export default function PricingCalc({ app, lang, token }) {
                       <input inputMode="decimal" value={r.per_lb ?? ''} placeholder="0.00"
                         onChange={(e) => setRate(svc, 'per_lb', num(e.target.value))} style={{ ...inputSm, width: 100 }} />
                     </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 13, color: '#8B9DBA' }}>$</span>
+                      <input inputMode="decimal" value={r.per_km ?? ''} placeholder="0.00"
+                        onChange={(e) => setRate(svc, 'per_km', num(e.target.value))} style={{ ...inputSm, width: 100 }} />
+                    </span>
                   </div>
                 )
               })}
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Calculator */}
+      <div className="app-card" style={{ padding: 20, marginBottom: 20 }}>
+        <div style={cardTitle}>{d.calcT}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 16 }}>
+          <div>
+            <label style={fieldLabel}>{d.f.service}</label>
+            <select value={calc.service} onChange={(e) => setCalc({ ...calc, service: e.target.value })} style={{ ...input, cursor: 'pointer' }}>
+              {services.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          {['length', 'width', 'height'].map((k) => (
+            <div key={k}>
+              <label style={fieldLabel}>{d.f[k]}</label>
+              <input inputMode="decimal" placeholder="0" value={calc[k]}
+                onChange={(e) => setCalc({ ...calc, [k]: num(e.target.value) })} style={input} />
+            </div>
+          ))}
+          <div>
+            <label style={fieldLabel}>{d.f.dimUnit}</label>
+            <div style={{ display: 'flex', border: '1.5px solid #DCE6F5', borderRadius: 11, overflow: 'hidden' }}>
+              {['in', 'cm'].map((u) => (
+                <button key={u} type="button" onClick={() => setCalc({ ...calc, dimUnit: u })} style={{ ...unitBtn(calc.dimUnit === u), flex: 1, padding: '12px 0' }}>{u}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label style={fieldLabel}>{d.f.weight}</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input inputMode="decimal" placeholder="0" value={calc.weight}
+                onChange={(e) => setCalc({ ...calc, weight: num(e.target.value) })} style={{ ...input, flex: 1 }} />
+              <div style={{ display: 'flex', border: '1.5px solid #DCE6F5', borderRadius: 11, overflow: 'hidden', flex: '0 0 auto' }}>
+                {['lb', 'kg'].map((u) => (
+                  <button key={u} type="button" onClick={() => setCalc({ ...calc, weightUnit: u })} style={unitBtn(calc.weightUnit === u)}>{u}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Ruta — distancia real con Google Maps */}
+        <div style={{ borderTop: '1px dashed #DCE6F5', paddingTop: 14, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, alignItems: 'end' }}>
+            <div>
+              <label style={fieldLabel}>Origen</label>
+              <input placeholder="Ciudad o dirección de origen…" value={route.origin}
+                onChange={(e) => setRoute(r => ({ ...r, origin: e.target.value }))} style={input} />
+            </div>
+            <div>
+              <label style={fieldLabel}>Destino</label>
+              <input placeholder="Ciudad o dirección de destino…" value={route.destination}
+                onChange={(e) => setRoute(r => ({ ...r, destination: e.target.value }))} style={input} />
+            </div>
+            <div>
+              <button type="button" className="app-primary" onClick={calcDistance}
+                disabled={route.busy || !route.origin.trim() || !route.destination.trim()}>
+                {route.busy ? 'Calculando…' : 'Calcular distancia'}
+              </button>
+            </div>
+          </div>
+          {route.err && <div style={{ marginTop: 8, fontSize: 12.5, color: '#A93226' }}>{route.err}</div>}
+          {route.km != null && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, marginTop: 12 }}>
+              <Result label="Distancia" value={`${fmt(route.km)} km`} sub={route.text} />
+              <Result label="Precio por distancia" value={kmPrice > 0 ? `$${fmt(kmPrice)}` : '—'}
+                sub={kmPrice > 0 ? `${fmt(numVal(rate.base))} + ${fmt(route.km)} km × ${fmt(kmRate)}` : 'configura la tarifa $/km'}
+                tone={kmPrice > 0 ? '#0768C9' : '#8B9DBA'} />
+              <Result label={d.r.totalPrice} value={kmPrice + kmSurAmt > 0 ? `$${fmt(kmPrice + kmSurAmt)}` : '—'} tone="#0F5F36"
+                sub={kmSurAmt > 0 ? `+$${fmt(kmSurAmt)} · ${d.delivery[calc.delivery]}` : ''} />
+            </div>
+          )}
+        </div>
+
+        {hasInput && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+            <Result label={d.r.actual} value={`${fmt(actualLb)} lb`} sub={`${fmt(actualLb / LB_PER_KG)} kg`} />
+            <Result label={d.r.dim} value={volIn3 > 0 ? `${fmt(dimLb)} lb` : '—'} sub={volIn3 > 0 ? `${fmt(volIn3, 0)} in³ ÷ ${fmt(divisor, 0)}` : ''} />
+            <Result label={d.r.billable} value={`${fmt(billableLb)} lb`} sub={`${fmt(billableLb / LB_PER_KG)} kg`} />
+            <Result label={d.r.girth} value={W || H ? `${fmt(girth)} in` : '—'} sub="2 × (W + H)" />
+            <Result label={d.r.total} value={totalSize > 0 ? `${fmt(totalSize)} in` : '—'} sub={limit ? `${d.r.limit} ${fmt(limit, 0)} in` : ''} tone={totalSize > 0 && limit ? (oversized ? '#A93226' : '#0F5F36') : '#001B45'} />
+            <Result label={d.r.status} value={totalSize > 0 && limit ? (oversized ? d.r.oversized : d.r.accepted) : '—'} tone={totalSize > 0 && limit ? (oversized ? '#A93226' : '#0F5F36') : '#6C82A6'} />
+            <Result label={d.r.price} value={price > 0 ? `$${fmt(price)}` : '—'} sub={price > 0 ? `${fmt(numVal(rate.base))} + ${fmt(billableLb)} × ${fmt(numVal(rate.per_lb))}` : ''} />
+            <Result label={d.r.surcharge} value={price > 0 ? (surchargeAmt > 0 ? `+$${fmt(surchargeAmt)}` : '$0') : '—'} sub={d.delivery[calc.delivery]} />
+            <Result label={d.r.totalPrice} value={totalPrice > 0 ? `$${fmt(totalPrice)}` : '—'} tone="#0F5F36" />
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', border: '1px dashed #DCE6F5', background: '#EEF4FC', borderRadius: 14, padding: '16px 18px', marginTop: 16 }}>

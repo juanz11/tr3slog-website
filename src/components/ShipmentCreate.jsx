@@ -393,7 +393,7 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
         <div style={{ marginBottom: 20 }}>
           <span style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 10 }}>{c.deliveryT}</span>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
-            {['standard', 'express', 'same_day'].map((m) => {
+            {['standard', 'same_day'].map((m) => {
               const s = (surcharges || {})[m] || {}
               const active = (data.service.delivery || 'standard') === m
               const val = parseFloat(s.value) || 0
@@ -427,6 +427,40 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
               )
             })}
           </div>
+          {GOOGLE_MAPS_KEY && placesReady && (() => {
+            const { base, kmRate, kmPrice, kmSur } = kmTotals()
+            return (
+              <div style={{ border: '1.5px solid #DCE6F5', borderRadius: 13, padding: '14px 16px', background: '#F4F9FF' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#001B45' }}>Distancia y precio estimado</span>
+                  <button type="button" onClick={calcRoutePrice}
+                    disabled={routeEst.busy || !data.sender.address || !data.recipient.address}
+                    style={{ marginLeft: 'auto', padding: '8px 14px', border: 'none', borderRadius: 9, background: '#087CF0', color: '#fff', font: 'inherit', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', opacity: (routeEst.busy || !data.sender.address || !data.recipient.address) ? .5 : 1 }}>
+                    {routeEst.busy ? 'Calculando…' : routeEst.km ? 'Recalcular' : 'Calcular'}
+                  </button>
+                </div>
+                {(!data.sender.address || !data.recipient.address) && (
+                  <div style={{ fontSize: 12, color: '#8B9DBA', marginTop: 6 }}>Completa las direcciones de remitente y destinatario para calcular</div>
+                )}
+                {routeEst.err && <div style={{ fontSize: 12, color: '#A93226', marginTop: 6 }}>{routeEst.err}</div>}
+                {routeEst.km != null && (
+                  <div style={{ marginTop: 8, fontSize: 13, color: '#10233F', lineHeight: 1.7 }}>
+                    <div>Distancia por carretera: <strong>{routeEst.text}</strong> ({routeEst.km.toFixed(1)} km)</div>
+                    {kmPrice > 0 ? (
+                      <div style={{ fontWeight: 700, color: '#0F5F36' }}>
+                        ≈ ${(kmPrice + kmSur).toFixed(2)}
+                        <span style={{ fontWeight: 400, fontSize: 12, color: '#8B9DBA' }}>
+                          {' '}(${base.toFixed(2)} + {routeEst.km.toFixed(1)} km × ${kmRate.toFixed(2)}{kmSur > 0 ? ` + recargo $${kmSur.toFixed(2)}` : ''})
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 12, color: '#8B9DBA' }}>Sin tarifa $/km configurada — consulta en Cálculo y tarifas</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -889,6 +923,8 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
   const [checkingDup, setCheckingDup] = React.useState(false)
   const [savedAddresses, setSavedAddresses] = React.useState([])
   const [surcharges, setSurcharges] = React.useState({})
+  const [pricingCfg, setPricingCfg] = React.useState({})
+  const [routeEst, setRouteEst] = React.useState({ busy: false, km: null, text: '', err: '' })
   const [data, setData] = React.useState({
     sender: emptyAddress(),
     recipient: emptyAddress(),
@@ -970,12 +1006,39 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
       .then((res) => setSavedAddresses(Array.isArray(res) ? res : res.addresses || []))
       .catch(() => setSavedAddresses([]))
     api.getPricingConfig(token)
-      .then((res) => setSurcharges(res?.surcharges || {}))
+      .then((res) => { setSurcharges(res?.surcharges || {}); setPricingCfg(res || {}) })
       .catch(() => {})
   }, [token])
 
   const sectionMap = { 0: 'sender', 1: 'recipient', 2: 'package', 3: 'service', 4: 'payment' }
   const section = sectionMap[step]
+
+  const calcRoutePrice = async () => {
+    const origin = [data.sender.address, data.sender.city, data.sender.country].filter(Boolean).join(', ')
+    const destination = [data.recipient.address, data.recipient.city, data.recipient.country].filter(Boolean).join(', ')
+    if (!origin || !destination || !window.google?.maps || routeEst.busy) return
+    setRouteEst(x => ({ ...x, busy: true, err: '' }))
+    try {
+      const svc = new window.google.maps.DistanceMatrixService()
+      const res = await svc.getDistanceMatrix({ origins: [origin], destinations: [destination], travelMode: 'DRIVING', unitSystem: window.google.maps.UnitSystem.METRIC })
+      const el = res?.rows?.[0]?.elements?.[0]
+      if (el?.status !== 'OK') throw new Error(el?.status === 'ZERO_RESULTS' ? 'Sin ruta entre esos puntos' : (el?.status || 'Sin ruta'))
+      setRouteEst({ busy: false, km: el.distance.value / 1000, text: el.distance.text, err: '' })
+    } catch (e) {
+      setRouteEst({ busy: false, km: null, text: '', err: e.message || 'No se pudo calcular la distancia' })
+    }
+  }
+
+  const kmTotals = () => {
+    const svc = data.service.service || 'Terrestre'
+    const rate = pricingCfg.service_rates?.[svc] || {}
+    const kmRate = parseFloat(rate.per_km) || parseFloat(pricingCfg.per_km) || 0
+    const base = parseFloat(rate.base) || 0
+    const s = surcharges?.[data.service.delivery || 'standard'] || {}
+    const kmPrice = routeEst.km ? base + routeEst.km * kmRate : 0
+    const kmSur = kmPrice > 0 ? (s.type === 'fixed' ? parseFloat(s.value) || 0 : kmPrice * (parseFloat(s.value) || 0) / 100) : 0
+    return { base, kmRate, kmPrice, kmSur, total: kmPrice > 0 ? kmPrice + kmSur : 0 }
+  }
 
   const getPhoneExample = (section) => {
     const country = section ? (data[section].phoneCountry || data[section].country) : ''
@@ -1260,6 +1323,8 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
         recipient_email: data.recipient.email,
         service_type: data.service.service,
         delivery_mode: data.service.delivery || 'standard',
+        amount: kmTotals().total || undefined,
+        distance_km: routeEst.km || undefined,
         packages: data.package.map((pkg) => {
           const keys = pkgDims(pkg.type)
           return {
