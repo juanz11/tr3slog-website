@@ -1,6 +1,7 @@
 import React from 'react'
 import { api } from '../api'
 import { Pagination, usePagination, usePolling, SortControl, sortRows } from './Shared'
+import { Qr, Barcode, trackUrl } from './Manifest'
 
 const CITY_CODES = {
   'san juan': 'PRSJ', 'santo domingo': 'DOSD', 'punta cana': 'DOPC', 'miami': 'MIAM',
@@ -274,65 +275,67 @@ function DetailView({ app, shipment, onClose }) {
             return (
               <div style={cardBase}>
                 <div style={sectionTitle}>Etiqueta</div>
-                <div style={{ border: '1.5px solid #DCE6F5', borderRadius: 12, overflow: 'hidden', background: '#fff', fontSize: 12.5 }}>
-                  <div style={{ background: '#001B45', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ border: '1.5px solid #DCE6F5', borderRadius: 12, overflow: 'hidden', background: '#fff', fontSize: 12.5, maxWidth: 560 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #E3EBF7' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span aria-hidden="true" style={{ display: 'inline-flex', gap: 3 }}>
                         <span style={{ width: 16, height: 4, background: '#D99A00', transform: 'skewX(-24deg)', display: 'block' }} />
                         <span style={{ width: 7, height: 4, background: '#087CF0', transform: 'skewX(-24deg)', display: 'block' }} />
                       </span>
-                      <span style={{ fontWeight: 800, letterSpacing: '.1em', color: '#fff', fontSize: 13 }}>TR3SLOG</span>
+                      <span style={{ fontWeight: 800, letterSpacing: '.1em', color: '#001B45', fontSize: 15 }}>TR3SLOG</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {express && <span style={{ padding: '3px 12px', borderRadius: 100, background: '#D99A00', color: '#001B45', fontSize: 10.5, fontWeight: 800 }}>EXPRESS</span>}
-                      <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: '#9FB0C9' }}>CMP-{String(shipment.id).padStart(6, '0')}</span>
+                    <div style={{ background: '#001B45', color: '#fff', padding: '8px 14px', borderRadius: 4, fontWeight: 800, fontSize: 13, letterSpacing: '.04em', textAlign: 'center' }}>
+                      {express ? 'EXPRESS' : 'ÚLTIMA MILLA'}
                     </div>
                   </div>
-                  <div style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px', borderBottom: '1px solid #E3EBF7' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderBottom: '1px solid #E3EBF7' }}>
                     <div>
-                      <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: '#087CF0', marginBottom: 3 }}>Remitente</div>
-                      <div style={{ fontSize: 12, color: '#10233F' }}>{[shipment.sender_company || 'TR3SLOG', shipment.sender_name].filter(Boolean).join(' · ')}</div>
+                      <div style={label}>Remitente</div>
+                      <div style={{ fontSize: 12.5, color: '#10233F', fontWeight: 600 }}>{[shipment.sender_company || 'TR3SLOG', shipment.sender_name].filter(Boolean).join(' · ')}</div>
                       <div style={{ fontSize: 11.5, color: '#6C82A6' }}>{[shipment.sender_address, [shipment.sender_city, shipment.sender_country].filter(Boolean).join(', '), shipment.sender_zip].filter(Boolean).join(' · ') || shipment.origin || '—'}</div>
                     </div>
-                    <div>
-                      <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: '#D99A00', marginBottom: 3 }}>Destinatario</div>
-                      <div style={{ fontSize: 12, color: '#10233F', fontWeight: 600 }}>{[shipment.recipient_company, shipment.recipient_name].filter(Boolean).join(' · ') || shipment.recipient_name || '—'}</div>
-                      <div style={{ fontSize: 11.5, color: '#6C82A6' }}>{[shipment.recipient_address, [shipment.recipient_city, shipment.recipient_country].filter(Boolean).join(', '), shipment.recipient_zip].filter(Boolean).join(' · ') || shipment.destination || '—'}</div>
-                      {shipment.recipient_phone && <div style={{ fontSize: 11.5, color: '#6C82A6' }}>{shipment.recipient_phone}</div>}
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={label}>Fecha</div>
+                      <div style={{ fontSize: 12.5, color: '#10233F' }}>{shipment.created_at ? fmt(new Date(shipment.created_at)) : '—'}</div>
+                      <div style={{ ...label, marginTop: 8 }}>Referencia</div>
+                      <div style={{ fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', color: '#0768C9' }}>{shipment.invoice_number || `ORD-${String(shipment.id).padStart(4, '0')}`}</div>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderBottom: '1px solid #E3EBF7' }}>
-                    {[['Fecha', shipment.created_at ? fmt(new Date(shipment.created_at)) : '—'],
-                      ['Referencia', shipment.invoice_number || `ORD-${String(shipment.id).padStart(4, '0')}`],
-                      ['Bultos', `1 de ${nPkgs}`]].map(([k, v], i) => (
-                      <div key={k} style={{ padding: '8px 14px', borderLeft: i ? '1px solid #E3EBF7' : 'none' }}>
-                        <div style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 2 }}>{k}</div>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#10233F' }}>{v}</div>
+                  <div style={{ display: 'flex', borderBottom: '1px solid #E3EBF7' }}>
+                    <div style={{ background: '#001B45', color: '#fff', writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 9, letterSpacing: '.18em', fontWeight: 700, display: 'flex', alignItems: 'center', padding: '12px 7px' }}>DESTINATARIO</div>
+                    <div style={{ flex: 1, padding: '14px 18px' }}>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: '#10233F' }}>{[shipment.recipient_company, shipment.recipient_name].filter(Boolean).join(' · ') || shipment.recipient_name || '—'}</div>
+                      <div style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.45, color: '#10233F' }}>{[shipment.recipient_address, [shipment.recipient_city, shipment.recipient_country].filter(Boolean).join(', '), shipment.recipient_zip].filter(Boolean).join(' · ') || shipment.destination || '—'}</div>
+                      {shipment.recipient_phone && <div style={{ fontSize: 12, marginTop: 5, color: '#10233F' }}>{shipment.recipient_phone}</div>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 16px', borderBottom: '1px solid #E3EBF7' }}>
+                    <div>
+                      <div style={label}>Hub · Ruta · Parada</div>
+                      <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 800, fontSize: 15, color: '#001B45', marginTop: 3 }}>
+                        {mani ? [mani.codigo, md?.sequence != null ? `P${String(md.sequence).padStart(2, '0')}` : null].filter(Boolean).join(' · ') : 'SIN ASIGNAR'}
                       </div>
-                    ))}
+                    </div>
+                    <div style={{ border: '2px solid #087CF0', borderRadius: 6, padding: '5px 12px', fontSize: 14, fontWeight: 800, color: '#001B45', flexShrink: 0 }}>1 de {nPkgs}</div>
                   </div>
-                  <div style={{ padding: '8px 14px', borderBottom: '1px solid #E3EBF7', display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '.12em', textTransform: 'uppercase', color: '#087CF0' }}>Hub · Ruta · Parada</span>
-                    <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 700, fontSize: 13, color: '#001B45' }}>
-                      {mani ? [mani.codigo, md?.sequence != null ? `P${String(md.sequence).padStart(2, '0')}` : null].filter(Boolean).join(' · ') : 'SIN ASIGNAR'}
-                    </span>
+                  <div style={{ padding: '12px 16px 8px', borderBottom: '1px solid #E3EBF7' }}>
+                    <Barcode value={trk} height={52} />
+                    <div style={{ textAlign: 'center', fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 800, fontSize: 14, color: '#001B45', letterSpacing: '.1em', marginTop: 6 }}>{trk}</div>
                   </div>
-                  <div style={{ padding: '14px', textAlign: 'center', borderBottom: '1px solid #E3EBF7' }}>
-                    <div aria-hidden="true" style={{ height: 46, margin: '0 auto 6px', maxWidth: 300, background: 'repeating-linear-gradient(90deg, #001B45 0 2px, transparent 2px 4px, #001B45 4px 5px, transparent 5px 9px, #001B45 9px 12px, transparent 12px 14px, #001B45 14px 15px, transparent 15px 18px)' }} />
-                    <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 800, fontSize: 15, color: '#001B45', letterSpacing: '.06em' }}>{trk}</div>
+                  <div style={{ display: 'flex', gap: 16, padding: '12px 16px', alignItems: 'center', borderBottom: '1px solid #E3EBF7' }}>
+                    <Qr value={trackUrl(trk)} size={80} />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px', flex: 1 }}>
+                      <div><div style={label}>Peso</div><div style={{ fontSize: 13, fontWeight: 700, color: '#10233F' }}>{shipment.weight || '—'}</div></div>
+                      <div><div style={label}>Dimensiones</div><div style={{ fontSize: 13, fontWeight: 700, color: '#10233F' }}>{shipment.dimensions || '—'}</div></div>
+                      <div><div style={label}>Bultos</div><div style={{ fontSize: 13, fontWeight: 700, color: '#10233F' }}>{nPkgs}</div></div>
+                      <div><div style={label}>Pod</div><div style={{ fontSize: 13, fontWeight: 700, color: '#10233F' }}>QR + foto + GPS</div></div>
+                    </div>
                   </div>
-                  <div style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 14px' }}>
-                    <L k="Peso" v={shipment.weight} />
-                    <L k="Dimensiones" v={shipment.dimensions} />
-                    <L k="Pod" v="QR + foto + GPS" />
-                    <L k="Manifiesto" v={mani?.codigo} />
-                    <L k="Paquete" v={nPkgs === 1 ? pkgCode + '-01' : `${pkgCode}-01 … ${pkgCode}-${String(nPkgs).padStart(2, '0')}`} />
-                  </div>
-                  <div style={{ padding: '9px 14px', borderTop: '1px solid #E3EBF7', background: '#EEF4FC', display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                    {express && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#A93226' }}>PRIORITARIO</span>}
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: '#D99A00' }}>FRÁGIL</span>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: '#001B45' }}>FIRMA REQUERIDA</span>
-                    <span style={{ marginLeft: 'auto', fontSize: 10.5, color: '#087CF0', fontWeight: 600 }}>tr3slog.com</span>
+                  <div style={{ display: 'flex', gap: 10, padding: '10px 16px', alignItems: 'center' }}>
+                    {express && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#A93226', alignSelf: 'center' }}>PRIORITARIO</span>}
+                    <span style={{ background: '#C0392B', color: '#fff', padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>FRÁGIL</span>
+                    <span style={{ background: '#D99A00', color: '#001B45', padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>FIRMA REQUERIDA</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8B9DBA' }}>Escanea el QR · tr3slog.com</span>
                   </div>
                 </div>
               </div>

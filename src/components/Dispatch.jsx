@@ -307,7 +307,6 @@ function ShipmentDetail({ d, lang, shipment, drivers, onClose }) {
               <DetailField label={f.method} value={methodLabel} />
               <DetailField label={f.bank} value={s.payment_bank} />
               <DetailField label={f.reference} value={s.payment_reference} />
-              <DetailField label={f.charge} value={s.charge_to_account} />
             </div>
           </div>
         )}

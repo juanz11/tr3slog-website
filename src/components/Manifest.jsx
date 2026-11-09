@@ -351,25 +351,119 @@ function qrPath(value) {
   return parts.join('')
 }
 
-function Qr({ value, size = 44, label }) {
-  const path = React.useMemo(() => qrPath(value), [value])
+export const SITE_URL = (typeof window !== 'undefined' && window.location?.origin) || 'https://termocontroljb.com'
+export const trackUrl = (code) => `${SITE_URL}/track?code=${encodeURIComponent(code || '')}`
+
+export function Qr({ value, size = 44, label }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-      <svg
+      <img
+        src={`https://api.qrserver.com/v1/create-qr-code/?size=${size * 4}x${size * 4}&margin=0&data=${encodeURIComponent(value)}`}
         width={size}
         height={size}
-        viewBox="0 0 29 29"
-        shapeRendering="crispEdges"
-        role="img"
-        aria-label={label || `QR ${value}`}
+        alt={label || `QR ${value}`}
         style={{ display: 'block' }}
-      >
-        <rect width="29" height="29" fill="#fff" />
-        <path fill="#001B45" d={path} />
-      </svg>
+      />
       {label && (
         <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 11, color: '#10233F' }}>{label}</div>
       )}
+    </div>
+  )
+}
+
+const C128 = ['212222','222122','222221','121223','121322','131222','122213','122312','132212','221213','221312','231212','112232','122132','122231','113222','123122','123221','223211','221132','221231','213212','223112','312131','311222','321122','321221','312212','322112','322211','212123','212321','232121','111323','131123','131321','112313','132113','132311','211313','231113','231311','112133','112331','132131','113123','113321','133121','313121','211331','231131','213113','213311','213131','311123','311321','331121','312113','312311','332111','314111','221411','431111','111224','111422','121124','121421','141122','141221','112214','112412','122114','122411','142112','142211','241211','221114','413111','241112','134111','111242','121142','121241','114212','124112','124211','411212','421112','421211','212141','214121','412121','111143','111341','131141','114113','114311','411113','411311','113141','114131','311141','411131','211412','211214','211232','2331112']
+
+export function Barcode({ value, height = 56 }) {
+  const segs = React.useMemo(() => {
+    const vals = [104]
+    let chk = 104
+    ;[...String(value || '')].forEach((ch, i) => {
+      const v = Math.min(Math.max(ch.charCodeAt(0), 32), 126) - 32
+      vals.push(v)
+      chk += v * (i + 1)
+    })
+    vals.push(chk % 103, 106)
+    const out = []
+    for (const v of vals) {
+      const p = C128[v]
+      for (let i = 0; i < p.length; i++) out.push(i % 2 === 0 ? +p[i] : -+p[i])
+    }
+    return out
+  }, [value])
+  let x = 0
+  const rects = []
+  segs.forEach((s, i) => {
+    const w = Math.abs(s)
+    if (s > 0) rects.push(<rect key={i} x={x} y={0} width={w} height={height} fill="#10233F" />)
+    x += w
+  })
+  return <svg width="100%" height={height} viewBox={`0 0 ${x} ${height}`} preserveAspectRatio="none" style={{ display: 'block' }}>{rects}</svg>
+}
+
+function ShippingLabel({ m, d }) {
+  const ped = d.pedido || {}
+  const pk = (ped.paquetes || [])[0] || {}
+  const code = d.codigoSeguimiento || ''
+  const seq = d.secuenciaVisita || 1
+  const total = Math.max(1, (m?.detalles || []).length)
+  const fragile = /fr[aá]gil/i.test([ped.notas, pk.contenido, pk.notas].filter(Boolean).join(' '))
+  const lbs = pk.peso ?? ped.peso ?? ped.pesoTotal
+  const dims = pk.dimensiones || ((pk.largo && pk.ancho && pk.alto) ? `${pk.largo}×${pk.ancho}×${pk.alto}` : null)
+  const mono = { fontFamily: 'ui-monospace, Menlo, monospace' }
+  const lbl = { fontSize: 9, fontWeight: 700, letterSpacing: '.12em', color: '#087CF0', textTransform: 'uppercase' }
+  return (
+    <div style={{ width: 560, maxWidth: '100%', background: '#fff', border: '1px solid #C9D6EA', borderRadius: 6, overflow: 'hidden', fontFamily: 'Arial, sans-serif', color: '#10233F' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #E3EBF7' }}>
+        <div style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: 20, color: '#001B45' }}>TR3S<span style={{ color: '#087CF0' }}>LOG</span></div>
+        <div style={{ background: '#001B45', color: '#fff', padding: '8px 16px', borderRadius: 4, fontWeight: 800, fontSize: 15, letterSpacing: '.04em', textAlign: 'center' }}>ÚLTIMA MILLA</div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 20px', borderBottom: '1px solid #E3EBF7' }}>
+        <div>
+          <div style={lbl}>Remitente</div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>{ped.remitente || 'TR3SLOG'}</div>
+          <div style={{ fontSize: 12, color: '#4A5B76' }}>{ped.origen || '—'}</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={lbl}>Fecha</div>
+          <div style={{ fontSize: 13 }}>{new Date().toLocaleDateString()}</div>
+          <div style={{ ...lbl, marginTop: 8 }}>Referencia</div>
+          <div style={{ fontSize: 12, ...mono, color: '#0768C9' }}>{m?.codigo || '—'}</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', borderBottom: '1px solid #E3EBF7' }}>
+        <div style={{ background: '#001B45', color: '#fff', writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 10, letterSpacing: '.18em', fontWeight: 700, display: 'flex', alignItems: 'center', padding: '14px 8px' }}>DESTINATARIO</div>
+        <div style={{ flex: 1, padding: '16px 20px' }}>
+          <div style={{ fontSize: 19, fontWeight: 800 }}>{ped.destinatario || '—'}</div>
+          <div style={{ fontSize: 14, marginTop: 4, lineHeight: 1.45 }}>{ped.direccion || '—'}</div>
+          <div style={{ fontSize: 13, color: '#4A5B76' }}>{ped.destino || ''}</div>
+          <div style={{ fontSize: 13, marginTop: 6 }}>{ped.telefono || ''}</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid #E3EBF7' }}>
+        <div>
+          <div style={lbl}>Manifiesto · Secuencia</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#001B45', marginTop: 4 }}>{m?.codigo || '—'} · {seq}</div>
+        </div>
+        <div style={{ border: '2px solid #087CF0', borderRadius: 6, padding: '6px 14px', fontSize: 18, fontWeight: 800, color: '#001B45' }}>{seq} de {total}</div>
+      </div>
+      <div style={{ padding: '14px 20px 10px', borderBottom: '1px solid #E3EBF7' }}>
+        <Barcode value={code} height={62} />
+        <div style={{ textAlign: 'center', ...mono, fontSize: 15, fontWeight: 700, letterSpacing: '.14em', marginTop: 6 }}>{code}</div>
+      </div>
+      <div style={{ display: 'flex', gap: 20, padding: '14px 20px', alignItems: 'center', borderBottom: '1px solid #E3EBF7' }}>
+        <Qr value={trackUrl(code)} size={92} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, flex: 1 }}>
+          <div><div style={lbl}>Peso</div><div style={{ fontSize: 15, fontWeight: 700 }}>{lbs != null ? `${lbs} kg` : '—'}</div></div>
+          <div><div style={lbl}>Dimensiones</div><div style={{ fontSize: 15, fontWeight: 700 }}>{dims || '—'}</div></div>
+          <div><div style={lbl}>Piezas</div><div style={{ fontSize: 15, fontWeight: 700 }}>{pk.piezas ?? ped.piezas ?? '—'}</div></div>
+          <div><div style={lbl}>Tipo</div><div style={{ fontSize: 15, fontWeight: 700 }}>{pk.tipo || '—'}</div></div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 10, padding: '12px 20px', alignItems: 'center' }}>
+        {fragile && <span style={{ background: '#C0392B', color: '#fff', padding: '7px 14px', borderRadius: 4, fontSize: 12, fontWeight: 800 }}>FRÁGIL</span>}
+        <span style={{ background: '#D99A00', color: '#001B45', padding: '7px 14px', borderRadius: 4, fontSize: 12, fontWeight: 800 }}>FIRMA REQUERIDA</span>
+        <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8B9DBA' }}>Escanea el QR para rastrear</span>
+      </div>
     </div>
   )
 }
@@ -493,6 +587,7 @@ export default function Manifest({ token, selectId, lang }) {
   const [editBusy, setEditBusy] = React.useState(false)
   const [editAdd, setEditAdd] = React.useState('')
   const [viewStop, setViewStop] = React.useState(null)
+  const [labelDetail, setLabelDetail] = React.useState(null)
   const [loading, setLoading] = React.useState(true)
   const [err, setErr] = React.useState('')
   const [toast, setToast] = React.useState('')
@@ -991,7 +1086,11 @@ export default function Manifest({ token, selectId, lang }) {
                         </div>
                       )}
                     </span>
-                    <span><Qr value={d.codigoSeguimiento} size={44} /></span>
+                    <span>
+                      <Qr value={trackUrl(d.codigoSeguimiento)} size={44} />
+                      <button type="button" onClick={() => setLabelDetail(d)}
+                        style={{ marginTop: 4, fontSize: 11, fontWeight: 600, color: '#0768C9', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>Etiqueta</button>
+                    </span>
                     <span>{chip(DETALLES[d.estado] || d.estado, TONE[DETAIL_TONE[d.estado]] || TONE.neutral)}</span>
                     <span style={{ color: '#6C82A6', fontSize: 12 }}>{fmtDT(d.horaVisita)}</span>
                     <span style={{ fontSize: 12, color: '#6C82A6' }}>
@@ -1070,6 +1169,30 @@ export default function Manifest({ token, selectId, lang }) {
           )}
         </div>
       </div>
+
+      {labelDetail && (
+        <div onClick={() => setLabelDetail(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(4,17,38,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, maxWidth: 640, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#001B45' }}>Etiqueta de envío</div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <button type="button" onClick={() => {
+                  const el = document.getElementById('shipping-label-print')
+                  if (!el) return
+                  const w = window.open('', '_blank', 'width=720,height=960')
+                  if (!w) return
+                  w.document.write(`<html><head><title>${labelDetail.codigoSeguimiento || 'etiqueta'}</title></head><body style="margin:0">${el.outerHTML}</body></html>`)
+                  w.document.close()
+                  w.focus()
+                  w.print()
+                }} style={{ padding: '8px 16px', borderRadius: 9, border: 'none', background: '#087CF0', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>Imprimir</button>
+                <button onClick={() => setLabelDetail(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#6C82A6', lineHeight: 1 }}>×</button>
+              </div>
+            </div>
+            <div id="shipping-label-print"><ShippingLabel m={m} d={labelDetail} /></div>
+          </div>
+        </div>
+      )}
 
       {viewStop && (() => {
         const ped = viewStop.ped || {}

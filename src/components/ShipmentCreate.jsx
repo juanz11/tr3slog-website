@@ -324,7 +324,7 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
   )
 }
 
-function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharges, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, isAfterHours, afterHoursMsg, onBack, onNext, onFinish }) {
+function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharges, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, isAfterHours, afterHoursMsg, onBack, onNext, onFinish, routeEst, calcRoutePrice, kmTotals }) {
   const placesContainers = React.useRef({})
   const [placesReady, setPlacesReady] = React.useState(false)
   const [placesError, setPlacesError] = React.useState(false)
@@ -1068,7 +1068,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
     }
     if (step === 4) {
       const method = data.payment.method || ''
-      const baseKeys = ['method', 'chargeToAccount']
+      const baseKeys = ['method']
       const extraKeys = []
       const extraRequired = []
       if (method === 'card') {
@@ -1087,7 +1087,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
         keys: [...baseKeys, ...extraKeys],
         fields: c.payment.fields,
         placeholders: c.payment.placeholders,
-        required: ['method', 'chargeToAccount', ...extraRequired],
+        required: ['method', ...extraRequired],
         span2: c.payment.span2,
         payment: c.payment,
         options: {
@@ -1099,7 +1099,6 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
             { value: 'reservas', label: 'BanReservas' },
             { value: 'international', label: 'Transferencia internacional' },
           ],
-          chargeToAccount: ['No', 'Sí'],
         },
       }
     }
@@ -1237,7 +1236,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
 
   const validatePayment = () => {
     const p = data.payment
-    if (!p.method || !p.chargeToAccount) {
+    if (!p.method) {
       return c.errStep
     }
     if (p.method === 'card' && (!p.paymentMethod || !p.cardholderName.trim() || !p.billingZip.trim())) {
@@ -1344,7 +1343,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
         payment_method: data.payment.method,
         payment_method_id,
         ...payment_meta,
-        charge_to_account: data.payment.chargeToAccount,
+        charge_to_account: data.payment.chargeToAccount || undefined,
       }
       const res = await api.createShipment(payload, token)
       setResult(res)
@@ -1507,6 +1506,9 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
             onBack={onBack}
             onNext={onNext}
             onFinish={onFinish}
+            routeEst={routeEst}
+            calcRoutePrice={calcRoutePrice}
+            kmTotals={kmTotals}
           />
         ) : (
           <div style={{
