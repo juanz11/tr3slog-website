@@ -11,7 +11,7 @@ const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
   || 'pk_test_51U9oCHLy571aG6WWmqNdtAiM9E7ZVDjTeB2Qs62VvLjOhv0Y253OGaFztaJseVBUhhkiZ3Q3CxaY8Fy9S2VHOg8L00mmeKsQQK'
 
-const ADDRESS_KEYS = ['name', 'company', 'address', 'country', 'phone', 'email']
+const ADDRESS_KEYS = ['name', 'address', 'country', 'phone', 'email']
 const ADDRESS_REQUIRED = ['name', 'address', 'city', 'country', 'zip', 'phone', 'email']
 const ADDRESS_SPAN2 = ['address', 'country', 'phone', 'email']
 

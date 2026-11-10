@@ -7,7 +7,6 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
   const a = authI18n[lang] || authI18n.es
   const [mode, setMode] = React.useState('login')
   const [name, setName] = React.useState('')
-  const [company, setCompany] = React.useState('')
   const [email, setEmail] = React.useState('')
   const [phone, setPhone] = React.useState('')
   const [country, setCountry] = React.useState('')
@@ -24,7 +23,6 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
 
   const reset = () => {
     setName('')
-    setCompany('')
     setEmail('')
     setPhone('')
     setCountry('')
@@ -116,10 +114,14 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
       }
       const payload = mode === 'login'
         ? { email, password }
-        : { name, company, email, phone, country, password, password_confirmation: passwordConfirmation }
+        : { name, email, phone, country, password, password_confirmation: passwordConfirmation }
       const res = mode === 'login'
         ? await api.login(payload)
         : await api.register(payload)
+      if (res.requires_verification) {
+        window.location.href = `/verify?email=${encodeURIComponent(email)}${res.verification_code ? `&code=${res.verification_code}` : ''}`
+        return
+      }
       onLogin(res.user, res.token)
       onClose()
     } catch (err) {
@@ -129,6 +131,10 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
       let display = a.errCreds
       if (emailTaken) {
         display = a.errEmailTaken
+      } else if (msg === 'unverified_account') {
+        window.location.href = `/verify?email=${encodeURIComponent(email)}${err.code ? `&code=${err.code}` : ''}`
+        setLoading(false)
+        return
       } else if (msg === 'account_suspended') {
         display = a.errSuspended || msg
       } else if (knownCodes.includes(msg)) {
@@ -242,15 +248,6 @@ export default function AuthModal({ t, lang, langs, setLang, onClose, onLogin, s
                           value={name} onChange={(e) => { setName(e.target.value); clearError() }}
                           placeholder={a.namePh}
                           className={inputBorder('name')}
-                        />
-                      </div>
-                      <div>
-                        <label className="auth-label">{a.company}</label>
-                        <input
-                          type="text"
-                          value={company} onChange={(e) => { setCompany(e.target.value); clearError() }}
-                          placeholder={a.companyPh}
-                          className={inputBorder('company')}
                         />
                       </div>
                     </>

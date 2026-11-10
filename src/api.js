@@ -18,13 +18,27 @@ async function handle(res) {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
     const details = Object.values(data.errors || {}).flat().join(' · ')
-    throw new Error(details || data.message || 'Error del servidor')
+    const err = new Error(details || data.message || 'Error del servidor')
+    err.code = data.code
+    throw err
   }
   return res.status === 204 ? null : res.json()
 }
 
 export const api = {
   register: (data) => fetch(`${API_URL}/register`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  verifyPhone: (data) => fetch(`${API_URL}/verify-phone`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  verifyCode: (data) => fetch(`${API_URL}/verify-code`, {
     method: 'POST',
     headers: headers(),
     body: JSON.stringify(data),

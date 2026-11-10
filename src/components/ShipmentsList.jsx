@@ -24,6 +24,14 @@ const STATUS_TONE = [
   { bg: 'rgba(192,57,43,.1)', fg: '#A93226' },
 ]
 
+const STATUS_KEY_MAP = {
+  in_transit: 0, transit: 0, 'en tránsito': 0,
+  out_for_delivery: 1,
+  delivered: 2, entregado: 2, entregada: 2,
+  pending: 3, assigned: 3, solicitud_recibida: 3,
+  incident: 4, incidencia: 4,
+}
+
 const statusIndex = (status, statuses) => {
   const list = statuses || []
   if (typeof status === 'number') {
@@ -31,7 +39,7 @@ const statusIndex = (status, statuses) => {
     return 0
   }
   const normalized = String(status || '').toLowerCase()
-  if (normalized === 'pending' || normalized === 'assigned') return 3
+  if (normalized in STATUS_KEY_MAP) return STATUS_KEY_MAP[normalized]
   const idx = list.findIndex((s) => s && s.toLowerCase() === normalized)
   return idx >= 0 ? idx : 0
 }
@@ -84,9 +92,15 @@ function DetailView({ app, shipment, onClose }) {
     return `${d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} · ${d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false })}`
   }
 
+  const updated = shipment.updated_at ? new Date(shipment.updated_at) : null
+  const deliveredAt = shipment.delivered_at || shipment.manifest_detail?.horaVisita || shipment.manifest_detail?.hora_visita || null
+
   const stepDate = (i) => {
-    if (i > currentIdx || !created) return null
-    return new Date(created.getTime() + i * 86400000)
+    if (i > currentIdx) return null
+    if (i === 0) return created
+    if (i === 5) return deliveredAt ? new Date(deliveredAt) : updated
+    if (i === currentIdx || i < currentIdx) return updated
+    return null
   }
 
   const fmtMoney = (n) => `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

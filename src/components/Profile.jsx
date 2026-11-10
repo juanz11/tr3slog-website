@@ -6,7 +6,7 @@ export default function Profile({ app, user, token, onUserUpdate }) {
   const [name, setName] = React.useState(user?.name || '')
   const [company, setCompany] = React.useState(user?.company || '')
   const [phone, setPhone] = React.useState(user?.phone || '')
-  const email = user?.email || ''
+  const [email, setEmail] = React.useState(user?.email || '')
   const [loading, setLoading] = React.useState(false)
   const [ok, setOk] = React.useState('')
   const [error, setError] = React.useState('')
@@ -73,8 +73,14 @@ export default function Profile({ app, user, token, onUserUpdate }) {
     }
     setLoading(true)
     try {
-      const payload = { name, company, phone }
+      const payload = { name, email, phone }
       const data = await api.updateUser(user.id, payload, token)
+      if (data?.requires_verification) {
+        const target = data.verify_email || email
+        const st = data.verify_email ? 1 : 2
+        window.location.href = `/verify?email=${encodeURIComponent(target)}&step=${st}&phone=${data.verify_phone ? 1 : 0}${data.code ? `&code=${data.code}` : ''}`
+        return
+      }
       setOk(p.saved)
       const updated = data?.user
       if (onUserUpdate) {
@@ -143,25 +149,7 @@ export default function Profile({ app, user, token, onUserUpdate }) {
           <span style={{
             display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
             textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8,
-          }}>{p.company}</span>
-          <input
-            type="text"
-            value={company}
-            onChange={(e) => setCompany(e.target.value)}
-            style={{
-              width: '100%', padding: '14px 15px',
-              border: '1.5px solid #DCE6F5', borderRadius: 11,
-              background: '#EEF4FC', font: 'inherit', color: '#001B45',
-              outline: 'none',
-            }}
-          />
-        </label>
-
-        <label style={{ display: 'block' }}>
-          <span style={{
-            display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
-            textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8,
-          }}>{p.phone}</span>
+          }}>{p.phone}{user?.phone_verified_at && <span style={{ marginLeft: 10, padding: '3px 10px', borderRadius: 99, fontSize: 10, fontWeight: 700, background: 'rgba(19,122,69,.12)', color: '#0F5F36', textTransform: 'none', letterSpacing: '.04em' }}>✓ Verificado</span>}</span>
           <input
             type="tel"
             value={phone}
@@ -179,16 +167,16 @@ export default function Profile({ app, user, token, onUserUpdate }) {
           <span style={{
             display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em',
             textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8,
-          }}>{p.email}</span>
+          }}>{p.email}{user?.email_verified_at && <span style={{ marginLeft: 10, padding: '3px 10px', borderRadius: 99, fontSize: 10, fontWeight: 700, background: 'rgba(19,122,69,.12)', color: '#0F5F36', textTransform: 'none', letterSpacing: '.04em' }}>✓ Verificado</span>}</span>
           <input
             type="email"
-            readOnly
             value={email}
+            onChange={(e) => setEmail(e.target.value)}
             style={{
               width: '100%', padding: '14px 15px',
               border: '1.5px solid #DCE6F5', borderRadius: 11,
-              background: '#F4F6FA', font: 'inherit', color: '#6C82A6',
-              outline: 'none', cursor: 'not-allowed',
+              background: '#EEF4FC', font: 'inherit', color: '#001B45',
+              outline: 'none',
             }}
           />
         </label>

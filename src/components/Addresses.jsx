@@ -9,6 +9,12 @@ const COUNTRY_OPTIONS = [
   { code: 'CR', name: 'Costa Rica' },
 ]
 
+const CITIES = {
+  DO: ['Santo Domingo', 'Santiago', 'San Cristóbal', 'La Vega', 'Puerto Plata', 'Azua', 'La Romana', 'Higüey', 'San Pedro de Macorís', 'San Francisco de Macorís'],
+  PR: ['San Juan', 'Bayamón', 'Guaynabo', 'Carolina', 'Ponce', 'Mayagüez', 'Caguas', 'Fajardo', 'Aguadilla'],
+  CR: ['San José', 'Alajuela', 'Heredia', 'Cartago', 'Liberia', 'Puntarenas', 'Limón'],
+}
+
 const ZIP_PATTERNS = {
   AF: /^\d{4}$/,
   AL: /^\d{4}$/,
@@ -411,7 +417,22 @@ export default function Addresses({ app, token }) {
                 <span style={{ display: 'block', fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }}>
                   {a.f[k]}
                 </span>
-                {k === 'country' ? (
+                {k === 'city' && CITIES[formVals.country] ? (
+                  <select
+                    value={formVals[k] || ''}
+                    onChange={(e) => { setFormVals((v) => ({ ...v, [k]: e.target.value })); setErr(false); setLoadError(null) }}
+                    style={{
+                      width: '100%', padding: '14px 15px',
+                      border: `1.5px solid ${err && REQUIRED.includes(k) && !(formVals[k] || '').trim() ? '#C0392B' : '#DCE6F5'}`,
+                      borderRadius: 11, background: '#EEF4FC', fontSize: 15, color: '#001B45', outline: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">{a.f[k]}</option>
+                    {CITIES[formVals.country].map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                ) : k === 'country' ? (
                   <select
                     value={formVals[k] || ''}
                     onChange={(e) => { setFormVals((v) => ({ ...v, [k]: e.target.value })); setErr(false); setLoadError(null) }}
