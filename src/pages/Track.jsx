@@ -200,19 +200,16 @@ export default function Track({ t }) {
               </div>
               <div style={{ border: '1px solid #DCE6F5', borderRadius: 18, padding: 26, background: '#fff' }}>
                 <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{t.trk.proofTitle}</div>
-                <div style={{ height: 200, borderRadius: 14, overflow: 'hidden', background: '#EEF4FC', marginBottom: 12 }}>
-                  <img src="/proof.webp" alt={t.trk.proofPhoto} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', border: '1px solid #DCE6F5', borderRadius: 12 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#087CF0" strokeWidth="1.7"><path d="M3 18c3 0 4-9 7-9s3 7 5.5 7S19 12 21 12" /></svg>
-                    <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{t.trk.proofSign}</span>
-                    <span style={{ fontSize: 12, color: '#6C82A6' }}>{t.trk.proofPending}</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#087CF0" strokeWidth="1.7"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" /></svg>
+                    <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{t.trk.receivedBy}</span>
+                    <span style={{ fontSize: 12, color: '#6C82A6' }}>J. González</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', border: '1px solid #DCE6F5', borderRadius: 12 }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#087CF0" strokeWidth="1.7"><path d="M6 3h8l4 4v14H6zM14 3v4h4" /></svg>
-                    <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{t.trk.proofDoc}</span>
-                    <span style={{ fontSize: 12, color: '#6C82A6' }}>{t.trk.proofPending}</span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#087CF0" strokeWidth="1.7"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>
+                    <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{t.trk.deliveredAt}</span>
+                    <span style={{ fontSize: 12, color: '#6C82A6' }}>{t.trk.etaVal}</span>
                   </div>
                 </div>
               </div>
