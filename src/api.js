@@ -20,6 +20,7 @@ async function handle(res) {
     const details = Object.values(data.errors || {}).flat().join(' · ')
     const err = new Error(details || data.message || 'Error del servidor')
     err.code = data.code
+    err.status = res.status
     throw err
   }
   return res.status === 204 ? null : res.json()
@@ -299,6 +300,10 @@ export const api = {
 
   deleteAuditFile: (id, token) => fetch(`${API_URL}/audit-files/${id}`, {
     method: 'DELETE',
+    headers: headers(token),
+  }).then(handle),
+
+  getLegalDocument: (type, token) => fetch(`${API_URL}/legal-documents/${type}/active`, {
     headers: headers(token),
   }).then(handle),
 

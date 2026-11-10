@@ -406,7 +406,7 @@ function ShippingLabel({ m, d }) {
   const code = d.codigoSeguimiento || ''
   const seq = d.secuenciaVisita || 1
   const total = Math.max(1, (m?.detalles || []).length)
-  const fragile = /fr[aá]gil/i.test([ped.notas, pk.contenido, pk.notas].filter(Boolean).join(' '))
+  const fragile = !!pk.fragile || (ped.paquetes || []).some(p => p.fragile) || /fr[aá]gil/i.test([ped.notas, pk.contenido, pk.notas].filter(Boolean).join(' '))
   const lbs = pk.peso ?? ped.peso ?? ped.pesoTotal
   const dims = pk.dimensiones || ((pk.largo && pk.ancho && pk.alto) ? `${pk.largo}×${pk.ancho}×${pk.alto}` : null)
   const mono = { fontFamily: 'ui-monospace, Menlo, monospace' }

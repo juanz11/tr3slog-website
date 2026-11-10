@@ -141,23 +141,10 @@ export default function Addresses({ app, token }) {
 
   React.useEffect(() => {
     if (!formOpen || !placesReady || manualAddr || !placesContainer.current) return
-    const Autocomplete = window.google?.maps?.places?.PlaceAutocompleteElement
-    if (!Autocomplete) { setPlacesError(true); return }
     let active = true
     let selection = 0
     let widget = null
-    try { widget = new Autocomplete() } catch { /* constructor no disponible en esta versión */ }
-    if (!widget) widget = document.createElement('gmp-place-autocomplete')
-    try { widget.includedRegionCodes = ['do', 'cr'] } catch { /* propiedad opcional */ }
-    widget.setAttribute('aria-label', a.f.address)
-    widget.style.width = '100%'
-    widget.style.setProperty('display', 'block')
-    widget.style.setProperty('--gmpx-color-surface', 'transparent')
-    widget.style.setProperty('--gmpx-color-on-surface', '#001B45')
-    widget.style.setProperty('--gmpx-color-outline', 'transparent')
-    widget.style.setProperty('background', 'transparent')
-    widget.style.setProperty('border', 'none')
-    widget.style.setProperty('outline', 'none')
+    const fallbackTimer = setTimeout(() => { if (!widget && active) setPlacesError(true) }, 2500)
     const onError = () => { if (active) setPlacesError(true) }
     const onSelect = async ({ placePrediction }) => {
       const request = ++selection
@@ -182,14 +169,35 @@ export default function Addresses({ app, token }) {
         if (request === selection) onError()
       }
     }
+    const mount = async () => {
+      try { await window.google.maps.importLibrary('places') } catch { setPlacesError(true); return }
+      if (!active || !placesContainer.current) return
+      const Autocomplete = window.google?.maps?.places?.PlaceAutocompleteElement
+      try { widget = Autocomplete ? new Autocomplete() : null } catch { /* constructor no disponible en esta versión */ }
+      if (!widget) widget = document.createElement('gmp-place-autocomplete')
+    try { widget.includedRegionCodes = ['do', 'cr'] } catch { /* propiedad opcional */ }
+    widget.setAttribute('aria-label', a.f.address)
+    widget.style.width = '100%'
+    widget.style.setProperty('display', 'block')
+    widget.style.setProperty('--gmpx-color-surface', 'transparent')
+    widget.style.setProperty('--gmpx-color-on-surface', '#001B45')
+    widget.style.setProperty('--gmpx-color-outline', 'transparent')
+    widget.style.setProperty('background', 'transparent')
+    widget.style.setProperty('border', 'none')
+    widget.style.setProperty('outline', 'none')
     widget.addEventListener('gmp-select', onSelect)
     widget.addEventListener('gmp-error', onError)
     placesContainer.current.appendChild(widget)
+    }
+    void mount()
     return () => {
       active = false
-      widget.removeEventListener('gmp-select', onSelect)
-      widget.removeEventListener('gmp-error', onError)
-      widget.remove()
+      clearTimeout(fallbackTimer)
+      if (widget) {
+        widget.removeEventListener('gmp-select', onSelect)
+        widget.removeEventListener('gmp-error', onError)
+        widget.remove()
+      }
     }
   }, [formOpen, formMode, placesReady, manualAddr, a.f.address])
 

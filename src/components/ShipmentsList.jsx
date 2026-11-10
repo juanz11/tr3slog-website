@@ -229,7 +229,12 @@ function DetailView({ app, shipment, onClose }) {
 
           {(shipment.packages || [shipment]).map((pkg, i) => (
             <div key={i} style={cardBase}>
-              <div style={sectionTitle}>{shipment.packages ? `Paquete ${i + 1}` : 'Detalles del paquete'}</div>
+              <div style={sectionTitle}>
+                {shipment.packages ? `Paquete ${i + 1}` : 'Detalles del paquete'}
+                {pkg.fragile && (
+                  <span style={{ marginLeft: 8, background: '#C0392B', color: '#fff', padding: '3px 10px', borderRadius: 4, fontSize: 10.5, fontWeight: 800, verticalAlign: 'middle' }}>FRÁGIL</span>
+                )}
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <div style={label}>Piezas</div>
@@ -347,7 +352,9 @@ function DetailView({ app, shipment, onClose }) {
                   </div>
                   <div style={{ display: 'flex', gap: 10, padding: '10px 16px', alignItems: 'center' }}>
                     {express && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#A93226', alignSelf: 'center' }}>PRIORITARIO</span>}
-                    <span style={{ background: '#C0392B', color: '#fff', padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>FRÁGIL</span>
+                    {((shipment.packages || []).some(pk => pk.fragile) || /fr[aá]gil/i.test(`${shipment.notes || ''} ${(shipment.packages || []).map(pk => pk.content || '').join(' ')}`)) && (
+                      <span style={{ background: '#C0392B', color: '#fff', padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>FRÁGIL</span>
+                    )}
                     <span style={{ background: '#D99A00', color: '#001B45', padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>FIRMA REQUERIDA</span>
                     <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8B9DBA' }}>Escanea el QR · tr3slog.com</span>
                   </div>

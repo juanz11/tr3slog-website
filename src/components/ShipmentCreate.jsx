@@ -52,7 +52,7 @@ const emptyAddress = () => ({
 
 const emptyPackage = () => ({
   type: 'package', length: '', width: '', height: '', weight: '', weightUnit: 'kg',
-  pieces: '1', declaredValue: '', content: '',
+  pieces: '1', declaredValue: '', content: '', fragile: false,
 })
 
 const migratePackage = (pkg = {}) => {
@@ -99,7 +99,7 @@ const payMethodIcon = (value) => (
 )
 
 const emptyPayment = () => ({
-  method: '', paymentMethod: '', chargeToAccount: '', cardholderName: '', billingZip: '', bank: '', reference: '',
+  method: '', paymentMethod: '', chargeToAccount: '', cardholderName: '', billingZip: '', bank: '', reference: '', prohibited: false, prohibitedDocId: null,
 })
 
 const getInitials = (text = '') => {
@@ -294,6 +294,10 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
                 </div>
               </div>
             </PackagePanel>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, padding: '10px 14px', border: `1.5px solid ${pkg.fragile ? '#D99A00' : '#DCE6F5'}`, borderRadius: 11, cursor: 'pointer', background: pkg.fragile ? 'rgba(217,154,0,.08)' : '#fff' }}>
+              <input type="checkbox" checked={!!pkg.fragile} onChange={(e) => onPackageChange(i, 'fragile', e.target.checked)} style={{ width: 17, height: 17, accentColor: '#D99A00', cursor: 'pointer' }} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#001B45' }}>Frágil — manejar con cuidado</span>
+            </label>
             <div className='pkg-summary'>
               {[
                 { icon: 'package', label: (p.summary && p.summary.dimensions) || 'Dimensiones', value: s.dims, sub: s.dimsSub },
@@ -324,8 +328,13 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
   )
 }
 
-function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharges, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, isAfterHours, afterHoursMsg, onBack, onNext, onFinish, routeEst, calcRoutePrice, kmTotals }) {
+function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharges, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, isAfterHours, afterHoursMsg, onBack, onNext, onFinish, routeEst, calcRoutePrice, kmTotals, onCancelAll, prohibitedDoc, prohibitedDocError }) {
   const placesContainers = React.useRef({})
+  const [prohibitedModal, setProhibitedModal] = React.useState(null)
+
+  React.useEffect(() => {
+    if (section === 'payment' && !submitted && !data.payment.prohibited) setProhibitedModal('rules')
+  }, [section]) // eslint-disable-line react-hooks/exhaustive-deps
   const [placesReady, setPlacesReady] = React.useState(false)
   const [placesError, setPlacesError] = React.useState(false)
   const [manualAddr, setManualAddr] = React.useState({})
@@ -723,7 +732,7 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
               </>
             )}
           </label>
-          {(section === 'sender' || section === 'recipient') && key === 'company' && (
+          {(section === 'sender' || section === 'recipient') && key === 'name' && (
             <div style={{ gridColumn: 'span 2' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <span style={{
@@ -770,6 +779,80 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
           background: '#FEF3C7', color: '#92400E', fontSize: 14,
         }}>
           {c.serviceUnavailable || 'Servicio no disponible. Pronto estará habilitado.'}
+        </div>
+      )}
+
+      {section === 'payment' && (
+        <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12, border: `1.5px solid ${data.payment.prohibited ? '#137A45' : '#DCE6F5'}`, background: data.payment.prohibited ? 'rgba(19,122,69,.06)' : '#F8FAFE' }}>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+            <input type="checkbox" checked={!!data.payment.prohibited}
+              onChange={(e) => { if (e.target.checked) setProhibitedModal('rules'); else { onChange('prohibited', false); onChange('prohibitedDocId', null) } }}
+              style={{ width: 17, height: 17, marginTop: 2, accentColor: '#087CF0', cursor: 'pointer', flexShrink: 0 }} />
+            <span style={{ fontSize: 13.5, lineHeight: 1.6, color: '#10233F' }}>
+              Declaro que el contenido de este envío <strong>no incluye artículos prohibidos</strong> según la lista vigente.
+            </span>
+          </label>
+          <button type="button" onClick={() => setProhibitedModal('rules')}
+            style={{ marginTop: 6, marginLeft: 27, background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: '#0768C9', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
+            Ver lista de artículos prohibidos
+          </button>
+        </div>
+      )}
+
+      {prohibitedModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,27,69,.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div role="dialog" aria-modal="true" style={{ background: '#fff', borderRadius: 16, maxWidth: 480, width: '100%', padding: 26, boxShadow: '0 20px 60px rgba(0,27,69,.3)' }}>
+            {prohibitedModal === 'rules' ? (
+              <>
+                <h3 style={{ margin: '0 0 6px', fontFamily: 'Montserrat, sans-serif', fontSize: 19, fontWeight: 800, color: '#001B45' }}>{prohibitedDoc?.title || 'Artículos prohibidos'}</h3>
+                <p style={{ margin: '0 0 12px', fontSize: 13.5, color: '#6C82A6', lineHeight: 1.6 }}>
+                  Para continuar debes declarar que tu envío no contiene ninguno de estos artículos:
+                </p>
+                {prohibitedDocError ? (
+                  <p style={{ margin: 0, fontSize: 13.5, color: '#C0392B', lineHeight: 1.6 }}>{prohibitedDocError}</p>
+                ) : !prohibitedDoc ? (
+                  <p style={{ margin: 0, fontSize: 13.5, color: '#6C82A6', lineHeight: 1.6 }}>Cargando lista…</p>
+                ) : (
+                  <>
+                    <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13.5, lineHeight: 1.8, color: '#10233F' }}>
+                      {prohibitedDoc.content.split('\n').filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
+                    <div style={{ marginTop: 10, fontSize: 11, fontStyle: 'italic', color: '#8B9DBA' }}>
+                      Versión {prohibitedDoc.version}{prohibitedDoc.version.includes('provisional') ? ' — pendiente la versión definitiva de Compliance.' : ''}
+                    </div>
+                  </>
+                )}
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>
+                  <button type="button" onClick={() => setProhibitedModal('cancel')}
+                    style={{ padding: '12px 20px', borderRadius: 11, border: '1.5px solid #DCE6F5', background: '#fff', color: '#10233F', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                  <button type="button" disabled={!prohibitedDoc}
+                    onClick={() => { onChange('prohibited', true); onChange('prohibitedDocId', prohibitedDoc.id); setProhibitedModal(null) }}
+                    style={{ padding: '12px 20px', borderRadius: 11, border: 'none', background: '#087CF0', color: '#fff', fontSize: 14, fontWeight: 600, cursor: prohibitedDoc ? 'pointer' : 'not-allowed', opacity: prohibitedDoc ? 1 : 0.55 }}>
+                    Acepto
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 style={{ margin: '0 0 8px', fontFamily: 'Montserrat, sans-serif', fontSize: 19, fontWeight: 800, color: '#001B45' }}>¿Desea cancelar el envío?</h3>
+                <p style={{ margin: 0, fontSize: 13.5, color: '#6C82A6', lineHeight: 1.6 }}>
+                  Sin aceptar la declaración no se puede crear el envío. Si cancela, se borrará toda la información ingresada.
+                </p>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 22 }}>
+                  <button type="button" onClick={() => setProhibitedModal('rules')}
+                    style={{ padding: '12px 20px', borderRadius: 11, border: '1.5px solid #DCE6F5', background: '#fff', color: '#10233F', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                    No, volver
+                  </button>
+                  <button type="button" onClick={() => { setProhibitedModal(null); onCancelAll && onCancelAll() }}
+                    style={{ padding: '12px 20px', borderRadius: 11, border: 'none', background: '#C0392B', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                    Sí, cancelar envío
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -925,6 +1008,8 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
   const [surcharges, setSurcharges] = React.useState({})
   const [pricingCfg, setPricingCfg] = React.useState({})
   const [routeEst, setRouteEst] = React.useState({ busy: false, km: null, text: '', err: '' })
+  const [prohibitedDoc, setProhibitedDoc] = React.useState(null)
+  const [prohibitedDocError, setProhibitedDocError] = React.useState('')
   const [data, setData] = React.useState({
     sender: emptyAddress(),
     recipient: emptyAddress(),
@@ -1009,6 +1094,16 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
       .then((res) => { setSurcharges(res?.surcharges || {}); setPricingCfg(res || {}) })
       .catch(() => {})
   }, [token])
+
+  const fetchProhibitedDoc = React.useCallback(() => {
+    if (!token) return
+    setProhibitedDocError('')
+    api.getLegalDocument('prohibited_items', token)
+      .then((doc) => setProhibitedDoc(doc))
+      .catch((e) => { setProhibitedDoc(null); setProhibitedDocError(e?.message || 'No se pudo cargar la lista de artículos prohibidos.') })
+  }, [token])
+
+  React.useEffect(() => { fetchProhibitedDoc() }, [fetchProhibitedDoc])
 
   const sectionMap = { 0: 'sender', 1: 'recipient', 2: 'package', 3: 'service', 4: 'payment' }
   const section = sectionMap[step]
@@ -1236,7 +1331,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
 
   const validatePayment = () => {
     const p = data.payment
-    if (!p.method) {
+    if (!p.method || !p.prohibited) {
       return c.errStep
     }
     if (p.method === 'card' && (!p.paymentMethod || !p.cardholderName.trim() || !p.billingZip.trim())) {
@@ -1337,10 +1432,13 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
             dimensions: keys.every((k) => pkg[k]) ? `${keys.map((k) => pkg[k]).join('x')} cm` : '',
             declared_value: pkg.declaredValue,
             content: pkg.content,
+            fragile: !!pkg.fragile,
           }
         }),
         notes: data.service.notes,
         payment_method: data.payment.method,
+        prohibited_accepted: !!data.payment.prohibited,
+        prohibited_document_id: data.payment.prohibitedDocId,
         payment_method_id,
         ...payment_meta,
         charge_to_account: data.payment.chargeToAccount || undefined,
@@ -1350,10 +1448,14 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
       setSubmitted(true)
     } catch (err) {
       setError(err.message || 'No se pudo crear el envío.')
+      if (err.status === 422) {
+        setData((prev) => ({ ...prev, payment: { ...prev.payment, prohibited: false, prohibitedDocId: null } }))
+        fetchProhibitedDoc()
+      }
     } finally {
       setSubmitting(false)
     }
-  }, [data, token, stripe, elements, c])
+  }, [data, token, stripe, elements, c, fetchProhibitedDoc])
 
   const onNew = React.useCallback(() => {
     setSubmitted(false)
@@ -1509,6 +1611,9 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
             routeEst={routeEst}
             calcRoutePrice={calcRoutePrice}
             kmTotals={kmTotals}
+            onCancelAll={onNew}
+            prohibitedDoc={prohibitedDoc}
+            prohibitedDocError={prohibitedDocError}
           />
         ) : (
           <div style={{

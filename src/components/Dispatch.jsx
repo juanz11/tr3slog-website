@@ -18,7 +18,15 @@ const NEXT_STATUS = {
   out_for_delivery: 'delivered',
 }
 
-const INACTIVE_STATUSES = ['delivered', 'incident']
+/* Outcomes alternativos: la entrega fallida y la cancelación dependen de estos. */
+const ALT_STATUS = {
+  out_for_delivery: 'failed_attempt',
+  failed_attempt: 'returned',
+}
+
+const CANCELLABLE = ['pending', 'assigned', 'in_transit', 'out_for_delivery', 'failed_attempt']
+
+const INACTIVE_STATUSES = ['delivered', 'incident', 'returned', 'cancelled']
 
 const DRIVER_TONE = {
   active: { bg: 'rgba(19,122,69,.12)', fg: '#0F5F36' },
@@ -419,8 +427,8 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
     return s.tracking_number || `#${s.id}`
   }
 
-  const advanceStatus = async (shipment) => {
-    const next = NEXT_STATUS[shipment.status]
+  const advanceStatus = async (shipment, target) => {
+    const next = target || NEXT_STATUS[shipment.status]
     if (!next) return
     setUpdatingId(shipment.id)
     setUpdateError('')
@@ -611,7 +619,7 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
                     )}
                   </span>
                   <span className="app-table-text">{formatDate(s.updated_at)}</span>
-                  <span>
+                  <span style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
                     {next && s.status !== 'incident' && (
                       <button
                         onClick={() => advanceStatus(s)}
@@ -623,6 +631,30 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
                           opacity: updatingId === s.id ? .7 : 1,
                         }}
                       >{updatingId === s.id ? d.updating : d.advanceTo[next]}</button>
+                    )}
+                    {ALT_STATUS[s.status] && s.status !== 'incident' && (
+                      <button
+                        onClick={() => advanceStatus(s, ALT_STATUS[s.status])}
+                        disabled={updatingId === s.id}
+                        style={{
+                          border: '1.5px solid #D99A00', borderRadius: 8, padding: '6px 12px',
+                          background: '#fff', color: '#8A6300', fontSize: 12, fontWeight: 600,
+                          cursor: updatingId === s.id ? 'not-allowed' : 'pointer',
+                          opacity: updatingId === s.id ? .7 : 1,
+                        }}
+                      >{d.advanceTo[ALT_STATUS[s.status]]}</button>
+                    )}
+                    {CANCELLABLE.includes(s.status) && (
+                      <button
+                        onClick={() => advanceStatus(s, 'cancelled')}
+                        disabled={updatingId === s.id}
+                        style={{
+                          border: '1.5px solid #E3EBF7', borderRadius: 8, padding: '6px 12px',
+                          background: '#fff', color: '#A93226', fontSize: 12, fontWeight: 600,
+                          cursor: updatingId === s.id ? 'not-allowed' : 'pointer',
+                          opacity: updatingId === s.id ? .7 : 1,
+                        }}
+                      >{d.advanceTo.cancelled || 'Cancelar'}</button>
                     )}
                   </span>
                 </div>
