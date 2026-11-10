@@ -283,10 +283,12 @@ function ShipmentDetail({ d, lang, shipment, drivers, onClose }) {
         </div>
 
         {packages.map((pkg, i) => {
-          if (!(pkg.pieces || pkg.weight || pkg.dimensions || pkg.declared_value || pkg.content)) return null
+          if (!(pkg.pieces || pkg.weight || pkg.dimensions || pkg.declared_value || pkg.content || pkg.fragile)) return null
           return (
             <div key={i} style={card}>
-              <div style={secTitle}>{packages.length > 1 ? det.packageN.replace('{n}', i + 1) : det.sections.package}</div>
+              <div style={secTitle}>{packages.length > 1 ? det.packageN.replace('{n}', i + 1) : det.sections.package}
+                {pkg.fragile && <span style={{ marginLeft: 8, background: '#C0392B', color: '#fff', padding: '3px 10px', borderRadius: 4, fontSize: 10.5, fontWeight: 800 }}>FRÁGIL</span>}
+              </div>
               <div style={grid}>
                 <DetailField label={f.pieces} value={pkg.pieces} />
                 <DetailField label={f.weight} value={pkg.weight ? `${pkg.weight} ${pkg.weight_unit || ''}`.trim() : ''} />
@@ -582,6 +584,9 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
                       <span style={{ display: 'block', fontSize: 11, color: '#6C82A6', fontWeight: 400 }}>
                         {formatTracking(s)}
                       </span>
+                    )}
+                    {(s.packages || []).some(p => p.fragile) && (
+                      <span style={{ marginLeft: 8, background: '#C0392B', color: '#fff', padding: '2px 7px', borderRadius: 4, fontSize: 9.5, fontWeight: 800 }}>FRÁGIL</span>
                     )}
                   </span>
                   <span className="app-table-text" title={`${s.origin || ''} → ${s.destination || ''}`}>

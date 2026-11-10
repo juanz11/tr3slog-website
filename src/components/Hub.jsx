@@ -191,7 +191,7 @@ const PkgInfo = ({ det }) => {
   return (
     <div style={{ borderRadius: 12, border: '1px solid #DCE6F5', overflow: 'hidden' }}>
       <div style={{ padding: '8px 14px', background: '#001B45', color: '#fff', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-        <span>Datos del paquete</span>
+        <span>Datos del paquete{pkgs.some(x => x.fragile) && <span style={{ marginLeft: 8, background: '#C0392B', color: '#fff', padding: '3px 10px', borderRadius: 4, fontSize: 10.5, fontWeight: 800 }}>FRÁGIL</span>}</span>
         <span style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>{det.codigoSeguimiento}</span>
       </div>
       <div style={{ padding: '13px 16px', background: '#fff' }}>
