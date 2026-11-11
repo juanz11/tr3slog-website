@@ -306,9 +306,33 @@ function ShipmentDetail({ d, lang, shipment, drivers, onClose }) {
             <DetailField label={f.created} value={fmt(s.created_at)} />
             <DetailField label={f.updated} value={fmt(s.updated_at)} />
             <DetailField label={f.pickup} value={[fmt(s.pickup_date), s.pickup_window].filter(Boolean).join(' · ')} />
-            <DetailField label={f.delivered} value={fmt(s.delivered_at)} />
+            <DetailField label={f.delivered} value={fmt(s.delivered_at || s.manifest_detail?.visited_at || s.stop?.updated_at)} />
           </div>
         </div>
+
+        {['delivered', 'entregado', 'entregada'].includes(s.status) && (() => {
+          const stop = s.stop || {}
+          const mani = s.manifest_detail || {}
+          const podAt = mani.visited_at || stop.updated_at
+          const podUrl = stop.photo_url || stop.signature_url || mani.pod_url
+          if (!stop.received_by && !podAt && !podUrl) return null
+          return (
+            <div style={card}>
+              <div style={secTitle}>{det.sections.pod}</div>
+              <div style={grid}>
+                <DetailField label={f.receivedBy} value={stop.received_by} />
+                <DetailField label={f.podAt} value={fmt(podAt)} />
+              </div>
+              {(stop.photo_url || stop.signature_url || mani.pod_url) && (
+                <div style={{ display: 'flex', gap: 18, marginTop: 14, flexWrap: 'wrap' }}>
+                  {stop.photo_url && <a href={stop.photo_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, color: '#0768C9' }}>{f.podPhoto}</a>}
+                  {stop.signature_url && <a href={stop.signature_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, color: '#0768C9' }}>{f.podSignature}</a>}
+                  {mani.pod_url && !stop.photo_url && <a href={mani.pod_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, color: '#0768C9' }}>{f.podPhoto}</a>}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {(method || s.charge_to_account) && (
           <div style={card}>
