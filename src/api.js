@@ -138,6 +138,27 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getCompanyVehicles: (token) => fetch(`${API_URL}/company-vehicles`, {
+    headers: headers(token),
+  }).then(handle),
+
+  createCompanyVehicle: (data, token) => fetch(`${API_URL}/company-vehicles`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  updateCompanyVehicle: (id, data, token) => fetch(`${API_URL}/company-vehicles/${id}`, {
+    method: 'PUT',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  deleteCompanyVehicle: (id, token) => fetch(`${API_URL}/company-vehicles/${id}`, {
+    method: 'DELETE',
+    headers: headers(token),
+  }).then(handle),
+
   getUsers: (token) => fetch(`${API_URL}/users`, {
     headers: headers(token),
   }).then(handle),
