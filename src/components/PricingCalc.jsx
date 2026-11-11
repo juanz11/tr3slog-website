@@ -21,7 +21,7 @@ export default function PricingCalc({ app, lang, token }) {
   const d = app.pricing
   const ENABLED = ['Terrestre']
   const services = (d.services || DEFAULT_SERVICES).filter((s) => ENABLED.includes(s))
-  const [cfg, setCfg] = React.useState({ dim_divisor: 166, per_km: 0, service_limits: {}, service_rates: {} })
+  const [cfg, setCfg] = React.useState({ dim_divisor: 166, per_km: 0, service_limits: {}, service_rates: {}, surcharges: {}, policies: {} })
   const [loading, setLoading] = React.useState(true)
   const [saving, setSaving] = React.useState(false)
   const [error, setError] = React.useState('')
@@ -72,6 +72,7 @@ export default function PricingCalc({ app, lang, token }) {
         service_limits: res.service_limits || {},
         service_rates: res.service_rates || {},
         surcharges: res.surcharges || {},
+        policies: res.policies || {},
       }))
       .catch((e) => setError(e.message || d.error))
       .finally(() => setLoading(false))
@@ -80,6 +81,10 @@ export default function PricingCalc({ app, lang, token }) {
   const setLimit = (svc, v) => setCfg((c) => ({ ...c, service_limits: { ...c.service_limits, [svc]: v } }))
   const setRate = (svc, key, v) => setCfg((c) => ({ ...c, service_rates: { ...c.service_rates, [svc]: { ...(c.service_rates[svc] || {}), [key]: v } } }))
   const setSur = (mode, key, v) => setCfg((c) => ({ ...c, surcharges: { ...c.surcharges, [mode]: { ...(c.surcharges[mode] || {}), [key]: v } } }))
+  const setPolicy = (key, v) => setCfg((c) => ({
+    ...c,
+    policies: { ...(c.policies || {}), cancellation: { ...((c.policies || {}).cancellation || {}), [key]: v } },
+  }))
 
   const num = (v) => v.replace(/[^0-9.]/g, '').replace(/(\..*?)\./g, '$1')
   const numVal = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : 0 }
@@ -128,6 +133,7 @@ export default function PricingCalc({ app, lang, token }) {
         service_limits: res.service_limits || cfg.service_limits,
         service_rates: res.service_rates || cfg.service_rates,
         surcharges: res.surcharges || cfg.surcharges,
+        policies: res.policies || cfg.policies,
       })
       setNotice(d.saved)
     } catch (e) {
@@ -266,6 +272,28 @@ export default function PricingCalc({ app, lang, token }) {
             })}
           </div>
           <p style={{ margin: '12px 0 0', fontSize: 12, color: '#8B9DBA', lineHeight: 1.6 }}>{d.surHint}</p>
+        </div>
+
+        {/* Cancellation / recobro policy */}
+        <div className="app-card" style={{ padding: 20 }}>
+          <div style={cardTitle}>Cancelación y recobro</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {([
+              ['percent', 'Cargo por cancelación (%)'],
+              ['recobro_percent', 'Recobro por cancelación tardía (%)'],
+              ['window_hours', 'Plazo de cancelación (horas)'],
+              ['tolerance_minutes', 'Tolerancia (minutos)'],
+            ]).map(([key, label]) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ flex: 1, fontSize: 14, fontWeight: 500, color: '#10233F' }}>{label}</span>
+                <input inputMode="decimal" value={cfg.policies?.cancellation?.[key] ?? ''} placeholder="0"
+                  onChange={(e) => setPolicy(key, num(e.target.value))} style={{ ...inputSm, width: 90, textAlign: 'right' }} />
+              </div>
+            ))}
+          </div>
+          <p style={{ margin: '12px 0 0', fontSize: 12, color: '#8B9DBA', lineHeight: 1.6 }}>
+            Si el envío se cancela dentro del plazo (más la tolerancia) se cobra el % de cancelación sobre el monto; fuera del plazo se aplica el % de recobro.
+          </p>
         </div>
 
         {/* Rates per service */}
