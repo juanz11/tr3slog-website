@@ -175,7 +175,7 @@ export default function Addresses({ app, token }) {
       const Autocomplete = window.google?.maps?.places?.PlaceAutocompleteElement
       try { widget = Autocomplete ? new Autocomplete() : null } catch { /* constructor no disponible en esta versión */ }
       if (!widget) widget = document.createElement('gmp-place-autocomplete')
-    try { widget.includedRegionCodes = ['do', 'cr'] } catch { /* propiedad opcional */ }
+    try { widget.includedRegionCodes = ['do', 'cr', 'pr'] } catch { /* propiedad opcional */ }
     widget.setAttribute('aria-label', a.f.address)
     widget.style.width = '100%'
     widget.style.setProperty('display', 'block')

@@ -100,6 +100,10 @@ export const api = {
     body: JSON.stringify(data),
   }).then(handle),
 
+  trackShipment: (code) => fetch(`${API_URL}/app/shipments/track/${encodeURIComponent(code)}`, {
+    headers: headers(),
+  }).then(handle),
+
   trackQuote: (code) => fetch(`${API_URL}/app/quotes/track/${encodeURIComponent(code)}`, {
     headers: headers(),
   }).then(handle),

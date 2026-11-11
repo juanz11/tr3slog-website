@@ -10,6 +10,7 @@ export default function Track({ t }) {
   const [trackError, setTrackError] = React.useState('')
   const [shownCode, setShownCode] = React.useState('TR3-260729-PRSJ-08821')
   const [quote, setQuote] = React.useState(null)
+  const [shipment, setShipment] = React.useState(null)
 
   const onTrack = async (forcedCode = '') => {
     const raw = (forcedCode || code || '').trim().toUpperCase()
@@ -17,13 +18,21 @@ export default function Track({ t }) {
     if (!/^TR3-\d{6}-[A-Z]{4}-\d{5}$/.test(raw) && !/^TR3S?-\d{6}-[A-Z0-9]{4}-[A-Z0-9]{5,7}$/.test(raw)) { setTrackError(t.trk.errFormat); setTrackState('empty'); return }
     setCode(raw)
     setTrackError(''); setTrackState('loading')
+    setShipment(null); setQuote(null)
+    try {
+      const sres = await api.trackShipment(raw)
+      setShipment(sres?.shipment || sres)
+      setShownCode(raw)
+      setTrackState('ok')
+      return
+    } catch (e) { /* intentar cotización */ }
     try {
       const data = await api.trackQuote(raw)
       setQuote(data)
       setShownCode(raw)
       setTrackState('ok')
     } catch (e) {
-      setTrackError((t.trk && t.trk.notFound) ? t.trk.notFound : 'No se encontró una cotización con ese código.')
+      setTrackError((t.trk && t.trk.notFound) ? t.trk.notFound : 'No se encontró un envío con ese código.')
       setTrackState('empty')
     }
   }
@@ -35,6 +44,7 @@ export default function Track({ t }) {
   }, [router.isReady])
 
   const statusLabels = { pending: 'Pendiente', processing: 'En proceso', approved: 'Aprobada', rejected: 'Rechazada' }
+  const shipStatusLabels = { pending: 'Solicitud recibida', assigned: 'Asignado', in_transit: 'En tránsito', transit: 'En tránsito', out_for_delivery: 'En ruta de entrega', delivered: 'Entregada', entregado: 'Entregada', incident: 'Incidencia' }
 
   const dateLocale = () => {
     if (t.label === 'EN') return 'en-US'
@@ -65,14 +75,19 @@ export default function Track({ t }) {
     return out
   }
 
-  const serverCreated = quote?.created_at ? new Date(quote.created_at) : null
+  const serverCreated = (shipment?.created_at || quote?.created_at) ? new Date(shipment?.created_at || quote?.created_at) : null
   const creationDate = (serverCreated && !isNaN(serverCreated.getTime())) ? serverCreated : parseDateFromCode(shownCode)
 
   const etaVal = creationDate
     ? fmtDate(dateAfter(creationDate, 3, 16, 30))
     : t.trk.etaVal
 
-  const trackFacts = quote ? [
+  const trackFacts = shipment ? [
+    { l: (t.quo && t.quo.f && t.quo.f.origin) ? t.quo.f.origin : 'Origen', v: shipment.origin },
+    { l: (t.quo && t.quo.f && t.quo.f.dest) ? t.quo.f.dest : 'Destino', v: shipment.destination },
+    { l: (t.quo && t.quo.f && t.quo.f.type) ? t.quo.f.type : 'Servicio', v: shipment.service_type || '-' },
+    { l: t.trk.status, v: shipStatusLabels[shipment.status] || shipment.status },
+  ] : quote ? [
     { l: (t.quo && t.quo.f && t.quo.f.origin) ? t.quo.f.origin : 'Origen', v: quote.origin },
     { l: (t.quo && t.quo.f && t.quo.f.dest) ? t.quo.f.dest : 'Destino', v: quote.destination },
     { l: (t.quo && t.quo.f && t.quo.f.type) ? t.quo.f.type : 'Servicio', v: quote.service_type || '-' },
@@ -88,7 +103,8 @@ export default function Track({ t }) {
     trackFacts.push({ l: t.trk.created || 'Creado', v: fmtDate(creationDate) })
   }
 
-  const current = 3
+  const SHIP_STEP = { pending: 0, assigned: 1, in_transit: 2, transit: 2, out_for_delivery: 3, delivered: 4, entregado: 4, incident: 4 }
+  const current = shipment ? (SHIP_STEP[shipment.status] ?? 0) : 3
   const timelineOffsets = [
     { d: 0, h: 8, m: 0 },
     { d: 0, h: 9, m: 15 },
@@ -96,7 +112,12 @@ export default function Track({ t }) {
     { d: 2, h: 14, m: 0 },
     null,
   ]
-  const timeline = (creationDate ? t.trk.timeline.map((s, i) => {
+  const timeline = (shipment
+    ? t.trk.timeline.map((s, i) => ({
+        ...s,
+        time: i === 0 ? fmtDate(creationDate) : (i <= current && shipment.updated_at ? fmtDate(new Date(shipment.updated_at)) : ''),
+      }))
+    : creationDate ? t.trk.timeline.map((s, i) => {
     const o = timelineOffsets[i]
     if (!o) return s
     return { ...s, time: fmtDate(dateAfter(creationDate, o.d, o.h, o.m)) }
@@ -204,12 +225,12 @@ export default function Track({ t }) {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', border: '1px solid #DCE6F5', borderRadius: 12 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#087CF0" strokeWidth="1.7"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" /></svg>
                     <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{t.trk.receivedBy}</span>
-                    <span style={{ fontSize: 12, color: '#6C82A6' }}>J. González</span>
+                    <span style={{ fontSize: 12, color: '#6C82A6' }}>{shipment ? (shipment.recipient_name || '—') : 'J. González'}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', border: '1px solid #DCE6F5', borderRadius: 12 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#087CF0" strokeWidth="1.7"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>
                     <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{t.trk.deliveredAt}</span>
-                    <span style={{ fontSize: 12, color: '#6C82A6' }}>{t.trk.etaVal}</span>
+                    <span style={{ fontSize: 12, color: '#6C82A6' }}>{shipment && shipment.updated_at ? fmtDate(new Date(shipment.updated_at)) : t.trk.etaVal}</span>
                   </div>
                 </div>
               </div>
