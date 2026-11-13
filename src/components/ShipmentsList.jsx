@@ -1,7 +1,7 @@
 import React from 'react'
 import { api } from '../api'
 import { Pagination, usePagination, usePolling, SortControl, sortRows } from './Shared'
-import { Qr, Barcode, trackUrl } from './Manifest'
+import { PrintableLabel } from './ShipmentLabel'
 
 const CITY_CODES = {
   'san juan': 'PRSJ', 'santo domingo': 'DOSD', 'punta cana': 'DOPC', 'miami': 'MIAM',
@@ -297,87 +297,10 @@ function DetailView({ app, shipment, token, onClose, onRefresh }) {
             </div>
           )}
 
-          {(() => {
-            const md = shipment.manifest_detail
-            const mani = md?.manifest
-            const trk = shipment.tracking_number || `ENV-${shipment.id}`
-            const nPkgs = Math.max((shipment.packages || []).length || 0, Number(shipment.pieces) || 1)
-            const pkgCode = trk.replace(/^TR3S?-/, 'PKG-')
-            const express = /express|prioridad/i.test(`${shipment.service_type || ''} ${shipment.delivery_mode || ''}`)
-            const L = ({ k, v }) => v ? (
-              <div><div style={label}>{k}</div><div style={{ ...value, fontSize: 12.5 }}>{v}</div></div>
-            ) : null
-            return (
-              <div style={cardBase}>
-                <div style={sectionTitle}>Etiqueta</div>
-                <div style={{ border: '1.5px solid #DCE6F5', borderRadius: 12, overflow: 'hidden', background: '#fff', fontSize: 12.5, maxWidth: 560 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #E3EBF7' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span aria-hidden="true" style={{ display: 'inline-flex', gap: 3 }}>
-                        <span style={{ width: 16, height: 4, background: '#D99A00', transform: 'skewX(-24deg)', display: 'block' }} />
-                        <span style={{ width: 7, height: 4, background: '#087CF0', transform: 'skewX(-24deg)', display: 'block' }} />
-                      </span>
-                      <span style={{ fontWeight: 800, letterSpacing: '.1em', color: '#001B45', fontSize: 15 }}>TR3SLOG</span>
-                    </div>
-                    <div style={{ background: '#001B45', color: '#fff', padding: '8px 14px', borderRadius: 4, fontWeight: 800, fontSize: 13, letterSpacing: '.04em', textAlign: 'center' }}>
-                      {express ? 'EXPRESS' : 'ÚLTIMA MILLA'}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 16px', borderBottom: '1px solid #E3EBF7' }}>
-                    <div>
-                      <div style={label}>Remitente</div>
-                      <div style={{ fontSize: 12.5, color: '#10233F', fontWeight: 600 }}>{[shipment.sender_company || 'TR3SLOG', shipment.sender_name].filter(Boolean).join(' · ')}</div>
-                      <div style={{ fontSize: 11.5, color: '#6C82A6' }}>{[shipment.sender_address, [shipment.sender_city, shipment.sender_country].filter(Boolean).join(', '), shipment.sender_zip].filter(Boolean).join(' · ') || shipment.origin || '—'}</div>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={label}>Fecha</div>
-                      <div style={{ fontSize: 12.5, color: '#10233F' }}>{shipment.created_at ? fmt(new Date(shipment.created_at)) : '—'}</div>
-                      <div style={{ ...label, marginTop: 8 }}>Referencia</div>
-                      <div style={{ fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', color: '#0768C9' }}>{shipment.invoice_number || `ORD-${String(shipment.id).padStart(4, '0')}`}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', borderBottom: '1px solid #E3EBF7' }}>
-                    <div style={{ background: '#001B45', color: '#fff', writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 9, letterSpacing: '.18em', fontWeight: 700, display: 'flex', alignItems: 'center', padding: '12px 7px' }}>DESTINATARIO</div>
-                    <div style={{ flex: 1, padding: '14px 18px' }}>
-                      <div style={{ fontSize: 17, fontWeight: 800, color: '#10233F' }}>{[shipment.recipient_company, shipment.recipient_name].filter(Boolean).join(' · ') || shipment.recipient_name || '—'}</div>
-                      <div style={{ fontSize: 12.5, marginTop: 4, lineHeight: 1.45, color: '#10233F' }}>{[shipment.recipient_address, [shipment.recipient_city, shipment.recipient_country].filter(Boolean).join(', '), shipment.recipient_zip].filter(Boolean).join(' · ') || shipment.destination || '—'}</div>
-                      {shipment.recipient_phone && <div style={{ fontSize: 12, marginTop: 5, color: '#10233F' }}>{shipment.recipient_phone}</div>}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 16px', borderBottom: '1px solid #E3EBF7' }}>
-                    <div>
-                      <div style={label}>Hub · Ruta · Parada</div>
-                      <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 800, fontSize: 15, color: '#001B45', marginTop: 3 }}>
-                        {mani ? [mani.codigo, md?.sequence != null ? `P${String(md.sequence).padStart(2, '0')}` : null].filter(Boolean).join(' · ') : 'SIN ASIGNAR'}
-                      </div>
-                    </div>
-                    <div style={{ border: '2px solid #087CF0', borderRadius: 6, padding: '5px 12px', fontSize: 14, fontWeight: 800, color: '#001B45', flexShrink: 0 }}>1 de {nPkgs}</div>
-                  </div>
-                  <div style={{ padding: '12px 16px 8px', borderBottom: '1px solid #E3EBF7' }}>
-                    <Barcode value={trk} height={52} />
-                    <div style={{ textAlign: 'center', fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 800, fontSize: 14, color: '#001B45', letterSpacing: '.1em', marginTop: 6 }}>{trk}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 16, padding: '12px 16px', alignItems: 'center', borderBottom: '1px solid #E3EBF7' }}>
-                    <Qr value={trackUrl(trk)} size={80} />
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 14px', flex: 1 }}>
-                      <div><div style={label}>Peso</div><div style={{ fontSize: 13, fontWeight: 700, color: '#10233F' }}>{shipment.weight || '—'}</div></div>
-                      <div><div style={label}>Dimensiones</div><div style={{ fontSize: 13, fontWeight: 700, color: '#10233F' }}>{shipment.dimensions || '—'}</div></div>
-                      <div><div style={label}>Bultos</div><div style={{ fontSize: 13, fontWeight: 700, color: '#10233F' }}>{nPkgs}</div></div>
-                      <div><div style={label}>Pod</div><div style={{ fontSize: 13, fontWeight: 700, color: '#10233F' }}>QR + foto + GPS</div></div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, padding: '10px 16px', alignItems: 'center' }}>
-                    {express && <span style={{ fontSize: 10.5, fontWeight: 800, color: '#A93226', alignSelf: 'center' }}>PRIORITARIO</span>}
-                    {((shipment.packages || []).some(pk => pk.fragile) || /fr[aá]gil/i.test(`${shipment.notes || ''} ${(shipment.packages || []).map(pk => pk.content || '').join(' ')}`)) && (
-                      <span style={{ background: '#C0392B', color: '#fff', padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>FRÁGIL</span>
-                    )}
-                    <span style={{ background: '#D99A00', color: '#001B45', padding: '6px 12px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>FIRMA REQUERIDA</span>
-                    <span style={{ marginLeft: 'auto', fontSize: 10, color: '#8B9DBA' }}>Escanea el QR · tr3slog.com</span>
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
+          <div style={cardBase}>
+            <div style={sectionTitle}>Etiqueta</div>
+            <PrintableLabel shipment={shipment} />
+          </div>
 
           <div style={cardBase}>
             <div style={sectionTitle}>Cargos</div>

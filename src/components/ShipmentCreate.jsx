@@ -5,6 +5,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { DeliveryIcon } from './PricingCalc'
 import Script from 'next/script'
+import { PrintableLabel } from './ShipmentLabel'
 
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
@@ -920,9 +921,19 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
   )
 }
 
-function ShipmentSuccess({ app, result, onNew, onTrack }) {
+function ShipmentSuccess({ app, result, token, onNew, onTrack }) {
   const [copied, setCopied] = React.useState(false)
+  const [showLabel, setShowLabel] = React.useState(false)
+  const [full, setFull] = React.useState(null)
+  const [popupMsg, setPopupMsg] = React.useState('')
   const guide = result.tracking_number || result.id || result.guide || ''
+  React.useEffect(() => {
+    if (!result?.id || !token) return
+    let alive = true
+    api.getShipment(result.id, token).then((d) => { if (alive) setFull(d) }).catch(() => {})
+    return () => { alive = false }
+  }, [result?.id, token])
+  const labelData = full || result
   const copy = async () => {
     if (!guide) return
     try {
@@ -970,6 +981,15 @@ function ShipmentSuccess({ app, result, onNew, onTrack }) {
             cursor: 'pointer',
           }}
         >{copied ? 'Copiado' : 'Copiar guía'}</button>
+        <button
+          type="button"
+          onClick={() => setShowLabel((v) => !v)}
+          style={{
+            padding: '12px 20px', borderRadius: 11, border: '1.5px solid #087CF0',
+            background: showLabel ? '#087CF0' : '#fff', color: showLabel ? '#fff' : '#087CF0', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >{showLabel ? 'Ocultar etiqueta' : 'Ver etiqueta QR'}</button>
         {onTrack && (
           <button
             type="button"
@@ -991,6 +1011,15 @@ function ShipmentSuccess({ app, result, onNew, onTrack }) {
           }}
         >Crear otro envío</button>
       </div>
+      {showLabel && (
+        <div style={{ marginTop: 28, paddingTop: 24, borderTop: '1px solid #DCE6F5', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <p style={{ margin: 0, fontSize: 13.5, color: '#6C82A6' }}>Pago confirmado. Imprime esta etiqueta y pégala en el paquete; el QR enlaza al rastreo y el código es legible para el personal del hub.</p>
+          <div style={{ width: '100%', maxWidth: 560 }}>
+            <PrintableLabel shipment={labelData} compact onPopupBlocked={() => setPopupMsg('Permite ventanas emergentes para imprimir la etiqueta.')} />
+          </div>
+          {popupMsg && <div style={{ fontSize: 13, color: '#B91C1C' }}>{popupMsg}</div>}
+        </div>
+      )}
     </div>
   )
 }
@@ -1583,7 +1612,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
       </div>)}
 
       {submitted && result ? (
-        <ShipmentSuccess app={app} result={result} onNew={onNew} onTrack={onTrack} />
+        <ShipmentSuccess app={app} result={result} token={token} onNew={onNew} onTrack={onTrack} />
       ) : (
         section ? (
           <ShipmentForm
