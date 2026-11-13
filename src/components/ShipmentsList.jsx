@@ -28,6 +28,7 @@ const STATUS_KEY_MAP = {
   in_transit: 0, transit: 0, 'en tránsito': 0,
   out_for_delivery: 1,
   delivered: 2, entregado: 2, entregada: 2,
+  cancelled: 4, cancelado: 4, cancel_requested: 4,
   pending: 3, assigned: 3, solicitud_recibida: 3,
   incident: 4, incidencia: 4,
 }
@@ -62,7 +63,7 @@ const buildRow = (sh, statuses) => ({
   raw: sh,
 })
 
-function DetailView({ app, shipment, onClose }) {
+function DetailView({ app, shipment, token, onClose, onRefresh }) {
   const s = app.ship || {}
   const pt = shipment.parsed_tracking || {}
   const idx = statusIndex(shipment.status, s.statuses)
@@ -171,6 +172,21 @@ function DetailView({ app, shipment, onClose }) {
         <h1 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 800, fontSize: 30, letterSpacing: '-.02em', margin: 0, color: '#001B45' }}>{tracking}</h1>
         <span style={{ display: 'inline-flex', padding: '8px 15px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: tone.bg, color: tone.fg }}>{statusLabel}</span>
         <span style={{ fontSize: 14, color: '#10233F' }}>{route} · {service}</span>
+        {!['delivered', 'entregado', 'entregada', 'cancelled', 'cancelado', 'cancel_requested'].includes(shipment.status) && (
+          <button
+            onClick={async () => {
+              if (!window.confirm('¿Cancelar este envío?')) return
+              try {
+                await api.cancelShipment(shipment.id, token)
+                if (onRefresh) onRefresh()
+                onClose()
+              } catch (e) {
+                alert(e.message || 'No se pudo cancelar el envío')
+              }
+            }}
+            style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: 'rgba(192,57,43,.1)', color: '#A93226', border: 'none', cursor: 'pointer' }}
+          >Cancelar envío</button>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.35fr .65fr', gap: 16, alignItems: 'start' }}>
@@ -469,7 +485,7 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
   const pager = usePagination(sorted, 10, `${filter}|${query}|${sortMode}`)
 
   if (selected) {
-    return <DetailView app={app} shipment={selected} onClose={() => setSelected(null)} />
+    return <DetailView app={app} shipment={selected} token={token} onClose={() => setSelected(null)} onRefresh={() => load()} />
   }
 
   return (

@@ -100,6 +100,11 @@ export const api = {
     body: JSON.stringify(data),
   }).then(handle),
 
+  cancelShipment: (id, token) => fetch(`${API_URL}/shipments/${id}/cancel`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
   trackShipment: (code) => fetch(`${API_URL}/app/shipments/track/${encodeURIComponent(code)}`, {
     headers: headers(),
   }).then(handle),
