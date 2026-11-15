@@ -366,7 +366,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           {isCreate ? (
             <ShipmentCreate app={app} token={token} user={user} onTrack={(code) => { setHquery(code); setActiveKey('shipments') }} />
           ) : isShipments ? (
-            <ShipmentsList app={app} token={token} query={hquery} onQueryChange={setHquery} selectId={openShipmentId} />
+            <ShipmentsList app={app} token={token} query={hquery} onQueryChange={setHquery} selectId={openShipmentId} staff={isAdmin} />
           ) : isPayments ? (
             <Payments app={app} token={token} user={user} />
           ) : isAddresses ? (

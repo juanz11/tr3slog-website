@@ -165,7 +165,7 @@ function DetailField({ label, value, wide }) {
   )
 }
 
-function ShipmentDetail({ d, lang, shipment, drivers, onClose }) {
+function ShipmentDetail({ d, lang, shipment, drivers, onClose, onCancel }) {
   const s = shipment
   const det = d.detail
   const f = det.fields
@@ -314,7 +314,8 @@ function ShipmentDetail({ d, lang, shipment, drivers, onClose }) {
           const stop = s.stop || {}
           const mani = s.manifest_detail || {}
           const podAt = mani.visited_at || stop.updated_at
-          const podUrl = stop.photo_url || stop.signature_url || mani.pod_url
+          const hasGps = mani.lat != null && mani.lng != null
+          const podUrl = stop.photo_url || stop.signature_url || mani.pod_url || hasGps
           if (!stop.received_by && !podAt && !podUrl) return null
           return (
             <div style={card}>
@@ -322,12 +323,19 @@ function ShipmentDetail({ d, lang, shipment, drivers, onClose }) {
               <div style={grid}>
                 <DetailField label={f.receivedBy} value={stop.received_by} />
                 <DetailField label={f.podAt} value={fmt(podAt)} />
+                {hasGps && (
+                  <DetailField
+                    label={f.podGps}
+                    value={`${Number(mani.lat).toFixed(6)}, ${Number(mani.lng).toFixed(6)}${mani.gps_accuracy ? ` (±${Math.round(mani.gps_accuracy)}m)` : ''}`}
+                  />
+                )}
               </div>
-              {(stop.photo_url || stop.signature_url || mani.pod_url) && (
+              {(stop.photo_url || stop.signature_url || mani.pod_url || hasGps) && (
                 <div style={{ display: 'flex', gap: 18, marginTop: 14, flexWrap: 'wrap' }}>
                   {stop.photo_url && <a href={stop.photo_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, color: '#0768C9' }}>{f.podPhoto}</a>}
                   {stop.signature_url && <a href={stop.signature_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, color: '#0768C9' }}>{f.podSignature}</a>}
-                  {mani.pod_url && !stop.photo_url && <a href={mani.pod_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, color: '#0768C9' }}>{f.podPhoto}</a>}
+                  {mani.pod_url && mani.pod_url !== stop.photo_url && <a href={mani.pod_url} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, color: '#0768C9' }}>{stop.photo_url ? f.podEvidence : f.podPhoto}</a>}
+                  {hasGps && <a href={`https://www.google.com/maps?q=${mani.lat},${mani.lng}`} target="_blank" rel="noreferrer" style={{ fontSize: 13, fontWeight: 600, color: '#0768C9' }}>{f.podMap}</a>}
                 </div>
               )}
             </div>
@@ -349,6 +357,23 @@ function ShipmentDetail({ d, lang, shipment, drivers, onClose }) {
           <div style={card}>
             <div style={secTitle}>{det.sections.notes}</div>
             <div style={{ fontSize: 14, lineHeight: 1.6, color: '#10233F' }}>{s.notes}</div>
+          </div>
+        )}
+
+        {onCancel && s.cancel_preview?.cancellable && (
+          <div style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', borderColor: 'rgba(169,50,38,.35)' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#A93226' }}>
+                {det.cancelFeeLabel
+                  .replace('{p}', s.cancel_preview.percent)
+                  .replace('{a}', s.cancel_preview.fee != null ? `$${Number(s.cancel_preview.fee).toFixed(2)}` : '—')}
+              </div>
+              <div style={{ fontSize: 12, color: '#6C82A6', marginTop: 3 }}>{det.cancelFeeHint}</div>
+            </div>
+            <button
+              onClick={() => onCancel(s)}
+              style={{ border: 'none', borderRadius: 10, padding: '11px 18px', background: '#A93226', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            >{d.advanceTo.cancelled || 'Cancelar envío'}</button>
           </div>
         )}
       </div>
@@ -461,6 +486,25 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
     try {
       const updated = await api.updateShipmentStatus(shipment.id, next, token)
       setShipments((prev) => prev.map((s) => (s.id === shipment.id ? { ...s, ...updated } : s)))
+    } catch (e) {
+      setUpdateError(e.message || d.updateError)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  const cancelShipment = async (shipment) => {
+    const prev = shipment.cancel_preview
+    const feeText = prev?.percent != null
+      ? ` — ${d.detail.cancelFeeLabel.replace('{p}', prev.percent).replace('{a}', prev.fee != null ? `$${Number(prev.fee).toFixed(2)}` : '—')}`
+      : ''
+    if (!window.confirm(`${d.advanceTo.cancelled || 'Cancelar envío'} ${formatTracking(shipment)}${feeText}?`)) return
+    setUpdatingId(shipment.id)
+    setUpdateError('')
+    try {
+      await api.cancelShipment(shipment.id, token)
+      setShipments((list) => list.map((s) => (s.id === shipment.id ? { ...s, status: 'cancelled', cancel_preview: { ...prev, cancellable: false } } : s)))
+      setSelected(null)
     } catch (e) {
       setUpdateError(e.message || d.updateError)
     } finally {
@@ -673,9 +717,9 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
                         }}
                       >{d.advanceTo[ALT_STATUS[s.status]]}</button>
                     )}
-                    {CANCELLABLE.includes(s.status) && (
+                    {(s.cancel_preview ? s.cancel_preview.cancellable : CANCELLABLE.includes(s.status)) && (
                       <button
-                        onClick={() => advanceStatus(s, 'cancelled')}
+                        onClick={() => cancelShipment(s)}
                         disabled={updatingId === s.id}
                         style={{
                           border: '1.5px solid #E3EBF7', borderRadius: 8, padding: '6px 12px',
@@ -683,7 +727,7 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
                           cursor: updatingId === s.id ? 'not-allowed' : 'pointer',
                           opacity: updatingId === s.id ? .7 : 1,
                         }}
-                      >{d.advanceTo.cancelled || 'Cancelar'}</button>
+                      >{d.advanceTo.cancelled || 'Cancelar'}{s.cancel_preview?.percent != null ? ` · ${s.cancel_preview.percent}%` : ''}</button>
                     )}
                   </span>
                 </div>
@@ -696,7 +740,7 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
       </div>
 
       {selected && (
-        <ShipmentDetail d={d} lang={lang} shipment={selected} drivers={drivers} onClose={() => setSelected(null)} />
+        <ShipmentDetail d={d} lang={lang} shipment={selected} drivers={drivers} onClose={() => setSelected(null)} onCancel={cancelShipment} />
       )}
 
       {assignTarget && (

@@ -54,6 +54,22 @@ const T_ES = {
   popupBlocked: 'Popup bloqueado',
   scopeActive: n => `Activos (${n})`,
   scopeClosed: 'Cerrados',
+  scopeHistory: 'Historial',
+  hfCi: 'CI o nombre del chofer…',
+  hfFrom: 'Desde',
+  hfTo: 'Hasta',
+  hfIncAll: 'Todas',
+  hfIncYes: 'Con incidencias',
+  hfIncNo: 'Sin incidencias',
+  hCode: 'Manifiesto',
+  hDate: 'Fecha',
+  hDriver: 'Chofer',
+  hCi: 'CI',
+  hVehicle: 'Vehículo',
+  hPkgs: 'Bultos',
+  hInc: 'Incidencias',
+  hResults: n => `${n} resultado${n === 1 ? '' : 's'}`,
+  hEmpty: 'No hay manifiestos con esos filtros.',
   noActive: 'No hay manifiestos activos',
   noClosed: 'No hay manifiestos cerrados',
   lastN: n => `Últimos ${n}`,
@@ -133,6 +149,22 @@ const T_EN = {
   popupBlocked: 'Popup blocked',
   scopeActive: n => `Active (${n})`,
   scopeClosed: 'Closed',
+  scopeHistory: 'History',
+  hfCi: 'Driver ID or name…',
+  hfFrom: 'From',
+  hfTo: 'To',
+  hfIncAll: 'All',
+  hfIncYes: 'With incidents',
+  hfIncNo: 'Without incidents',
+  hCode: 'Manifest',
+  hDate: 'Date',
+  hDriver: 'Driver',
+  hCi: 'ID',
+  hVehicle: 'Vehicle',
+  hPkgs: 'Packages',
+  hInc: 'Incidents',
+  hResults: n => `${n} result${n === 1 ? '' : 's'}`,
+  hEmpty: 'No manifests match those filters.',
   noActive: 'No active manifests',
   noClosed: 'No closed manifests',
   lastN: n => `Last ${n}`,
@@ -212,6 +244,22 @@ const T_ZH = {
   popupBlocked: '弹窗被拦截',
   scopeActive: n => `进行中（${n}）`,
   scopeClosed: '已关闭',
+  scopeHistory: '历史记录',
+  hfCi: '司机证件号或姓名…',
+  hfFrom: '开始日期',
+  hfTo: '结束日期',
+  hfIncAll: '全部',
+  hfIncYes: '有异常',
+  hfIncNo: '无异常',
+  hCode: '舱单',
+  hDate: '日期',
+  hDriver: '司机',
+  hCi: '证件号',
+  hVehicle: '车辆',
+  hPkgs: '包裹数',
+  hInc: '异常',
+  hResults: n => `${n} 条结果`,
+  hEmpty: '没有符合筛选条件的舱单。',
   noActive: '没有进行中的舱单',
   noClosed: '没有已关闭的舱单',
   lastN: n => `最近 ${n} 条`,
@@ -627,6 +675,7 @@ export default function Manifest({ token, selectId, lang }) {
   }, [selectId])
 
   const [scope, setScope] = React.useState('active')
+  const [hFilters, setHFilters] = React.useState({ ci: '', inc: 'all', from: '', to: '' })
   const activeList = list.filter(x => ACTIVE_STATES.includes(x.estado))
   const closedList = list
     .filter(x => !ACTIVE_STATES.includes(x.estado))
@@ -644,9 +693,32 @@ export default function Manifest({ token, selectId, lang }) {
 
   const changeScope = (next) => {
     setScope(next)
+    if (next === 'history') return
     const pool = next === 'active' ? activeList : closedList
     if (!pool.some(x => x.id === sel)) setSel(pool[0] ? pool[0].id : null)
   }
+
+  const hasIncidents = (x) =>
+    ['COMPLETADO_CON_INCIDENCIAS', 'EN_SOLICITUD_TRASPASO'].includes(x.estado) ||
+    (x.detalles || []).some(d => d.estado === 'NO_ENTREGADO' || d.motivoFallo) ||
+    (x.solicitudes || []).length > 0
+
+  const historyList = React.useMemo(() => list
+    .filter(x => {
+      if (hFilters.ci.trim()) {
+        const q = hFilters.ci.trim().toLowerCase()
+        const doc = String(x.chofer?.documento || '').toLowerCase()
+        const name = String(x.chofer?.nombre || '').toLowerCase()
+        if (!doc.includes(q) && !name.includes(q) && !String(x.choferId || '').includes(q)) return false
+      }
+      if (hFilters.inc === 'yes' && !hasIncidents(x)) return false
+      if (hFilters.inc === 'no' && hasIncidents(x)) return false
+      const dt = new Date(x.fechaCreacion || 0)
+      if (hFilters.from && dt < new Date(`${hFilters.from}T00:00:00`)) return false
+      if (hFilters.to && dt > new Date(`${hFilters.to}T23:59:59`)) return false
+      return true
+    })
+    .sort((a, b) => new Date(b.fechaCreacion || 0) - new Date(a.fechaCreacion || 0)), [list, hFilters])
 
   const optionLabel = (x) => [
     x.codigo,
@@ -856,13 +928,14 @@ export default function Manifest({ token, selectId, lang }) {
             {T.manifestLabel}
           </div>
           <div role="tablist" style={{ display: 'inline-flex', border: '1.5px solid #DCE6F5', borderRadius: 100, overflow: 'hidden' }}>
-            {[['active', T.scopeActive(activeList.length)], ['closed', T.scopeClosed]].map(([k, label]) => (
+            {[['active', T.scopeActive(activeList.length)], ['closed', T.scopeClosed], ['history', T.scopeHistory]].map(([k, label]) => (
               <button key={k} type="button" role="tab" aria-selected={scope === k} onClick={() => changeScope(k)}
                 style={{ padding: '7px 14px', border: 'none', background: scope === k ? '#001B45' : '#fff', color: scope === k ? '#fff' : '#10233F', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
                 {label}
               </button>
             ))}
           </div>
+          {scope !== 'history' && (
           <select value={sel ?? ''} onChange={e => setSel(Number(e.target.value))} style={{ ...inputStyle, maxWidth: 340 }} aria-label={T.manifestLabel}>
             {scope === 'active'
               ? ACTIVE_STATES.map(st => {
@@ -878,6 +951,7 @@ export default function Manifest({ token, selectId, lang }) {
               <option value="">{scope === 'active' ? T.noActive : T.noClosed}</option>
             )}
           </select>
+          )}
           {scope === 'closed' && <span style={{ fontSize: 11.5, color: '#6C82A6' }}>{T.lastN(CLOSED_LIMIT)}</span>}
           {m && chip(ESTADOS[m.estado] || m.estado, TONE[MANIFEST_TONE[m.estado]] || TONE.neutral)}
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -887,6 +961,51 @@ export default function Manifest({ token, selectId, lang }) {
             {btn(T.print, false, !m, printManifest)}
           </div>
         </div>
+
+        {scope === 'history' && (
+          <div style={{ padding: '14px 22px', borderBottom: '1px solid #E3EBF7', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+            <input value={hFilters.ci} onChange={e => setHFilters(f => ({ ...f, ci: e.target.value }))}
+              placeholder={T.hfCi} style={{ ...inputStyle, flex: '1 1 200px', minWidth: 160 }} />
+            <select value={hFilters.inc} onChange={e => setHFilters(f => ({ ...f, inc: e.target.value }))} style={{ ...inputStyle, width: 'auto' }}>
+              <option value="all">{T.hfIncAll}</option>
+              <option value="yes">{T.hfIncYes}</option>
+              <option value="no">{T.hfIncNo}</option>
+            </select>
+            <input type="date" value={hFilters.from} onChange={e => setHFilters(f => ({ ...f, from: e.target.value }))}
+              title={T.hfFrom} style={{ ...inputStyle, width: 'auto' }} />
+            <input type="date" value={hFilters.to} onChange={e => setHFilters(f => ({ ...f, to: e.target.value }))}
+              title={T.hfTo} style={{ ...inputStyle, width: 'auto' }} />
+            <span style={{ fontSize: 12, color: '#6C82A6', marginLeft: 'auto' }}>{T.hResults(historyList.length)}</span>
+          </div>
+        )}
+
+        {scope === 'history' && (
+          <div style={{ padding: 22, background: '#EEF4FC', overflowX: 'auto' }}>
+            <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 12, overflow: 'hidden', minWidth: 720 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.4fr .7fr 1.2fr 1fr .8fr .9fr', gap: 10, padding: '11px 16px', background: '#001B45', color: '#fff', fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                <span>{T.hCode}</span><span>{T.hDate}</span><span>{T.hDriver}</span><span>{T.hCi}</span><span>{T.hVehicle}</span><span>Estado</span><span>{T.hPkgs}</span><span>{T.hInc}</span>
+              </div>
+              {historyList.map(x => {
+                const inc = hasIncidents(x)
+                const dt = x.fechaCreacion ? new Date(x.fechaCreacion) : null
+                return (
+                  <div key={x.id} onClick={() => setSel(x.id)}
+                    style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1.4fr .7fr 1.2fr 1fr .8fr .9fr', gap: 10, padding: '12px 16px', borderTop: '1px solid #F0F5FB', fontSize: 13, alignItems: 'center', cursor: 'pointer' }}>
+                    <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 700, color: '#0768C9' }}>{x.codigo}</span>
+                    <span style={{ color: '#6C82A6' }}>{dt ? dt.toLocaleDateString() : '—'}</span>
+                    <span style={{ fontWeight: 600, color: '#10233F' }}>{x.chofer?.nombre || '—'}</span>
+                    <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 12, color: '#10233F' }}>{x.chofer?.documento || '—'}</span>
+                    <span style={{ color: '#6C82A6' }}>{x.vehiculo ? [x.vehiculo.nombre, x.vehiculo.placa].filter(Boolean).join(' · ') : '—'}</span>
+                    <span>{chip(ESTADOS[x.estado] || x.estado, TONE[MANIFEST_TONE[x.estado]] || TONE.neutral)}</span>
+                    <span style={{ fontWeight: 600 }}>{(x.detalles || []).length}</span>
+                    <span>{inc ? chip('⚠', TONE.warn || TONE.neutral) : '—'}</span>
+                  </div>
+                )
+              })}
+              {!historyList.length && <div style={{ padding: 30, textAlign: 'center', fontSize: 13, color: '#6C82A6' }}>{T.hEmpty}</div>}
+            </div>
+          </div>
+        )}
 
         {create.open && (
           <CreatePanel
@@ -976,6 +1095,7 @@ export default function Manifest({ token, selectId, lang }) {
           </div>
         )}
 
+        {scope !== 'history' && (
         <div role="tablist" style={{ display: 'flex', gap: 6, padding: '12px 22px', borderBottom: '1px solid #E3EBF7' }}>
           {['digital', 'printed'].map(k => (
             <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)}
@@ -984,8 +1104,9 @@ export default function Manifest({ token, selectId, lang }) {
             </button>
           ))}
         </div>
+        )}
 
-        <div style={{ padding: 22, background: '#EEF4FC', overflowX: 'auto' }}>
+        <div style={{ padding: 22, background: '#EEF4FC', overflowX: 'auto', display: scope === 'history' ? 'none' : 'block' }}>
           {loading && <div style={{ padding: 40, textAlign: 'center', color: '#6C82A6' }}>{T.loading}</div>}
           {!loading && err && <div style={{ padding: 40, textAlign: 'center', color: '#A93226' }}>{err}</div>}
           {!loading && !err && !m && <div style={{ padding: 40, textAlign: 'center', color: '#6C82A6' }}>{T.empty}</div>}

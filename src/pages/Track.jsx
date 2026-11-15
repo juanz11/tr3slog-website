@@ -83,9 +83,6 @@ export default function Track({ t }) {
     : t.trk.etaVal
 
   const trackFacts = shipment ? [
-    { l: (t.quo && t.quo.f && t.quo.f.origin) ? t.quo.f.origin : 'Origen', v: shipment.origin },
-    { l: (t.quo && t.quo.f && t.quo.f.dest) ? t.quo.f.dest : 'Destino', v: shipment.destination },
-    { l: (t.quo && t.quo.f && t.quo.f.type) ? t.quo.f.type : 'Servicio', v: shipment.service_type || '-' },
     { l: t.trk.status, v: shipStatusLabels[shipment.status] || shipment.status },
   ] : quote ? [
     { l: (t.quo && t.quo.f && t.quo.f.origin) ? t.quo.f.origin : 'Origen', v: quote.origin },
@@ -115,7 +112,8 @@ export default function Track({ t }) {
   const timeline = (shipment
     ? t.trk.timeline.map((s, i) => ({
         ...s,
-        time: i === 0 ? fmtDate(creationDate) : (i <= current && shipment.updated_at ? fmtDate(new Date(shipment.updated_at)) : ''),
+        place: '',
+        time: i === 0 ? fmtDate(creationDate) : (i === current && shipment.status === 'delivered' && shipment.delivered_at ? fmtDate(new Date(shipment.delivered_at)) : (i <= current && shipment.updated_at ? fmtDate(new Date(shipment.updated_at)) : '')),
       }))
     : creationDate ? t.trk.timeline.map((s, i) => {
     const o = timelineOffsets[i]
@@ -219,21 +217,25 @@ export default function Track({ t }) {
                   </div>
                 </div>
               </div>
+              {(!shipment || ['delivered', 'entregado', 'entregada'].includes(shipment.status)) && (
               <div style={{ border: '1px solid #DCE6F5', borderRadius: 18, padding: 26, background: '#fff' }}>
                 <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{t.trk.proofTitle}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {!shipment && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', border: '1px solid #DCE6F5', borderRadius: 12 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#087CF0" strokeWidth="1.7"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" /></svg>
                     <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{t.trk.receivedBy}</span>
-                    <span style={{ fontSize: 12, color: '#6C82A6' }}>{shipment ? (shipment.recipient_name || '—') : 'J. González'}</span>
+                    <span style={{ fontSize: 12, color: '#6C82A6' }}>J. González</span>
                   </div>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', border: '1px solid #DCE6F5', borderRadius: 12 }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#087CF0" strokeWidth="1.7"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>
                     <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{t.trk.deliveredAt}</span>
-                    <span style={{ fontSize: 12, color: '#6C82A6' }}>{shipment && shipment.updated_at ? fmtDate(new Date(shipment.updated_at)) : t.trk.etaVal}</span>
+                    <span style={{ fontSize: 12, color: '#6C82A6' }}>{shipment && shipment.delivered_at ? fmtDate(new Date(shipment.delivered_at)) : (shipment && shipment.updated_at ? fmtDate(new Date(shipment.updated_at)) : t.trk.etaVal)}</span>
                   </div>
                 </div>
               </div>
+              )}
             </div>
           )}
         </div>

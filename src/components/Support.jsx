@@ -35,6 +35,7 @@ export default function Support({ app, token }) {
   const [cases, setCases] = React.useState([])
   const [casesLoaded, setCasesLoaded] = React.useState(false)
   const [refreshing, setRefreshing] = React.useState(null)
+  const [viewCase, setViewCase] = React.useState(null)
   const [lastTicket, setLastTicket] = React.useState(null)
   const [showHidden, setShowHidden] = React.useState(false)
   const [sortMode, setSortMode] = React.useState('recent')
@@ -130,6 +131,62 @@ export default function Support({ app, token }) {
     } finally {
       setSending(false)
     }
+  }
+
+  const openCase = async (c) => {
+    let ticket = c
+    try { ticket = await api.getSupportTicket(c.id, token) } catch { /* usar datos locales */ }
+    const shipment = shipments.find((x) => (x.tracking_number || '') === c.ship)
+    setViewCase({ ...c, ...ticket, shipment })
+  }
+
+  if (viewCase) {
+    const c = viewCase
+    const resolved = ['resolved', 'closed', 'resuelto', 'cerrado'].includes(c.status)
+    const fmtD = (d) => d ? new Date(d).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true }) : 'Pendiente'
+    const steps = [
+      { label: 'Caso creado', date: c.created_at, done: true },
+      { label: 'Leído por soporte', date: c.viewed_at, done: !!c.viewed_at },
+      { label: 'En revisión', date: c.reviewed_at, done: !!c.reviewed_at },
+      { label: 'Resuelto', date: resolved ? c.updated_at : null, done: resolved },
+    ]
+    const sh = c.shipment
+    const tone = (STATUS_TONES[c.status] || STATUS_TONES.open)
+    const cardBase = { background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 22 }
+    return (
+      <div style={{ maxWidth: 760, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <button onClick={() => setViewCase(null)} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: '#087CF0', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>← Volver</button>
+        <div style={cardBase}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 800, fontSize: 20, color: '#001B45' }}>{caseNumber(c)} · {c.subject}</div>
+            <span style={{ display: 'inline-flex', padding: '5px 11px', borderRadius: 100, fontSize: 11, fontWeight: 600, background: tone.bg, color: tone.fg }}>{(s.statuses || {})[c.status] || c.status}</span>
+          </div>
+          {c.message && <div style={{ marginTop: 12, fontSize: 14, lineHeight: 1.6, color: '#10233F', whiteSpace: 'pre-wrap' }}>{c.message}</div>}
+        </div>
+        {sh && (
+          <div style={cardBase}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 12 }}>Información del paquete</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', fontSize: 14 }}>
+              <div><span style={{ color: '#6C82A6' }}>Guía: </span><b>{sh.tracking_number}</b></div>
+              <div><span style={{ color: '#6C82A6' }}>Estado: </span><b>{sh.status}</b></div>
+              <div><span style={{ color: '#6C82A6' }}>Ruta: </span><b>{sh.origin || '—'} → {sh.destination || '—'}</b></div>
+              <div><span style={{ color: '#6C82A6' }}>Servicio: </span><b>{sh.service_type || '—'}</b></div>
+              <div><span style={{ color: '#6C82A6' }}>Destinatario: </span><b>{sh.recipient_name || '—'}</b></div>
+            </div>
+          </div>
+        )}
+        <div style={cardBase}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 14 }}>Progreso del caso</div>
+          {steps.map((st, i) => (
+            <div key={st.label} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: i ? '1px solid #EEF4FC' : 'none', alignItems: 'center' }}>
+              <span style={{ width: 12, height: 12, borderRadius: '50%', flex: '0 0 auto', background: st.done ? '#087CF0' : '#DCE6F5' }} />
+              <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: st.done ? '#001B45' : '#8B9DBA' }}>{st.label}</div>
+              <div style={{ fontSize: 12, color: '#6C82A6' }}>{st.done ? fmtD(st.date) : 'Pendiente'}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -300,6 +357,13 @@ export default function Support({ app, token }) {
                       fontWeight: 600, color: '#087CF0', whiteSpace: 'nowrap',
                     }}
                   >{refreshing === c.id ? '…' : (s.checkStatus || 'Consultar estado')}</button>
+                  <button
+                    onClick={() => openCase(c)}
+                    style={{
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600, color: '#087CF0', whiteSpace: 'nowrap',
+                    }}
+                  >Ver detalle</button>
                   <button
                     onClick={() => hideCase(c)}
                     style={{

@@ -60,6 +60,8 @@ const buildRow = (sh, statuses) => ({
   eta: sh.eta || sh.estimated_delivery || formatDate(sh.created_at) || formatDate(sh.updated_at) || '—',
   parsed_tracking: sh.parsed_tracking || null,
   tracking_url: sh.tracking_url || null,
+  clientType: sh.client_type === 'empresa' ? 'empresa' : 'persona',
+  clientName: sh.client_name || (sh.client && sh.client.name) || '',
   raw: sh,
 })
 
@@ -171,6 +173,11 @@ function DetailView({ app, shipment, token, onClose, onRefresh }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', marginBottom: 22 }}>
         <h1 style={{ fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 800, fontSize: 30, letterSpacing: '-.02em', margin: 0, color: '#001B45' }}>{tracking}</h1>
         <span style={{ display: 'inline-flex', padding: '8px 15px', borderRadius: 100, fontSize: 12, fontWeight: 600, background: tone.bg, color: tone.fg }}>{statusLabel}</span>
+        <span style={{
+          display: 'inline-flex', padding: '8px 15px', borderRadius: 100, fontSize: 12, fontWeight: 600,
+          background: shipment.client_type === 'empresa' ? 'rgba(123,63,242,.1)' : 'rgba(0,166,150,.1)',
+          color: shipment.client_type === 'empresa' ? '#5E2AC7' : '#067A70',
+        }}>{shipment.client_type === 'empresa' ? (s.typeEmpresa || 'Empresa') : (s.typePersona || 'Persona')}</span>
         <span style={{ fontSize: 14, color: '#10233F' }}>{route} · {service}</span>
         {!['delivered', 'entregado', 'entregada', 'cancelled', 'cancelado', 'cancel_requested'].includes(shipment.status) && (
           <button
@@ -353,13 +360,14 @@ function DetailView({ app, shipment, token, onClose, onRefresh }) {
   )
 }
 
-export default function ShipmentsList({ app, token, query: externalQuery, onQueryChange, selectId }) {
+export default function ShipmentsList({ app, token, query: externalQuery, onQueryChange, selectId, staff }) {
   const s = app.ship
   const isControlled = typeof externalQuery !== 'undefined'
   const [internalQuery, setInternalQuery] = React.useState('')
   const query = isControlled ? externalQuery : internalQuery
   const setQuery = isControlled ? onQueryChange : setInternalQuery
   const [filter, setFilter] = React.useState(0)
+  const [clientFilter, setClientFilter] = React.useState('all')
   const [sortMode, setSortMode] = React.useState('recent')
   const [shipments, setShipments] = React.useState([])
   const [loading, setLoading] = React.useState(true)
@@ -393,11 +401,12 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
   usePolling(load, 30000)
 
   const filtered = shipments.filter((r) => {
+    const matchesClient = clientFilter === 'all' || r.clientType === clientFilter
     const matchesFilter = filter === 0 || r.status === filter - 1
     const q = (query || '').toLowerCase()
     const statusText = s.statuses[r.status] || ''
-    const matchesQuery = !q || r.id.toLowerCase().includes(q) || r.route.toLowerCase().includes(q) || statusText.toLowerCase().includes(q)
-    return matchesFilter && matchesQuery
+    const matchesQuery = !q || r.id.toLowerCase().includes(q) || r.route.toLowerCase().includes(q) || statusText.toLowerCase().includes(q) || (r.clientName || '').toLowerCase().includes(q)
+    return matchesClient && matchesFilter && matchesQuery
   })
 
   const sorted = sortRows(filtered, sortMode, {
@@ -405,7 +414,12 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
     text: (r) => r.id,
   })
 
-  const pager = usePagination(sorted, 10, `${filter}|${query}|${sortMode}`)
+  const pager = usePagination(sorted, 10, `${filter}|${clientFilter}|${query}|${sortMode}`)
+
+  const gridCols = staff
+    ? '1.1fr 1fr 1.3fr 1fr 1fr 0.7fr 0.5fr'
+    : '1.2fr 1.3fr 1fr 1fr 0.7fr 0.5fr'
+  const cols = staff ? s.cols : (s.cols || []).filter((_, i) => i !== 1)
 
   if (selected) {
     return <DetailView app={app} shipment={selected} token={token} onClose={() => setSelected(null)} onRefresh={() => load()} />
@@ -467,17 +481,39 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
               )
             })}
           </div>
+          {staff && (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', borderLeft: '1.5px solid #DCE6F5', paddingLeft: 12 }}>
+            {(s.clientTypes || ['Todos', 'Personas', 'Empresas']).map((f, i) => {
+              const value = ['all', 'persona', 'empresa'][i]
+              const on = value === clientFilter
+              return (
+                <button
+                  key={i}
+                  onClick={() => setClientFilter(value)}
+                  style={{
+                    padding: '10px 14px',
+                    border: `1.5px solid ${on ? '#7B3FF2' : '#DCE6F5'}`,
+                    borderRadius: 100,
+                    background: on ? 'rgba(123,63,242,.08)' : '#fff',
+                    color: on ? '#5E2AC7' : '#10233F',
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >{f}</button>
+              )
+            })}
+          </div>
+          )}
           <SortControl value={sortMode} onChange={setSortMode} labels={app.sort} />
         </div>
 
         <div style={{ overflowX: 'auto' }}>
-          <div style={{ minWidth: 760 }}>
+          <div style={{ minWidth: staff ? 880 : 760 }}>
             <div style={{
-              display: 'grid', gridTemplateColumns: '1.2fr 1.3fr 1fr 1fr 0.7fr 0.5fr',
+              display: 'grid', gridTemplateColumns: gridCols,
               gap: 12, padding: '12px 22px', fontSize: 11, letterSpacing: '.1em',
               textTransform: 'uppercase', color: '#6C82A6',
             }}>
-              {s.cols.map((col, i) => <span key={i}>{col}</span>)}
+              {cols.map((col, i) => <span key={i}>{col}</span>)}
             </div>
             {loading && (
               <div style={{ padding: 30, textAlign: 'center', color: '#6C82A6' }}>Cargando envíos…</div>
@@ -490,10 +526,21 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
             )}
             {!loading && pager.pageItems.map((r, i) => (
               <div key={r.id || i} style={{
-                display: 'grid', gridTemplateColumns: '1.2fr 1.3fr 1fr 1fr 0.7fr 0.5fr',
+                display: 'grid', gridTemplateColumns: gridCols,
                 gap: 12, padding: '16px 22px', borderTop: '1px solid #E3EBF7', alignItems: 'center',
               }}>
                 <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 600, fontSize: 13, color: '#001B45' }}>{r.id}</span>
+                {staff && (
+                <span style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+                  <span style={{
+                    display: 'inline-flex', padding: '3px 10px', borderRadius: 100,
+                    fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase',
+                    background: r.clientType === 'empresa' ? 'rgba(123,63,242,.1)' : 'rgba(0,166,150,.1)',
+                    color: r.clientType === 'empresa' ? '#5E2AC7' : '#067A70',
+                  }}>{r.clientType === 'empresa' ? (s.typeEmpresa || 'Empresa') : (s.typePersona || 'Persona')}</span>
+                  {r.clientName && <span style={{ fontSize: 11.5, color: '#6C82A6' }}>{r.clientName}</span>}
+                </span>
+                )}
                 <span style={{ fontSize: 13, color: '#10233F' }}>{r.route}</span>
                 <span style={{ fontSize: 13, color: '#10233F' }}>{r.service}</span>
                 <span style={{
