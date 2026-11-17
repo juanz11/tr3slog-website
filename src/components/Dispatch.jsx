@@ -478,6 +478,16 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
     return s.tracking_number || `#${s.id}`
   }
 
+  const fPickup = (date, win) => {
+    const parts = []
+    if (date) {
+      const d2 = new Date(String(date).includes('T') ? date : `${date}T12:00:00`)
+      parts.push(isNaN(d2.getTime()) ? String(date) : d2.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }))
+    }
+    if (win) parts.push(win)
+    return `${d.detail.fields.pickup}: ${parts.join(' · ')}`
+  }
+
   const advanceStatus = async (shipment, target) => {
     const next = target || NEXT_STATUS[shipment.status]
     if (!next) return
@@ -659,6 +669,11 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
                   </span>
                   <span className="app-table-text" title={`${s.origin || ''} → ${s.destination || ''}`}>
                     {s.origin || '—'} → {s.destination || '—'}
+                    {(s.pickup_date || s.pickup_window) && (
+                      <span style={{ display: 'block', fontSize: 11, color: '#0768C9', fontWeight: 600, marginTop: 2 }}>
+                        {fPickup(s.pickup_date, s.pickup_window)}
+                      </span>
+                    )}
                   </span>
                   <span className="app-table-text">{s.recipient_name || '—'}</span>
                   <span className="app-table-text">{s.service_type || '—'}</span>

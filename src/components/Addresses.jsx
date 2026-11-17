@@ -145,7 +145,15 @@ export default function Addresses({ app, token }) {
     let selection = 0
     let widget = null
     const fallbackTimer = setTimeout(() => { if (!widget && active) setPlacesError(true) }, 2500)
-    const onError = () => { if (active) setPlacesError(true) }
+    const onError = () => {
+      if (!active) return
+      try {
+        const typed = widget?.shadowRoot?.querySelector('input')?.value
+          || widget?.querySelector?.('input')?.value
+        if (typed) setFormVals((v) => ({ ...v, address: typed }))
+      } catch { /* shadow root inaccesible */ }
+      setPlacesError(true)
+    }
     const onSelect = async ({ placePrediction }) => {
       const request = ++selection
       try {

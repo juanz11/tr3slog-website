@@ -135,6 +135,10 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getLiveDriverLocations: (token) => fetch(`${API_URL}/driver-locations/live`, {
+    headers: headers(token),
+  }).then(handle),
+
   getClients: (token) => fetch(`${API_URL}/users/clients`, {
     headers: headers(token),
   }).then(handle),

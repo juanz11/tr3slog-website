@@ -134,7 +134,15 @@ const PlacesInput = ({ value, onChange, placeholder, style }) => {
         if (active && place.formattedAddress) onChange(place.formattedAddress)
       } catch { if (active) setFailed(true) }
     }
-    const onErr = () => { if (active) setFailed(true) }
+    const onErr = () => {
+      if (!active) return
+      try {
+        const typed = widget.shadowRoot?.querySelector('input')?.value
+          || widget.querySelector?.('input')?.value
+        if (typed) onChange(typed)
+      } catch { /* noop */ }
+      setFailed(true)
+    }
     widget.addEventListener('gmp-select', onSelect)
     widget.addEventListener('gmp-error', onErr)
     ref.current.appendChild(widget)
@@ -211,6 +219,11 @@ const PkgInfo = ({ det }) => {
         {pkgs.length > 1 && pkgs.slice(1).map((pkg, i) => (
           <div key={i} style={{ marginTop: 6, fontSize: 12, color: '#5B7BA6', fontWeight: 600 }}>{pkgLine(pkg, i + 1)}</div>
         ))}
+        {(p.fechaRecogida || p.ventanaRecogida) && (
+          <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#E8F3FF', color: '#0768C9', fontSize: 12, fontWeight: 700 }}>
+            Recogida: {[p.fechaRecogida, p.ventanaRecogida].filter(Boolean).join(' · ')}
+          </div>
+        )}
         {pkgs[0]?.content && <div style={{ marginTop: 10, fontSize: 12, color: '#10233F' }}><span style={{ color: '#6C82A6', fontWeight: 600 }}>Contenido: </span>{pkgs[0].content}</div>}
         {p.notas && <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#FFF4D6', color: '#8A6100', fontSize: 12, fontWeight: 600 }}>Nota: {p.notas}</div>}
       </div>

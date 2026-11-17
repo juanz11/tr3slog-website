@@ -366,7 +366,14 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
         if (zip) onChange('zip', zip)
       } catch { setPlacesError(true) }
     })
-    widget.addEventListener('gmp-error', () => setPlacesError(true))
+    widget.addEventListener('gmp-error', () => {
+      try {
+        const typed = widget.shadowRoot?.querySelector('input')?.value
+          || widget.querySelector?.('input')?.value
+        if (typed) onChange('address', typed)
+      } catch { /* noop */ }
+      setPlacesError(true)
+    })
     container.appendChild(widget)
   }, [placesReady, placesError, manualAddr, section, data[section]?.addressId, onChange])
 
@@ -1446,6 +1453,8 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
         recipient_email: data.recipient.email,
         service_type: data.service.service,
         delivery_mode: data.service.delivery || 'standard',
+        pickup_date: data.service.pickupDate || undefined,
+        pickup_window: data.service.timeWindow || undefined,
         amount: kmTotals().total || undefined,
         distance_km: routeEst.km || undefined,
         packages: data.package.map((pkg) => {

@@ -16,6 +16,7 @@ import PricingCalc from './PricingCalc'
 import Users from './Users'
 import Roles from './Roles'
 import Manifest from './Manifest'
+import LiveTracking from './LiveTracking'
 import Hub, { HubScans } from './Hub'
 import { AdminDashboardScreen } from './AdminConsole'
 import adminDict from '../lib/adminDict'
@@ -53,7 +54,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isFinance = !isAdmin && !isAdministrative && !isHubStaff && userRoles.includes('finance')
   const isExecutiveClient = !isAdmin && !isAdministrative && !isFinance && userRoles.includes('executive_client')
   const nav = isAdminRole
-    ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
+    ? { dashboard: app.navA.dashboard, tracking: app.navA.tracking, incidents: app.navA.incidents, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
     : isOpsSupervisor
       ? { ...app.navOps, profile: app.navA.profile }
       : isOperations
@@ -201,6 +202,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isUsers = activeKey === 'users'
   const isRoles = activeKey === 'roles'
   const isManifest = activeKey === 'manifest'
+  const isTracking = activeKey === 'tracking'
   const isHub = activeKey === 'hub'
   const isDespachos = activeKey === 'despachos'
   const isAdash = isAdminRole && activeKey === 'dashboard'
@@ -393,6 +395,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             <Roles lang={lang} token={token} />
           ) : isManifest ? (
             <Manifest app={app} token={token} lang={lang} selectId={openManifestId} />
+          ) : isTracking ? (
+            <LiveTracking app={app} token={token} />
           ) : isHub ? (
             <Hub
               token={token}
