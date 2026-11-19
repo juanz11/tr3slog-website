@@ -45,6 +45,52 @@ const T_ES = {
   count: (n) => `${n} ${n === 1 ? 'caso' : 'casos'}`,
   onlyPending: 'Pendientes',
   all: 'Todos',
+  details: 'Detalles',
+  close: 'Cerrar',
+  detailTitle: 'Detalle del envío',
+  loadingDetail: 'Cargando detalle…',
+  confirmTitle: 'Contactar al cliente antes de revisar',
+  confirmCopy: (code) => `Antes de marcar ${code} como revisado, avise al cliente por WhatsApp sobre el estado de su caso.`,
+  confirmNoPhone: 'El cliente no tiene teléfono registrado; no se puede enviar WhatsApp.',
+  sendWhatsapp: 'Enviar WhatsApp',
+  waSent: 'WhatsApp enviado',
+  confirmReview: 'Confirmar revisión',
+  cancel: 'Cancelar',
+  dRoute: 'Ruta',
+  dClient: 'Cliente',
+  dSender: 'Remitente',
+  dRecipient: 'Destinatario',
+  dService: 'Servicio',
+  dPackages: 'Bultos',
+  dAmount: 'Monto',
+  dInvoice: 'Factura',
+  dNotes: 'Notas',
+  dDriver: 'Conductor',
+  dHistory: 'Historial de estados',
+  dReview: 'Revisión',
+  dPhone: 'Tel.',
+  dEmail: 'Correo',
+  dWeight: 'Peso',
+  dDims: 'Dimensiones',
+  dPieces: 'Piezas',
+  dContent: 'Contenido',
+  dFragile: 'Frágil',
+  yes: 'Sí',
+  no: 'No',
+  dLastPoint: 'Último punto registrado',
+  dManifest: 'Manifiesto',
+  dStop: 'Parada',
+  dLocation: 'Ubicación',
+  dVisitedAt: 'Hora de visita',
+  dFailReason: 'Motivo',
+  dGps: 'GPS',
+  dHubIn: 'Entró al hub',
+  dHubOut: 'Salió del hub',
+  dVia: 'Captura',
+  dEvidence: 'Evidencia',
+  mapView: 'Ver en mapa',
+  stopStatus: { PENDIENTE: 'Pendiente', ENTREGADO: 'Entregado', NO_ENTREGADO: 'No entregado', TRANSFERIDO: 'Transferido' },
+  noPoint: 'Sin manifiesto: el envío no llegó a subir a ruta.',
 }
 
 const T_EN = {
@@ -78,6 +124,52 @@ const T_EN = {
   count: (n) => `${n} ${n === 1 ? 'case' : 'cases'}`,
   onlyPending: 'Pending',
   all: 'All',
+  details: 'Details',
+  close: 'Close',
+  detailTitle: 'Shipment details',
+  loadingDetail: 'Loading details…',
+  confirmTitle: 'Contact the client before reviewing',
+  confirmCopy: (code) => `Before marking ${code} as reviewed, notify the client on WhatsApp about the status of their case.`,
+  confirmNoPhone: 'The client has no registered phone; WhatsApp cannot be sent.',
+  sendWhatsapp: 'Send WhatsApp',
+  waSent: 'WhatsApp sent',
+  confirmReview: 'Confirm review',
+  cancel: 'Cancel',
+  dRoute: 'Route',
+  dClient: 'Client',
+  dSender: 'Sender',
+  dRecipient: 'Recipient',
+  dService: 'Service',
+  dPackages: 'Packages',
+  dAmount: 'Amount',
+  dInvoice: 'Invoice',
+  dNotes: 'Notes',
+  dDriver: 'Driver',
+  dHistory: 'Status history',
+  dReview: 'Review',
+  dPhone: 'Phone',
+  dEmail: 'Email',
+  dWeight: 'Weight',
+  dDims: 'Dimensions',
+  dPieces: 'Pieces',
+  dContent: 'Contents',
+  dFragile: 'Fragile',
+  yes: 'Yes',
+  no: 'No',
+  dLastPoint: 'Last recorded point',
+  dManifest: 'Manifest',
+  dStop: 'Stop',
+  dLocation: 'Location',
+  dVisitedAt: 'Visit time',
+  dFailReason: 'Reason',
+  dGps: 'GPS',
+  dHubIn: 'Entered hub',
+  dHubOut: 'Left hub',
+  dVia: 'Capture',
+  dEvidence: 'Evidence',
+  mapView: 'View on map',
+  stopStatus: { PENDIENTE: 'Pending', ENTREGADO: 'Delivered', NO_ENTREGADO: 'Not delivered', TRANSFERIDO: 'Transferred' },
+  noPoint: 'No manifest: the shipment never made it onto a route.',
 }
 
 const T_ZH = {
@@ -111,6 +203,52 @@ const T_ZH = {
   count: (n) => `${n} 个案例`,
   onlyPending: '待审核',
   all: '全部',
+  details: '详情',
+  close: '关闭',
+  detailTitle: '货件详情',
+  loadingDetail: '正在加载详情…',
+  confirmTitle: '审核前请先联系客户',
+  confirmCopy: (code) => `在将 ${code} 标记为已审核之前，请通过 WhatsApp 告知客户案件状态。`,
+  confirmNoPhone: '客户未登记电话，无法发送 WhatsApp。',
+  sendWhatsapp: '发送 WhatsApp',
+  waSent: 'WhatsApp 已发送',
+  confirmReview: '确认审核',
+  cancel: '取消',
+  dRoute: '路线',
+  dClient: '客户',
+  dSender: '发件人',
+  dRecipient: '收件人',
+  dService: '服务',
+  dPackages: '包裹',
+  dAmount: '金额',
+  dInvoice: '发票',
+  dNotes: '备注',
+  dDriver: '司机',
+  dHistory: '状态历史',
+  dReview: '审核',
+  dPhone: '电话',
+  dEmail: '邮箱',
+  dWeight: '重量',
+  dDims: '尺寸',
+  dPieces: '件数',
+  dContent: '内容',
+  dFragile: '易碎',
+  yes: '是',
+  no: '否',
+  dLastPoint: '最后记录位置',
+  dManifest: '运单清单',
+  dStop: '停靠点',
+  dLocation: '位置',
+  dVisitedAt: '访问时间',
+  dFailReason: '原因',
+  dGps: 'GPS',
+  dHubIn: '进入仓库',
+  dHubOut: '离开仓库',
+  dVia: '采集方式',
+  dEvidence: '凭证',
+  mapView: '查看地图',
+  stopStatus: { PENDIENTE: '待处理', ENTREGADO: '已送达', NO_ENTREGADO: '未送达', TRANSFERIDO: '已转运' },
+  noPoint: '无运单清单：货件未装上路线。',
 }
 
 const T_BY_LANG = { es: T_ES, en: T_EN, 'zh-CN': T_ZH }
@@ -131,6 +269,9 @@ export default function Returns({ token, lang, canReview = false }) {
   const [loading, setLoading] = React.useState(true)
   const [scope, setScope] = React.useState('pending')
   const [busy, setBusy] = React.useState(null)
+  const [detail, setDetail] = React.useState(null) // { loading, data }
+  const [confirming, setConfirming] = React.useState(null) // shipment pendiente de revisar
+  const [waSent, setWaSent] = React.useState({}) // id -> true cuando se abrió WhatsApp
 
   React.useEffect(() => {
     let alive = true
@@ -158,6 +299,14 @@ export default function Returns({ token, lang, canReview = false }) {
     if (!phone) return
     const msg = encodeURIComponent(T.whatsappMsg(s.tracking_number || ''))
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank', 'noopener')
+    setWaSent((m) => ({ ...m, [s.id]: true }))
+  }
+
+  const openDetail = (s) => {
+    setDetail({ loading: true, data: s })
+    api.getShipment(s.id, token)
+      .then((d) => setDetail((cur) => (cur && cur.data?.id === s.id ? { loading: false, data: d } : cur)))
+      .catch(() => setDetail((cur) => (cur && cur.data?.id === s.id ? { loading: false, data: s } : cur)))
   }
 
   const markReviewed = async (s) => {
@@ -167,6 +316,7 @@ export default function Returns({ token, lang, canReview = false }) {
       setRows((list) => list.map((x) => (x.id === s.id
         ? { ...x, return_reviewed_at: res.return_reviewed_at, return_reviewed_by: res.return_reviewed_by, return_reviewer: res.return_reviewer }
         : x)))
+      setConfirming(null)
     } catch (e) {
       alert(e.message || T.error)
     } finally {
@@ -256,7 +406,14 @@ export default function Returns({ token, lang, canReview = false }) {
                       )}
                     </td>
                     <td style={tdStyle}>
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => openDetail(s)}
+                          style={{
+                            padding: '7px 12px', borderRadius: 8, border: '1px solid #D8E2EF',
+                            background: '#fff', color: '#4A5D7E', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                          }}
+                        >{T.details}</button>
                         {phone ? (
                           <button
                             onClick={() => openWhatsApp(s)}
@@ -275,7 +432,7 @@ export default function Returns({ token, lang, canReview = false }) {
                         ) : null}
                         {canReview && !reviewed && (
                           <button
-                            onClick={() => markReviewed(s)}
+                            onClick={() => setConfirming(s)}
                             disabled={busy === s.id}
                             style={{
                               padding: '7px 12px', borderRadius: 8, border: '1px solid #0A4E96',
@@ -292,6 +449,205 @@ export default function Returns({ token, lang, canReview = false }) {
             </tbody>
           </table>
         )}
+      </div>
+
+      {detail && <DetailModal T={T} fmt={fmt} locale={locale} entry={detail} onClose={() => setDetail(null)} feePercent={feePercent} feeAmount={feeAmount} />}
+
+      {confirming && (() => {
+        const s = confirming
+        const code = s.tracking_number || `#${s.id}`
+        const phone = phoneDigits(contactPhone(s))
+        const needsWa = !!phone && !waSent[s.id]
+        return (
+          <div
+            onClick={() => setConfirming(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(16,35,63,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: '#fff', borderRadius: 16, padding: 28, width: 460, maxWidth: '100%', boxShadow: '0 24px 64px rgba(16,35,63,.25)' }}
+            >
+              <h3 style={{ margin: '0 0 8px', fontFamily: 'Montserrat, sans-serif', fontSize: 18, fontWeight: 800, color: '#001B45' }}>{T.confirmTitle}</h3>
+              <p style={{ margin: 0, fontSize: 13.5, color: '#6C82A6', lineHeight: 1.6 }}>{T.confirmCopy(code)}</p>
+              {!phone && <p style={{ margin: '12px 0 0', fontSize: 12.5, color: '#8A6300', fontWeight: 600 }}>{T.confirmNoPhone}</p>}
+              <div style={{ display: 'flex', gap: 10, marginTop: 22, flexWrap: 'wrap' }}>
+                {phone ? (
+                  <button
+                    type="button"
+                    onClick={() => openWhatsApp(s)}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '11px 16px', borderRadius: 10, border: 'none',
+                      background: '#25D366', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >{waSent[s.id] ? `✓ ${T.waSent}` : T.sendWhatsapp}</button>
+                ) : null}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(null)}
+                    style={{ padding: '11px 16px', borderRadius: 10, border: '1.5px solid #DCE6F5', background: '#fff', color: '#10233F', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  >{T.cancel}</button>
+                  <button
+                    type="button"
+                    disabled={needsWa || busy === s.id}
+                    onClick={() => markReviewed(s)}
+                    style={{
+                      padding: '11px 16px', borderRadius: 10, border: 'none',
+                      background: needsWa ? '#9FB6D8' : '#0A4E96', color: '#fff', fontSize: 13, fontWeight: 700,
+                      cursor: needsWa ? 'not-allowed' : busy === s.id ? 'wait' : 'pointer',
+                    }}
+                  >{busy === s.id ? T.reviewing : T.confirmReview}</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+    </div>
+  )
+}
+
+function DetailModal({ T, fmt, locale, entry, onClose, feePercent, feeAmount }) {
+  const s = entry.data || {}
+  const meta = STATUS_META[s.status] || STATUS_META.returned
+  const statusLabel = T.status[s.status] || s.status || '—'
+  const pkgs = Array.isArray(s.packages) ? s.packages : []
+  const history = Array.isArray(s.status_history) ? s.status_history : []
+  const pct = feePercent(s)
+  const amt = feeAmount(s)
+  const sect = { fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }
+  const box = { background: '#F6FAFF', border: '1px solid #E3EBF7', borderRadius: 10, padding: '10px 14px' }
+  const line = { fontSize: 13, color: '#10233F', lineHeight: 1.55 }
+  const person = (name, ...rest) => (
+    <div>
+      <div style={{ ...line, fontWeight: 700 }}>{name || '—'}</div>
+      {rest.filter(Boolean).map((v, i) => <div key={i} style={{ ...line, fontSize: 12.5, color: '#4A5B76' }}>{v}</div>)}
+    </div>
+  )
+  const addr = (o) => [o.address, [o.city, o.country].filter(Boolean).join(', '), o.zip].filter(Boolean).join(' · ')
+  const parties = [
+    [T.dClient, s.client, person(s.client?.name, s.client?.phone ? `${T.dPhone}: ${s.client.phone}` : null, s.client?.email ? `${T.dEmail}: ${s.client.email}` : null)],
+    [T.dSender, s.sender_name, person(s.sender_name, addr(s.sender_city || s.sender_address ? { address: s.sender_address, city: s.sender_city, country: s.sender_country, zip: s.sender_zip } : {}) || s.origin, s.sender_phone ? `${T.dPhone}: ${s.sender_phone}` : null, s.sender_company)],
+    [T.dRecipient, s.recipient_name, person(s.recipient_name, addr({ address: s.recipient_address, city: s.recipient_city, country: s.recipient_country, zip: s.recipient_zip }) || s.destination, s.recipient_phone ? `${T.dPhone}: ${s.recipient_phone}` : null, s.recipient_company)],
+    [T.dDriver, s.driver?.name, s.driver ? person(s.driver.name, s.driver.phone ? `${T.dPhone}: ${s.driver.phone}` : null) : <span style={{ ...line, color: '#8B9DBA' }}>—</span>],
+  ]
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(16,35,63,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: '#fff', borderRadius: 16, width: 760, maxWidth: '100%', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(16,35,63,.25)' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 24px', borderBottom: '1px solid #E3EAF4', position: 'sticky', top: 0, background: '#fff', borderRadius: '16px 16px 0 0', zIndex: 1 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{T.detailTitle}</div>
+            <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 17, fontWeight: 800, color: '#001B45' }}>{s.tracking_number || `#${s.id}`}</div>
+          </div>
+          <span style={{ padding: '4px 12px', borderRadius: 100, background: meta.bg, color: meta.fg, fontSize: 12, fontWeight: 700 }}>{statusLabel}</span>
+          <button onClick={onClose} style={{ marginLeft: 'auto', border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#6C82A6', lineHeight: 1 }}>×</button>
+        </div>
+
+        {entry.loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#6C82A6', fontSize: 13 }}>{T.loadingDetail}</div>
+        ) : (
+          <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+              <div style={box}><div style={sect}>{T.dRoute}</div><div style={line}>{s.origin || '—'} → {s.destination || '—'}</div></div>
+              <div style={box}><div style={sect}>{T.dService}</div><div style={line}>{[s.service_type, s.delivery_mode].filter(Boolean).join(' · ') || '—'}</div></div>
+              <div style={box}><div style={sect}>{T.dAmount}</div><div style={line}>{s.amount != null ? `$${Number(s.amount).toFixed(2)}` : '—'}</div></div>
+              <div style={box}><div style={sect}>{T.dInvoice}</div><div style={line}>{s.invoice_number || '—'}{s.invoiced_at ? ` · ${fmt(s.invoiced_at)}` : ''}</div></div>
+              <div style={box}><div style={sect}>{T.feeTitle}</div><div style={{ ...line, color: pct != null ? '#C0392B' : '#8B9DBA', fontWeight: pct != null ? 800 : 400 }}>{pct != null ? `${pct}%${amt != null ? ` · $${Number(amt).toFixed(2)}` : ''}` : T.noFee}</div></div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+              {parties.map(([lbl, , node]) => <div key={lbl} style={box}><div style={sect}>{lbl}</div>{node}</div>)}
+            </div>
+
+            {pkgs.length > 0 && (
+              <div>
+                <div style={sect}>{T.dPackages} ({pkgs.length})</div>
+                <div style={{ border: '1px solid #E3EBF7', borderRadius: 10, overflow: 'hidden' }}>
+                  {pkgs.map((p, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', padding: '10px 14px', fontSize: 12.5, color: '#10233F', borderTop: i ? '1px solid #EDF2F8' : 'none', background: i % 2 ? '#F8FBFF' : '#fff', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, minWidth: 70 }}>{p.type || '—'}</span>
+                      <span>{T.dPieces}: {p.pieces ?? '—'}</span>
+                      <span>{T.dWeight}: {p.weight != null ? `${p.weight} ${p.weight_unit || 'kg'}` : '—'}</span>
+                      <span>{T.dDims}: {p.dimensions || '—'}</span>
+                      {p.content && <span style={{ flex: '1 1 100%', color: '#4A5B76' }}>{T.dContent}: {p.content}</span>}
+                      {p.fragile && <span style={{ background: '#C0392B', color: '#fff', padding: '2px 10px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>FRÁGIL</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(s.weight || s.dimensions || s.pieces) && (
+              <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 12.5, color: '#4A5B76' }}>
+                {s.weight != null && <span>{T.dWeight}: <b style={{ color: '#10233F' }}>{s.weight} {s.weight_unit || 'kg'}</b></span>}
+                {s.dimensions && <span>{T.dDims}: <b style={{ color: '#10233F' }}>{s.dimensions}</b></span>}
+                {s.pieces && <span>{T.dPieces}: <b style={{ color: '#10233F' }}>{s.pieces}</b></span>}
+              </div>
+            )}
+
+            {s.notes && <div style={box}><div style={sect}>{T.dNotes}</div><div style={line}>{s.notes}</div></div>}
+
+            <div>
+              <div style={sect}>{T.dLastPoint}</div>
+              {(() => {
+                const md = s.manifest_detail
+                const mani = md?.manifest
+                if (!md) return <div style={{ ...line, color: '#8B9DBA' }}>{T.noPoint}</div>
+                const row = (k, v) => v ? <div style={{ display: 'flex', gap: 8, fontSize: 12.5, padding: '5px 0' }}><span style={{ minWidth: 120, color: '#6C82A6' }}>{k}</span><span style={{ color: '#10233F', fontWeight: 600 }}>{v}</span></div> : null
+                const gps = md.lat != null && md.lng != null ? `${md.lat}, ${md.lng}${md.gps_accuracy ? ` (±${Math.round(md.gps_accuracy)} m)` : ''}` : null
+                const evidence = md.pod_url || md.evidence_url || md.evidence_path || null
+                return (
+                  <div style={box}>
+                    {mani && row(T.dManifest, `${mani.code || `#${mani.id}`}${mani.status ? ` · ${mani.status}` : ''}`)}
+                    {row(T.dStop, `${md.sequence != null ? `#${md.sequence}` : ''}${md.status ? ` · ${T.stopStatus[md.status] || md.status}` : ''}`)}
+                    {row(T.dLocation, md.location)}
+                    {row(T.dVisitedAt, fmt(md.visited_at || md.hora_visita))}
+                    {row(T.dFailReason, md.failure_reason || md.motivo_fallo)}
+                    {row(T.dVia, md.capture_via)}
+                    {mani?.hub_received_at && row(T.dHubIn, fmt(mani.hub_received_at))}
+                    {mani?.hub_dispatched_at && row(T.dHubOut, fmt(mani.hub_dispatched_at))}
+                    {gps && (
+                      <div style={{ display: 'flex', gap: 8, fontSize: 12.5, padding: '5px 0' }}>
+                        <span style={{ minWidth: 120, color: '#6C82A6' }}>{T.dGps}</span>
+                        <a href={`https://www.google.com/maps?q=${md.lat},${md.lng}`} target="_blank" rel="noreferrer" style={{ color: '#087CF0', fontWeight: 600 }}>{gps} · {T.mapView}</a>
+                      </div>
+                    )}
+                    {evidence && row(T.dEvidence, <a href={evidence} target="_blank" rel="noreferrer" style={{ color: '#087CF0' }}>{T.dEvidence}</a>)}
+                  </div>
+                )
+              })()}
+            </div>
+
+            {history.length > 0 && (
+              <div>
+                <div style={sect}>{T.dHistory}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {history.map((h, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 10, fontSize: 12.5 }}>
+                      <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 700, color: '#001B45', minWidth: 130 }}>{h.status}</span>
+                      <span style={{ color: '#6C82A6' }}>{fmt(h.at)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {s.return_reviewed_at && (
+              <div style={box}><div style={sect}>{T.dReview}</div><div style={line}>{T.reviewedBy(s.return_reviewer?.name || T.reviewed, fmt(s.return_reviewed_at))}</div></div>
+            )}
+          </div>
+        )}
+
+        <div style={{ padding: '14px 24px 20px', borderTop: '1px solid #E3EAF4', textAlign: 'right' }}>
+          <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 10, border: '1.5px solid #DCE6F5', background: '#fff', color: '#10233F', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{T.close}</button>
+        </div>
       </div>
     </div>
   )
