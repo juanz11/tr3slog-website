@@ -16,6 +16,7 @@ import PricingCalc from './PricingCalc'
 import Users from './Users'
 import Roles from './Roles'
 import Manifest from './Manifest'
+import Returns from './Returns'
 import LiveTracking from './LiveTracking'
 import Hub, { HubScans } from './Hub'
 import { AdminDashboardScreen } from './AdminConsole'
@@ -54,7 +55,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isFinance = !isAdmin && !isAdministrative && !isHubStaff && userRoles.includes('finance')
   const isExecutiveClient = !isAdmin && !isAdministrative && !isFinance && userRoles.includes('executive_client')
   const nav = isAdminRole
-    ? { dashboard: app.navA.dashboard, tracking: app.navA.tracking, incidents: app.navA.incidents, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
+    ? { dashboard: app.navA.dashboard, tracking: app.navA.tracking, incidents: app.navA.incidents, returns: app.navA.returns, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
     : isOpsSupervisor
       ? { ...app.navOps, profile: app.navA.profile }
       : isOperations
@@ -62,7 +63,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
         : isHubStaff
           ? { hub: app.navA.hub, despachos: app.navA.despachos, profile: app.navA.profile }
           : isFinance
-            ? { pricing: app.navA.pricing, profile: app.navA.profile }
+            ? { pricing: app.navA.pricing, returns: app.navA.returns, profile: app.navA.profile }
           : isAdministrative
             ? { users: app.navA.users, profile: app.navA.profile }
             : app.navC
@@ -197,6 +198,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isRequests = activeKey === 'requests'
   const isDrivers = activeKey === 'drivers'
   const isIncidents = activeKey === 'incidents'
+  const isReturns = activeKey === 'returns'
   const isAudit = activeKey === 'audit'
   const isPricing = activeKey === 'pricing'
   const isUsers = activeKey === 'users'
@@ -385,6 +387,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             <Drivers app={app} lang={lang} token={token} />
           ) : isIncidents ? (
             <Incidents app={app} lang={lang} token={token} />
+          ) : isReturns ? (
+            <Returns token={token} lang={lang} canReview={isAdmin} />
           ) : isAudit ? (
             <Audits app={app} lang={lang} token={token} />
           ) : isPricing ? (

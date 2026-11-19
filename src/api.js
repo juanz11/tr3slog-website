@@ -105,6 +105,11 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  reviewShipmentReturn: (id, token) => fetch(`${API_URL}/shipments/${id}/return-review`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
   trackShipment: (code) => fetch(`${API_URL}/app/shipments/track/${encodeURIComponent(code)}`, {
     headers: headers(),
   }).then(handle),

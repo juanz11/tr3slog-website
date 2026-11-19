@@ -27,6 +27,7 @@ const STATUS_TONE = [
 const STATUS_KEY_MAP = {
   in_transit: 0, transit: 0, 'en tránsito': 0,
   out_for_delivery: 1,
+  in_hub: 5, en_hub: 5,
   delivered: 2, entregado: 2, entregada: 2,
   cancelled: 4, cancelado: 4, cancel_requested: 4,
   pending: 3, assigned: 3, solicitud_recibida: 3,
@@ -87,7 +88,7 @@ function DetailView({ app, shipment, token, onClose, onRefresh }) {
     { label: 'Entregada', loc: '—' },
     { label: 'Incidencia', loc: '—' },
   ]
-  const STATUS_TO_TIMELINE = { 3: 0, 0: 3, 1: 4, 2: 5, 4: 6 }
+  const STATUS_TO_TIMELINE = { 3: 0, 5: 2, 0: 3, 1: 4, 2: 5, 4: 6 }
   const currentIdx = STATUS_TO_TIMELINE[idx] ?? 0
 
   const fmt = (d) => {
@@ -96,14 +97,36 @@ function DetailView({ app, shipment, token, onClose, onRefresh }) {
   }
 
   const updated = shipment.updated_at ? new Date(shipment.updated_at) : null
-  const deliveredAt = shipment.delivered_at || shipment.manifest_detail?.horaVisita || shipment.manifest_detail?.hora_visita || null
+  const maniDetail = shipment.manifest_detail || {}
+  const mani = maniDetail.manifest || {}
+  const toDate = (v) => {
+    if (!v) return null
+    const d = new Date(v)
+    return isNaN(d.getTime()) ? null : d
+  }
+  const hubIn = toDate(mani.hub_received_at || mani.hubRecibidoAt)
+  const hubOut = toDate(mani.hub_dispatched_at || mani.hubDespachadoAt)
+  const routeStart = toDate(mani.started_at || mani.fechaInicioRuta)
+  const visitedAt = toDate(maniDetail.visited_at || maniDetail.horaVisita || maniDetail.hora_visita)
+  const deliveredAt = toDate(shipment.delivered_at) || visitedAt
+
+  const statusHistory = Array.isArray(shipment.status_history) ? shipment.status_history : []
+  const histAt = (statuses) => {
+    for (let i = statusHistory.length - 1; i >= 0; i--) {
+      if (statuses.includes(statusHistory[i].status)) return toDate(statusHistory[i].at)
+    }
+    return null
+  }
 
   const stepDate = (i) => {
     if (i > currentIdx) return null
     if (i === 0) return created
-    if (i === 5) return deliveredAt ? new Date(deliveredAt) : updated
-    if (i === currentIdx || i < currentIdx) return updated
-    return null
+    if (i === 1) return histAt(['picked_up', 'recogido']) || hubIn || updated        // Mercancía recibida → recogida / recepción en hub
+    if (i === 2) return histAt(['in_hub', 'en_hub']) || hubIn || histAt(['picked_up', 'recogido']) || updated // En procesamiento → en hub
+    if (i === 3) return histAt(['in_transit', 'transit']) || routeStart || updated   // En tránsito → status in_transit / ruta iniciada
+    if (i === 4) return histAt(['out_for_delivery']) || hubOut || updated            // En ruta de entrega → despachado del hub
+    if (i === 5) return histAt(['delivered', 'entregado', 'entregada']) || deliveredAt || updated // Entregada → hora real de entrega
+    return histAt(['incident', 'incidencia', 'failed_attempt']) || updated
   }
 
   const fmtMoney = (n) => `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
