@@ -12,6 +12,7 @@ const NAV_ICONS = {
   drivers: 'circle:12,8,3.6|M5 20a7 7 0 0114 0',
   incidents: 'M12 3l9 16H3zM12 9v5M12 17v.1',
   returns: 'M4 9h10a6 6 0 110 12H9|M8 5L4 9l4 4',
+  fleet: 'M2 16V7h9v9M11 10h5l2 3v3h-7|circle:6,17.5,1.8|circle:15,17.5,1.8|M2 7h9v3H2',
   audit: 'M6 3h9l4 4v14H6z|M9 11h7M9 15h7M9 7h4',
   pricing: 'M5 3h14v18H5z|M8 7h8|M8.5 12h.01M12 12h.01M15.5 12h.01|M8.5 16h.01M12 16h.01M15.5 16h.01',
   requests: 'M9 5h6l2 3v11H7V8zM9 8h6M9 12h6M9 16h4',

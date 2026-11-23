@@ -40,6 +40,11 @@ const T_ES = {
   reviewed: 'Revisado',
   reviewedBy: (name, date) => `Revisado por ${name}${date ? ` · ${date}` : ''}`,
   pendingReview: 'Pendiente de revisión',
+  markProcessed: 'Marcar gestionado',
+  processing: 'Gestionando…',
+  processed: 'Gestionado',
+  processedBy: (name, date) => `Gestionado por ${name}${date ? ` · ${date}` : ''}`,
+  pendingProcess: 'Pendiente de gestión',
   whatsappMsg: (code) => `Hola, le contactamos de TR3SLOG sobre su envío ${code}.`,
   error: 'No se pudo marcar la revisión.',
   count: (n) => `${n} ${n === 1 ? 'caso' : 'casos'}`,
@@ -91,6 +96,17 @@ const T_ES = {
   mapView: 'Ver en mapa',
   stopStatus: { PENDIENTE: 'Pendiente', ENTREGADO: 'Entregado', NO_ENTREGADO: 'No entregado', TRANSFERIDO: 'Transferido' },
   noPoint: 'Sin manifiesto: el envío no llegó a subir a ruta.',
+  cfgTitle: 'Porcentajes de recobro por etapa',
+  cfgSubtitle: 'Cargo aplicado según hasta dónde llegó el paquete antes de la devolución o cancelación.',
+  cfgNotPicked: 'Nadie lo recogió (pendiente / asignado)',
+  cfgPickedUp: 'Recogido o en tránsito',
+  cfgInHub: 'Recibido en el hub',
+  cfgLeftHub: 'Salió del hub',
+  cfgNotCancellable: 'No cancelable',
+  cfgSave: 'Guardar porcentajes',
+  cfgSaving: 'Guardando…',
+  cfgSaved: 'Porcentajes actualizados.',
+  cfgError: 'No se pudieron guardar los porcentajes.',
 }
 
 const T_EN = {
@@ -119,6 +135,11 @@ const T_EN = {
   reviewed: 'Reviewed',
   reviewedBy: (name, date) => `Reviewed by ${name}${date ? ` · ${date}` : ''}`,
   pendingReview: 'Pending review',
+  markProcessed: 'Mark processed',
+  processing: 'Processing…',
+  processed: 'Processed',
+  processedBy: (name, date) => `Processed by ${name}${date ? ` · ${date}` : ''}`,
+  pendingProcess: 'Pending processing',
   whatsappMsg: (code) => `Hello, we are contacting you from TR3SLOG regarding your shipment ${code}.`,
   error: 'Could not mark the review.',
   count: (n) => `${n} ${n === 1 ? 'case' : 'cases'}`,
@@ -170,6 +191,17 @@ const T_EN = {
   mapView: 'View on map',
   stopStatus: { PENDIENTE: 'Pending', ENTREGADO: 'Delivered', NO_ENTREGADO: 'Not delivered', TRANSFERIDO: 'Transferred' },
   noPoint: 'No manifest: the shipment never made it onto a route.',
+  cfgTitle: 'Recovery fee per stage',
+  cfgSubtitle: 'Charge applied depending on how far the package got before the return or cancellation.',
+  cfgNotPicked: 'Not picked up (pending / assigned)',
+  cfgPickedUp: 'Picked up or in transit',
+  cfgInHub: 'Received at the hub',
+  cfgLeftHub: 'Left the hub',
+  cfgNotCancellable: 'Not cancellable',
+  cfgSave: 'Save percentages',
+  cfgSaving: 'Saving…',
+  cfgSaved: 'Percentages updated.',
+  cfgError: 'Could not save the percentages.',
 }
 
 const T_ZH = {
@@ -198,6 +230,11 @@ const T_ZH = {
   reviewed: '已审核',
   reviewedBy: (name, date) => `${name} 已审核${date ? ` · ${date}` : ''}`,
   pendingReview: '待审核',
+  markProcessed: '标记已处理',
+  processing: '处理中…',
+  processed: '已处理',
+  processedBy: (name, date) => `${name} 已处理${date ? ` · ${date}` : ''}`,
+  pendingProcess: '待处理',
   whatsappMsg: (code) => `您好，TR3SLOG 就您的货件 ${code} 与您联系。`,
   error: '无法标记审核。',
   count: (n) => `${n} 个案例`,
@@ -249,13 +286,24 @@ const T_ZH = {
   mapView: '查看地图',
   stopStatus: { PENDIENTE: '待处理', ENTREGADO: '已送达', NO_ENTREGADO: '未送达', TRANSFERIDO: '已转运' },
   noPoint: '无运单清单：货件未装上路线。',
+  cfgTitle: '按阶段收取回收费用',
+  cfgSubtitle: '根据包裹在退货或取消前到达的阶段收取费用。',
+  cfgNotPicked: '未取件（待处理 / 已分配）',
+  cfgPickedUp: '已取件或运输中',
+  cfgInHub: '已到达枢纽',
+  cfgLeftHub: '已离开枢纽',
+  cfgNotCancellable: '不可取消',
+  cfgSave: '保存百分比',
+  cfgSaving: '保存中…',
+  cfgSaved: '百分比已更新。',
+  cfgError: '无法保存百分比。',
 }
 
 const T_BY_LANG = { es: T_ES, en: T_EN, 'zh-CN': T_ZH }
 
 const phoneDigits = (v) => String(v || '').replace(/[^\d]/g, '')
 
-export default function Returns({ token, lang, canReview = false }) {
+export default function Returns({ token, lang, canReview = false, canEdit = false, canProcess = false, financeView = false }) {
   const T = T_BY_LANG[lang] || T_ES
   const locale = lang === 'zh-CN' ? 'zh-CN' : lang === 'en' ? 'en-US' : 'es-ES'
   const fmt = (date) => {
@@ -272,6 +320,9 @@ export default function Returns({ token, lang, canReview = false }) {
   const [detail, setDetail] = React.useState(null) // { loading, data }
   const [confirming, setConfirming] = React.useState(null) // shipment pendiente de revisar
   const [waSent, setWaSent] = React.useState({}) // id -> true cuando se abrió WhatsApp
+  const [cfg, setCfg] = React.useState(null)
+  const [cfgBusy, setCfgBusy] = React.useState(false)
+  const [cfgMsg, setCfgMsg] = React.useState('')
 
   React.useEffect(() => {
     let alive = true
@@ -287,12 +338,45 @@ export default function Returns({ token, lang, canReview = false }) {
     return () => { alive = false }
   }, [token])
 
-  const visible = scope === 'pending' ? rows.filter((s) => !s.return_reviewed_at) : rows
+  React.useEffect(() => {
+    if (!canEdit) return
+    let alive = true
+    api.getPricingConfig(token)
+      .then((res) => { if (alive) setCfg(res || {}) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [token, canEdit])
 
-  const contactPhone = (s) => s.client?.phone || s.sender?.phone || s.recipient?.phone
-  const clientName = (s) => s.client?.name || s.sender?.name || s.recipient?.name || '—'
-  const feePercent = (s) => s.cancel_fee_percent ?? s.cancel_preview?.percent
-  const feeAmount = (s) => s.cancel_fee ?? s.cancel_preview?.fee
+  const setPolicy = (key, v) => setCfg((c) => ({
+    ...c,
+    policies: { ...(c.policies || {}), cancellation: { ...((c.policies || {}).cancellation || {}), [key]: v } },
+  }))
+
+  const saveCfg = async () => {
+    setCfgBusy(true)
+    setCfgMsg('')
+    try {
+      const res = await api.updatePricingConfig(cfg, token)
+      setCfg(res || cfg)
+      setCfgMsg(T.cfgSaved)
+    } catch (e) {
+      setCfgMsg(e.message || T.cfgError)
+    } finally {
+      setCfgBusy(false)
+    }
+  }
+
+  // Operations queue: not yet reviewed. Finance queue: reviewed but the
+  // charge / payment handling is not finished yet.
+  const isPendingForRole = (s) => financeView
+    ? (!!s.return_reviewed_at && !s.return_processed_at)
+    : !s.return_reviewed_at
+  const visible = scope === 'pending' ? rows.filter(isPendingForRole) : rows
+
+  const contactPhone = (s) => s.client?.phone || s.sender?.phone || s.sender_phone || s.recipient?.phone || s.recipient_phone
+  const clientName = (s) => s.client?.name || s.sender?.name || s.sender_name || s.recipient?.name || s.recipient_name || '—'
+  const feePercent = (s) => s.return_recobro?.percent ?? s.cancel_fee_percent ?? s.cancel_preview?.percent
+  const feeAmount = (s) => s.return_recobro?.fee ?? s.cancel_fee ?? s.cancel_preview?.fee
 
   const openWhatsApp = (s) => {
     const phone = phoneDigits(contactPhone(s))
@@ -324,6 +408,20 @@ export default function Returns({ token, lang, canReview = false }) {
     }
   }
 
+  const markProcessed = async (s) => {
+    setBusy(`p-${s.id}`)
+    try {
+      const res = await api.processShipmentReturn(s.id, token)
+      setRows((list) => list.map((x) => (x.id === s.id
+        ? { ...x, return_processed_at: res.return_processed_at, return_processed_by: res.return_processed_by, return_processor: res.return_processor }
+        : x)))
+    } catch (e) {
+      alert(e.message || T.error)
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const thStyle = { padding: '10px 14px', fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: '#6C82A6', textAlign: 'left', borderBottom: '1px solid #E3EAF4' }
   const tdStyle = { padding: '12px 14px', borderBottom: '1px solid #EDF2F8', fontSize: 13, verticalAlign: 'middle' }
 
@@ -333,6 +431,53 @@ export default function Returns({ token, lang, canReview = false }) {
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#10233F' }}>{T.title}</h2>
         <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6C82A6' }}>{T.subtitle}</p>
       </div>
+
+      {canEdit && cfg && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E3EAF4', padding: 18, marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: '#10233F' }}>{T.cfgTitle}</div>
+          <p style={{ margin: '3px 0 14px', fontSize: 12, color: '#8B9DBA' }}>{T.cfgSubtitle}</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 10 }}>
+            {[
+              ['percent', T.cfgNotPicked],
+              ['picked_up_percent', T.cfgPickedUp],
+              ['recobro_percent', T.cfgInHub],
+            ].map(([key, label]) => (
+              <div key={key} style={{ border: '1px solid #EDF2F8', borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ fontSize: 11.5, color: '#6C82A6', fontWeight: 600, marginBottom: 6 }}>{label}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    inputMode="decimal"
+                    value={cfg.policies?.cancellation?.[key] ?? ''}
+                    placeholder="0"
+                    onChange={(e) => setPolicy(key, e.target.value === '' ? null : Number(e.target.value))}
+                    style={{
+                      width: 80, padding: '6px 8px', borderRadius: 8, border: '1px solid #D8E2EF',
+                      fontSize: 15, fontWeight: 800, color: '#C0392B', textAlign: 'right',
+                    }}
+                  />
+                  <span style={{ fontSize: 14, fontWeight: 800, color: '#C0392B' }}>%</span>
+                </div>
+              </div>
+            ))}
+            <div style={{ border: '1px dashed #E3B8B1', borderRadius: 10, padding: '10px 12px', background: 'rgba(192,57,43,.04)' }}>
+              <div style={{ fontSize: 11.5, color: '#A93226', fontWeight: 600, marginBottom: 6 }}>{T.cfgLeftHub}</div>
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#A93226' }}>{T.cfgNotCancellable}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 14 }}>
+            <button
+              onClick={saveCfg}
+              disabled={cfgBusy}
+              style={{
+                padding: '8px 18px', borderRadius: 8, border: 'none',
+                background: '#0A4E96', color: '#fff', fontSize: 12.5, fontWeight: 700,
+                cursor: cfgBusy ? 'wait' : 'pointer', opacity: cfgBusy ? .6 : 1,
+              }}
+            >{cfgBusy ? T.cfgSaving : T.cfgSave}</button>
+            {cfgMsg && <span style={{ fontSize: 12, color: '#0F5F36', fontWeight: 600 }}>{cfgMsg}</span>}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 14, alignItems: 'center' }}>
         {[{ k: 'pending', l: T.onlyPending }, { k: 'all', l: T.all }].map((o) => (
@@ -368,6 +513,8 @@ export default function Returns({ token, lang, canReview = false }) {
                 const amt = feeAmount(s)
                 const reviewed = !!s.return_reviewed_at
                 const reviewerName = s.return_reviewer?.name || ''
+                const processed = !!s.return_processed_at
+                const processorName = s.return_processor?.name || ''
                 const phone = phoneDigits(contactPhone(s))
                 return (
                   <tr key={s.id}>
@@ -396,14 +543,24 @@ export default function Returns({ token, lang, canReview = false }) {
                       ) : <span style={{ color: '#8B9DBA' }}>{T.noFee}</span>}
                     </td>
                     <td style={tdStyle}>
-                      {reviewed ? (
-                        <span style={{
-                          display: 'inline-block', padding: '3px 10px', borderRadius: 100,
-                          background: 'rgba(19,122,69,.12)', color: '#0F5F36', fontSize: 12, fontWeight: 700,
-                        }}>{T.reviewedBy(reviewerName || T.reviewed, fmt(s.return_reviewed_at))}</span>
-                      ) : (
-                        <span style={{ fontSize: 12, color: '#8A6300', fontWeight: 600 }}>{T.pendingReview}</span>
-                      )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {reviewed ? (
+                          <span style={{
+                            display: 'inline-block', padding: '3px 10px', borderRadius: 100, alignSelf: 'flex-start',
+                            background: 'rgba(19,122,69,.12)', color: '#0F5F36', fontSize: 12, fontWeight: 700,
+                          }}>{T.reviewedBy(reviewerName || T.reviewed, fmt(s.return_reviewed_at))}</span>
+                        ) : (
+                          <span style={{ fontSize: 12, color: '#8A6300', fontWeight: 600 }}>{T.pendingReview}</span>
+                        )}
+                        {processed ? (
+                          <span style={{
+                            display: 'inline-block', padding: '3px 10px', borderRadius: 100, alignSelf: 'flex-start',
+                            background: 'rgba(8,124,240,.12)', color: '#0A4E96', fontSize: 12, fontWeight: 700,
+                          }}>{T.processedBy(processorName || T.processed, fmt(s.return_processed_at))}</span>
+                        ) : reviewed ? (
+                          <span style={{ fontSize: 12, color: '#8A6300', fontWeight: 600 }}>{T.pendingProcess}</span>
+                        ) : null}
+                      </div>
                     </td>
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -440,6 +597,17 @@ export default function Returns({ token, lang, canReview = false }) {
                               cursor: busy === s.id ? 'wait' : 'pointer', opacity: busy === s.id ? .6 : 1,
                             }}
                           >{busy === s.id ? T.reviewing : T.markReviewed}</button>
+                        )}
+                        {canProcess && reviewed && !processed && (
+                          <button
+                            onClick={() => markProcessed(s)}
+                            disabled={busy === `p-${s.id}`}
+                            style={{
+                              padding: '7px 12px', borderRadius: 8, border: 'none',
+                              background: '#0F5F36', color: '#fff', fontSize: 12.5, fontWeight: 700,
+                              cursor: busy === `p-${s.id}` ? 'wait' : 'pointer', opacity: busy === `p-${s.id}` ? .6 : 1,
+                            }}
+                          >{busy === `p-${s.id}` ? T.processing : T.markProcessed}</button>
                         )}
                       </div>
                     </td>

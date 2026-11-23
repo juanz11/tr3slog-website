@@ -17,6 +17,7 @@ import Users from './Users'
 import Roles from './Roles'
 import Manifest from './Manifest'
 import Returns from './Returns'
+import Fleet from './Fleet'
 import LiveTracking from './LiveTracking'
 import Hub, { HubScans } from './Hub'
 import { AdminDashboardScreen } from './AdminConsole'
@@ -63,7 +64,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
         : isHubStaff
           ? { hub: app.navA.hub, despachos: app.navA.despachos, profile: app.navA.profile }
           : isFinance
-            ? { pricing: app.navA.pricing, returns: app.navA.returns, profile: app.navA.profile }
+            ? { returns: app.navA.returns, profile: app.navA.profile }
           : isAdministrative
             ? { users: app.navA.users, profile: app.navA.profile }
             : app.navC
@@ -84,6 +85,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const [token, setToken] = React.useState(null)
   const [pendingQuotes, setPendingQuotes] = React.useState(0)
   const [pendingRequests, setPendingRequests] = React.useState(0)
+  const [pendingReturns, setPendingReturns] = React.useState(0)
   const [requestToast, setRequestToast] = React.useState(0)
   const [requestKinds, setRequestKinds] = React.useState({ same_day: 0, driver: 0 })
   const [navTick, setNavTick] = React.useState(0)
@@ -157,11 +159,19 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
         }
         setPendingRequests(count)
       } catch (e) {}
+      if (isAdmin || isFinance) {
+        try {
+          const data = await api.getPendingReturnsCount(token)
+          const review = data?.count ?? 0
+          const process = data?.pending_process ?? 0
+          setPendingReturns(isFinance ? process : isAdminRole ? review + process : review)
+        } catch (e) {}
+      }
     }
     fetchCount()
     const interval = setInterval(fetchCount, 30000)
     return () => clearInterval(interval)
-  }, [token, isOperations, isOpsSupervisor])
+  }, [token, isOperations, isOpsSupervisor, isAdmin, isAdminRole, isFinance])
 
   React.useEffect(() => {
     if (!requestToast) return
@@ -199,6 +209,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isDrivers = activeKey === 'drivers'
   const isIncidents = activeKey === 'incidents'
   const isReturns = activeKey === 'returns'
+  const isFleet = activeKey === 'fleet'
   const isAudit = activeKey === 'audit'
   const isPricing = activeKey === 'pricing'
   const isUsers = activeKey === 'users'
@@ -238,6 +249,16 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
                   {pendingRequests}
                 </span>
               )}
+              {k === 'returns' && pendingReturns > 0 && (
+                <span style={{
+                  marginLeft: 'auto', minWidth: 20, height: 20, padding: '0 6px',
+                  borderRadius: 100, background: '#C0392B', color: '#fff',
+                  fontSize: 11, fontWeight: 700, display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {pendingReturns}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -259,6 +280,16 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
                 alignItems: 'center', justifyContent: 'center',
               }}>
                 {pendingRequests}
+              </span>
+            )}
+            {k === 'returns' && pendingReturns > 0 && (
+              <span style={{
+                marginLeft: 'auto', minWidth: 20, height: 20, padding: '0 6px',
+                borderRadius: 100, background: '#C0392B', color: '#fff',
+                fontSize: 11, fontWeight: 700, display: 'inline-flex',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+                {pendingReturns}
               </span>
             )}
           </button>
@@ -388,7 +419,9 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
           ) : isIncidents ? (
             <Incidents app={app} lang={lang} token={token} />
           ) : isReturns ? (
-            <Returns token={token} lang={lang} canReview={isAdmin} />
+            <Returns token={token} lang={lang} canReview={isAdmin} canEdit={isAdminRole} canProcess={isAdminRole || isFinance} financeView={isFinance} />
+          ) : isFleet ? (
+            <Fleet app={app} token={token} />
           ) : isAudit ? (
             <Audits app={app} lang={lang} token={token} />
           ) : isPricing ? (

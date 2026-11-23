@@ -7,7 +7,7 @@
       roleT:'当前角色', stateT:'视图状态',
       states:{data:'数据',loading:'加载中',empty:'无数据',error:'错误'},
       roles:{super:'超级管理员',finance:'财务经理',support:'客服专员',compliance:'合规审核员',ops:'运营经理'} },
-    nav: { fin:'财务概览', tx:'支付交易', refunds:'退款与调整', recon:'对账', finrep:'财务报表', claims:'理赔中心', claim:'理赔调查', claimpol:'理赔政策' },
+    nav: { fin:'财务概览', tx:'支付交易', refunds:'退款与调整', recon:'对账', finrep:'财务报表', claims:'理赔中心', claim:'理赔调查', claimpol:'理赔政策', returns:'退货管理' },
     common: { export:'导出', pdf:'PDF', excel:'Excel', filters:'筛选', search:'搜索', save:'保存', cancel:'取消', submit:'提交', approve:'批准', reject:'驳回', view:'查看', download:'下载', all:'全部',
       empty:'所选筛选条件下没有记录。', emptyHint:'请调整期间或清除筛选条件以查看结果。',
       errorT:'无法加载信息', errorHint:'财务服务未响应，请稍后重试。', retry:'重试',
@@ -111,6 +111,9 @@
       live:{cols:['编号','参考','类型','报告人','严重程度','日期','照片','状态'],
         stats:['未处理','审核中','已解决','已关闭','报告总数'],d:'实时数据',
         pills:{open:'未处理',in_progress:'审核中',resolved:'已解决',closed:'已关闭'}}
+    },
+    returns: {
+      title:'退货管理', sub:'经运营审核、待处理回收费用与付款管理的案件。',
     },
     claim: {
       title:'理赔 CLM-1042 · 货物损坏', sub:'含证据、决定与完整审计记录的调查档案。',

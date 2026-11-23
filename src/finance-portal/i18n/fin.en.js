@@ -7,7 +7,7 @@
       roleT:'Active role', stateT:'View state',
       states:{data:'Data',loading:'Loading',empty:'Empty',error:'Error'},
       roles:{super:'Super administrator',finance:'Finance manager',support:'Support agent',compliance:'Compliance reviewer',ops:'Operations manager'} },
-    nav: { fin:'Finance dashboard', tx:'Payment transactions', refunds:'Refunds & adjustments', recon:'Reconciliation', finrep:'Financial reports', claims:'Claims center', claim:'Claim investigation', claimpol:'Claims policy' },
+    nav: { fin:'Finance dashboard', tx:'Payment transactions', refunds:'Refunds & adjustments', recon:'Reconciliation', finrep:'Financial reports', claims:'Claims center', claim:'Claim investigation', claimpol:'Claims policy', returns:'Returns' },
     common: { export:'Export', pdf:'PDF', excel:'Excel', filters:'Filters', search:'Search', save:'Save', cancel:'Cancel', submit:'Submit', approve:'Approve', reject:'Reject', view:'View', download:'Download', all:'All',
       empty:'No records for the selected filters.', emptyHint:'Adjust the period or clear the filters to see results.',
       errorT:'The information could not be loaded', errorHint:'The finance service did not respond. Retry in a moment.', retry:'Retry',
@@ -111,6 +111,9 @@
       live:{cols:['Code','Reference','Type','Reported by','Severity','Date','Photo','Status'],
         stats:['Open','In review','Resolved','Closed','Total reported'],d:'Live data',
         pills:{open:'Open',in_progress:'In review',resolved:'Resolved',closed:'Closed'}}
+    },
+    returns: {
+      title:'Returns', sub:'Cases reviewed by operations pending recovery fee and payment handling.',
     },
     claim: {
       title:'Claim CLM-1042 · Damaged shipment', sub:'Investigation with evidence, decision and complete audit history.',

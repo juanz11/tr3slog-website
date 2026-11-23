@@ -16,6 +16,7 @@ const money = (n) => '$' + Number(n || 0).toLocaleString('en-US', { minimumFract
 export default function FinancePortalEntry({ lang, setLang, user, onLogout }) {
   const [ready, setReady] = React.useState(false)
   const [live, setLive] = React.useState(null)
+  const [token, setToken] = React.useState(null)
 
   React.useEffect(() => {
     let on = true
@@ -32,6 +33,7 @@ export default function FinancePortalEntry({ lang, setLang, user, onLogout }) {
     let token = null
     try { token = window.localStorage.getItem('tr3slog-token') } catch (e) {}
     if (!token) return
+    setToken(token)
     api.getFinanceOverview(token)
       .then((d) => { if (on) setLive(d) })
       .catch(() => {})
@@ -136,6 +138,7 @@ export default function FinancePortalEntry({ lang, setLang, user, onLogout }) {
       onLogout={onLogout}
       onLangChange={setLang}
       account={account}
+      token={token}
     />
   )
 }

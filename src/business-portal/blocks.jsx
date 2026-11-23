@@ -553,12 +553,22 @@ function NoteBlock({ text }) {
  * row-removal maps for real filtering, form values/records for persistence, and
  * the scan lookup table. See engine.js for what each helper does.
  */
+const APP_COMPONENTS = {
+  returns: React.lazy(() => import('../components/Returns.jsx')),
+};
+
 export function renderBlock(def, ctx) {
   const [type, dataKey, opts = {}] = def;
   const data = ctx.page[dataKey] || {};
   const sk = `${ctx.screen}:${dataKey}`;
 
   switch (type) {
+    case 'component': {
+      const Cmp = APP_COMPONENTS[dataKey];
+      return Cmp
+        ? <React.Suspense key={ctx.key} fallback={null}><Cmp token={ctx.token} lang={ctx.lang} {...(opts.props || ctx.componentProps || {})} /></React.Suspense>
+        : null;
+    }
     case 'stats':
       return <StatsBlock key={ctx.key} items={data} cols={opts.cols || 4} />;
     case 'chips':

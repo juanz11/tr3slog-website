@@ -66,6 +66,8 @@ export const appI18n = {
       minutesAgo: 'hace {n} min',
       hoursAgo: 'hace {n} h',
       noKey: 'Falta NEXT_PUBLIC_GOOGLE_MAPS_API_KEY en .env.local',
+      mapFailTitle: 'Google Maps no pudo cargar',
+      mapFailBody: 'La clave fue rechazada: active "Maps JavaScript API" (y Places/Geocoding si usa autocompletado) en Google Cloud Console y verifique la facturación. La lista de conductores sigue funcionando.',
     },
     navOps: {
       tower: 'Control tower',
@@ -796,6 +798,8 @@ export const appI18n = {
       minutesAgo: '{n} min ago',
       hoursAgo: '{n} h ago',
       noKey: 'Missing NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in .env.local',
+      mapFailTitle: 'Google Maps failed to load',
+      mapFailBody: 'The key was rejected: enable "Maps JavaScript API" (and Places/Geocoding if you use autocomplete) in Google Cloud Console and check billing. The driver list keeps working.',
     },
     navOps: {
       tower: 'Control tower',
@@ -1497,6 +1501,8 @@ export const appI18n = {
       minutesAgo: '{n} 分钟前',
       hoursAgo: '{n} 小时前',
       noKey: '缺少 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY（.env.local）',
+      mapFailTitle: 'Google Maps 加载失败',
+      mapFailBody: '密钥被拒绝：请在 Google Cloud Console 中启用 "Maps JavaScript API"（如使用自动补全还需 Places/Geocoding）并检查账单。司机列表仍可正常使用。',
     },
     navOps: {
       tower: 'Control tower',

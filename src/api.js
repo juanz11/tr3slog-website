@@ -110,6 +110,15 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  processShipmentReturn: (id, token) => fetch(`${API_URL}/shipments/${id}/return-process`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
+  getPendingReturnsCount: (token) => fetch(`${API_URL}/shipments/returns/pending-count`, {
+    headers: headers(token),
+  }).then(handle),
+
   trackShipment: (code) => fetch(`${API_URL}/app/shipments/track/${encodeURIComponent(code)}`, {
     headers: headers(),
   }).then(handle),
@@ -153,6 +162,10 @@ export const api = {
   }).then(handle),
 
   getCompanyVehicles: (token) => fetch(`${API_URL}/company-vehicles`, {
+    headers: headers(token),
+  }).then(handle),
+
+  getCompanyVehicleTypes: (token) => fetch(`${API_URL}/company-vehicles/types`, {
     headers: headers(token),
   }).then(handle),
 

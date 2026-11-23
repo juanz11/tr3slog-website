@@ -7,7 +7,7 @@
       roleT:'Rol activo', stateT:'Estado de vista',
       states:{data:'Datos',loading:'Cargando',empty:'Vacío',error:'Error'},
       roles:{super:'Superadministrador',finance:'Gerente de finanzas',support:'Agente de soporte',compliance:'Revisor de cumplimiento',ops:'Gerente de operaciones'} },
-    nav: { fin:'Panel financiero', tx:'Transacciones de pago', refunds:'Reembolsos y ajustes', recon:'Conciliación', finrep:'Reportes financieros', claims:'Centro de reclamos', claim:'Investigación de reclamo', claimpol:'Política de reclamos' },
+    nav: { fin:'Panel financiero', tx:'Transacciones de pago', refunds:'Reembolsos y ajustes', recon:'Conciliación', finrep:'Reportes financieros', claims:'Centro de reclamos', claim:'Investigación de reclamo', claimpol:'Política de reclamos', returns:'Devoluciones' },
     common: { export:'Exportar', pdf:'PDF', excel:'Excel', filters:'Filtros', search:'Buscar', save:'Guardar', cancel:'Cancelar', submit:'Enviar', approve:'Aprobar', reject:'Rechazar', view:'Ver', download:'Descargar', all:'Todos',
       empty:'No hay registros para los filtros seleccionados.', emptyHint:'Ajuste el período o limpie los filtros para ver resultados.',
       errorT:'No se pudo cargar la información', errorHint:'El servicio financiero no respondió. Intente de nuevo en un momento.', retry:'Reintentar',
@@ -111,6 +111,9 @@
       live:{cols:['Código','Referencia','Tipo','Reportado por','Severidad','Fecha','Foto','Estado'],
         stats:['Abiertos','En revisión','Resueltos','Cerrados','Total reportados'],d:'Datos reales',
         pills:{open:'Abierto',in_progress:'En revisión',resolved:'Resuelto',closed:'Cerrado'}}
+    },
+    returns: {
+      title:'Devoluciones', sub:'Casos revisados por operaciones pendientes de gestión del recobro y método de pago.',
     },
     claim: {
       title:'Reclamo CLM-1042 · Envío dañado', sub:'Investigación con evidencia, decisión e historial de auditoría completo.',

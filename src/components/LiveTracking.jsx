@@ -16,11 +16,17 @@ const STOP_COLORS = {
 
 function useGoogleMaps() {
   const [ready, setReady] = React.useState(false)
+  const [failed, setFailed] = React.useState(false)
   React.useEffect(() => {
     if (!GOOGLE_MAPS_KEY) return
-    if (window.google?.maps?.Map) { setReady(true); return }
+    // Google calls this when the key is rejected (API not enabled,
+    // billing missing, or referrer not allowed).
+    const prev = window.gm_authFailure
+    window.gm_authFailure = () => { setFailed(true); prev?.() }
+    if (window.google?.maps?.Map) { setReady(true); return () => { window.gm_authFailure = prev } }
     let s = document.getElementById(SCRIPT_ID)
     const onLoad = () => setReady(true)
+    const onError = () => setFailed(true)
     if (!s) {
       s = document.createElement('script')
       s.id = SCRIPT_ID
@@ -29,10 +35,15 @@ function useGoogleMaps() {
       document.head.appendChild(s)
     }
     s.addEventListener('load', onLoad)
+    s.addEventListener('error', onError)
     if (window.google?.maps?.Map) setReady(true)
-    return () => s?.removeEventListener?.('load', onLoad)
+    return () => {
+      s?.removeEventListener?.('load', onLoad)
+      s?.removeEventListener?.('error', onError)
+      window.gm_authFailure = prev
+    }
   }, [])
-  return ready
+  return { ready, failed }
 }
 
 function timeAgo(iso, t) {
@@ -47,7 +58,7 @@ function timeAgo(iso, t) {
 
 export default function LiveTracking({ app, token }) {
   const t = app.live || {}
-  const mapsReady = useGoogleMaps()
+  const { ready: mapsReady, failed: mapsFailed } = useGoogleMaps()
   const [drivers, setDrivers] = React.useState([])
   const [error, setError] = React.useState('')
   const [selectedId, setSelectedId] = React.useState(null)
@@ -272,7 +283,16 @@ export default function LiveTracking({ app, token }) {
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 620px', minWidth: 320, borderRadius: 16, overflow: 'hidden', border: '1px solid #DCE6F5' }}>
-          <div ref={mapEl} style={{ width: '100%', height: 560, background: '#EEF4FC' }} />
+          {mapsFailed ? (
+            <div style={{ width: '100%', height: 560, background: '#EEF4FC', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 32, textAlign: 'center' }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#A93226' }}>{t.mapFailTitle || 'Google Maps no pudo cargar'}</div>
+              <div style={{ fontSize: 13, color: '#6C82A6', lineHeight: 1.7, maxWidth: 420 }}>
+                {t.mapFailBody || 'La clave fue rechazada: active "Maps JavaScript API" (y Places/Geocoding si usa autocompletado) en Google Cloud Console y verifique la facturación. La lista de conductores sigue funcionando.'}
+              </div>
+            </div>
+          ) : (
+            <div ref={mapEl} style={{ width: '100%', height: 560, background: '#EEF4FC' }} />
+          )}
         </div>
 
         <div style={{ flex: '0 0 300px', display: 'flex', flexDirection: 'column', gap: 10 }}>
