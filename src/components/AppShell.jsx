@@ -4,6 +4,7 @@ import NavIcon from './NavIcon'
 import ShipmentRequests from './ShipmentRequests'
 import ShipmentCreate from './ShipmentCreate'
 import ShipmentsList from './ShipmentsList'
+import BulkImport from './BulkImport'
 import Payments from './Payments'
 import Addresses from './Addresses'
 import Support from './Support'
@@ -24,6 +25,7 @@ import { AdminDashboardScreen } from './AdminConsole'
 import adminDict from '../lib/adminDict'
 import Profile from './Profile'
 import BusinessPortalEntry from '../business-portal/portalEntry'
+import Contracts from './Contracts'
 import FinancePortalEntry from '../finance-portal/portalEntry'
 import AdvancedOpsPortalEntry from '../advanced-ops-portal/portalEntry'
 import { Pagination, usePagination, usePolling } from './Shared'
@@ -55,18 +57,21 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isHubStaff = !isAdmin && !isAdministrative && (userRoles.includes('hub_operation') || userRoles.includes('hub_supervisor'))
   const isFinance = !isAdmin && !isAdministrative && !isHubStaff && userRoles.includes('finance')
   const isExecutiveClient = !isAdmin && !isAdministrative && !isFinance && userRoles.includes('executive_client')
+  const isShipmentAgent = !isAdmin && !isAdministrative && !isFinance && userRoles.includes('shipment_agent')
   const nav = isAdminRole
-    ? { dashboard: app.navA.dashboard, tracking: app.navA.tracking, incidents: app.navA.incidents, returns: app.navA.returns, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
+    ? { dashboard: app.navA.dashboard, tracking: app.navA.tracking, incidents: app.navA.incidents, returns: app.navA.returns, contracts: app.navA.contracts, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
     : isOpsSupervisor
       ? { ...app.navOps, profile: app.navA.profile }
       : isOperations
-        ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => !['console', 'ops', 'users', 'roles', 'pricing', 'hub', 'audit'].includes(k)))
+        ? Object.fromEntries(Object.entries(app.navA).filter(([k]) => !['console', 'ops', 'users', 'roles', 'pricing', 'hub', 'audit', 'contracts'].includes(k)))
         : isHubStaff
           ? { hub: app.navA.hub, despachos: app.navA.despachos, profile: app.navA.profile }
           : isFinance
             ? { returns: app.navA.returns, profile: app.navA.profile }
           : isAdministrative
             ? { users: app.navA.users, profile: app.navA.profile }
+          : isShipmentAgent
+            ? { dashboard: app.navC.dashboard, shipments: app.navC.shipments, create: app.navC.create, bulk: app.navC.bulk, addresses: app.navC.addresses, support: app.navC.support, profile: app.navC.profile }
             : app.navC
   const navGroups = isOpsSupervisor ? app.navOpsGroups : null
   const navKeys = Object.keys(nav)
@@ -89,6 +94,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const [requestToast, setRequestToast] = React.useState(0)
   const [requestKinds, setRequestKinds] = React.useState({ same_day: 0, driver: 0 })
   const [navTick, setNavTick] = React.useState(0)
+  const [agentCompany, setAgentCompany] = React.useState('')
   const reqSeenRef = React.useRef(null)
 
   const markRequestsSeen = (count) => {
@@ -116,6 +122,13 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
       setToken(localStorage.getItem('tr3slog-token'))
     } catch (e) {}
   }, [])
+
+  React.useEffect(() => {
+    if (!token || !isShipmentAgent) { setAgentCompany(''); return }
+    api.getCompany(token)
+      .then((res) => setAgentCompany(res?.company?.name || ''))
+      .catch(() => setAgentCompany(''))
+  }, [token, isShipmentAgent])
 
   React.useEffect(() => {
     if (!token) return
@@ -182,8 +195,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const accountInitials = (user?.name || 'US').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
   const accountName = user?.name || user?.email || 'Usuario'
   const isCustomerUser = !isAdmin && !isAdministrative && !isHubStaff && !isFinance &&
-    (userRoles.length === 0 || userRoles.some((r) => ['customer', 'company', 'executive_client'].includes(r)))
-  const accountRole = isAdmin ? app.shell.admin : isHubStaff ? (app.navA?.hub || 'Hub / almacén') : isFinance ? (app.navA?.finance || 'Finanzas') : app.shell.portal
+    (userRoles.length === 0 || userRoles.some((r) => ['customer', 'company', 'executive_client', 'shipment_agent'].includes(r)))
+  const accountRole = isAdmin ? app.shell.admin : isHubStaff ? (app.navA?.hub || 'Hub / almacén') : isFinance ? (app.navA?.finance || 'Finanzas') : isShipmentAgent ? `Agente${agentCompany ? ` · ${agentCompany}` : ''}` : app.shell.portal
 
   const [shipments, setShipments] = React.useState([])
 
@@ -215,6 +228,8 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isUsers = activeKey === 'users'
   const isRoles = activeKey === 'roles'
   const isManifest = activeKey === 'manifest'
+  const isContracts = activeKey === 'contracts'
+  const isBulk = activeKey === 'bulk'
   const isTracking = activeKey === 'tracking'
   const isHub = activeKey === 'hub'
   const isDespachos = activeKey === 'despachos'
@@ -399,9 +414,9 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
 
         <main className="app-content" key={navTick}>
           {isCreate ? (
-            <ShipmentCreate app={app} token={token} user={user} onTrack={(code) => { setHquery(code); setActiveKey('shipments') }} />
+            <ShipmentCreate app={app} lang={lang} token={token} user={user} onTrack={(code) => { setHquery(code); setActiveKey('shipments') }} />
           ) : isShipments ? (
-            <ShipmentsList app={app} token={token} query={hquery} onQueryChange={setHquery} selectId={openShipmentId} staff={isAdmin} />
+            <ShipmentsList app={app} token={token} query={hquery} onQueryChange={setHquery} selectId={openShipmentId} staff={isAdmin} companyName={isShipmentAgent ? agentCompany : null} />
           ) : isPayments ? (
             <Payments app={app} token={token} user={user} />
           ) : isAddresses ? (
@@ -432,6 +447,10 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
             <Roles lang={lang} token={token} />
           ) : isManifest ? (
             <Manifest app={app} token={token} lang={lang} selectId={openManifestId} />
+          ) : isBulk ? (
+            <BulkImport app={app} lang={lang} token={token} user={user} onGoAddresses={() => setActiveKey('addresses')} />
+          ) : isContracts ? (
+            <Contracts app={app} lang={lang} token={token} />
           ) : isTracking ? (
             <LiveTracking app={app} token={token} />
           ) : isHub ? (

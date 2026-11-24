@@ -43,6 +43,9 @@ const NAV_ICONS = {
   tasks: 'M5 5h14v14H5z|M8.5 10l2 2 4-4M8.5 15.5h7',
   shifts: 'M4 6h16v14H4z|M4 10h16M8 4v4M16 4v4|M9 14h2M14 14h2',
   profile: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2|M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  contract: 'M6 3h12v18H6z|M9 7h6M9 11h6|M9 15h4|M16 15l3 3-3 3',
+  team: 'circle:9,8,3.4|M3.5 20a5.5 5.5 0 0111 0|circle:16.5,9,2.8|M14 15.5a5 5 0 015.5 5',
+  contracts: 'M4 7h16v12H4z|M4 11h16M9 7v12M14 7v12|M7 15h2',
 }
 
 export default function NavIcon({ name, color = '#6C82A6' }) {

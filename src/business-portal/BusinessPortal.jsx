@@ -13,6 +13,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { C, FONT_HEAD, FONT_BODY, LANGS, LANG_STORE, card, sectionTitle, primaryBtn, outlineBtn } from './tokens.js';
 import { NavIcon, Motif } from './blocks.jsx';
+import CompanyPanel from '../components/CompanyPanel';
+import BulkImport from '../components/BulkImport';
 
 export const NAV_ICONS = {
   dash: 'M4 13h7V4H4zM13 20h7v-9h-7zM4 20h7v-4H4zM13 8h7V4h-7z',
@@ -100,7 +102,7 @@ function InlineError({ text }) {
   );
 }
 
-export default function BusinessPortal({ startScreen = 'dash', dict = null, lang: langProp = null, onLogout = null, account = null }) {
+export default function BusinessPortal({ startScreen = 'dash', dict = null, lang: langProp = null, onLogout = null, account = null, token = null, user = null }) {
   const [lang, setLang] = useState(langProp || 'es');
   const [screen, setScreen] = useState(SCREENS.indexOf(startScreen) >= 0 ? startScreen : 'dash');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -321,6 +323,9 @@ export default function BusinessPortal({ startScreen = 'dash', dict = null, lang
   };
 
   const bulkScreen = () => {
+    if (token) {
+      return <BulkImport lang={lang} token={token} user={user} onGoAddresses={() => go('locations')} />;
+    }
     const b = biz.bulk || {};
     const cols = '.5fr 1.3fr 1.1fr 1fr .7fr .8fr';
     const checkAccents = [C.blue, C.blue, C.gold, '#C0392B'];
@@ -553,6 +558,14 @@ export default function BusinessPortal({ startScreen = 'dash', dict = null, lang
   };
 
   const teamScreen = () => {
+    if (token) {
+      return (
+        <div>
+          <H1 style={{ marginBottom: 20 }}>{(biz.team || {}).title || 'Equipo'}</H1>
+          <CompanyPanel lang={lang} token={token} tab="team" embedded />
+        </div>
+      );
+    }
     const tm = biz.team || { f: {} };
     const cols = '1.4fr 1.1fr 1.1fr 1fr .8fr 1fr';
     return (
@@ -702,6 +715,11 @@ export default function BusinessPortal({ startScreen = 'dash', dict = null, lang
     return (
       <div>
         <H1 style={{ marginBottom: 20 }}>{b.title}</H1>
+        {token && (
+          <div style={{ marginBottom: 20 }}>
+            <CompanyPanel lang={lang} token={token} tab="contract" embedded />
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr .8fr', gap: 16, alignItems: 'start' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ ...card, padding: 24 }}>

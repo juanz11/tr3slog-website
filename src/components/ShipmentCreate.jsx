@@ -103,6 +103,33 @@ const emptyPayment = () => ({
   method: '', paymentMethod: '', chargeToAccount: '', cardholderName: '', billingZip: '', bank: '', reference: '', prohibited: false, prohibitedDocId: null,
 })
 
+const CONTRACT_T = {
+  es: {
+    active: (u) => `Este envío se descuenta del cupo de tu contrato${u?.code ? ` ${u.code}` : ''}. Te quedan ${u?.remaining ?? '—'} de ${u?.quota ?? '—'} envíos${u?.days_left != null ? ` · ${u.days_left} días de vigencia` : ''}. No se realizará ningún cobro.`,
+    exhausted: 'El cupo de tu contrato está agotado. Contacta al administrador para ampliar la cuota antes de crear envíos.',
+    expired: 'Tu contrato está vencido. Contacta al administrador para renovarlo.',
+    suspended: 'Tu contrato está suspendido. Contacta al administrador.',
+    noneAgent: 'Tu acceso de agente no tiene un contrato activo. Pide al propietario de la empresa que lo gestione.',
+    requestPending: 'Tu solicitud de contrato está pendiente de aprobación. Mientras tanto puedes crear envíos pagando como cliente normal.',
+  },
+  en: {
+    active: (u) => `This shipment is charged to your contract quota${u?.code ? ` ${u.code}` : ''}. You have ${u?.remaining ?? '—'} of ${u?.quota ?? '—'} shipments left${u?.days_left != null ? ` · ${u.days_left} days left` : ''}. No payment will be charged.`,
+    exhausted: 'Your contract quota is exhausted. Contact the administrator to increase it before creating shipments.',
+    expired: 'Your contract has expired. Contact the administrator to renew it.',
+    suspended: 'Your contract is suspended. Contact the administrator.',
+    noneAgent: 'Your agent access has no active contract. Ask the company owner to manage it.',
+    requestPending: 'Your contract request is pending approval. Meanwhile you can create shipments paying as a regular customer.',
+  },
+  'zh-CN': {
+    active: (u) => `此运单将从您的合同额度中扣除${u?.code ? ` ${u.code}` : ''}。剩余 ${u?.remaining ?? '—'}/${u?.quota ?? '—'} 单${u?.days_left != null ? ` · 剩余 ${u.days_left} 天` : ''}。无需付款。`,
+    exhausted: '您的合同额度已用完。请联系管理员增加额度后再创建运单。',
+    expired: '您的合同已过期。请联系管理员续期。',
+    suspended: '您的合同已被暂停。请联系管理员。',
+    noneAgent: '您的代理身份没有有效合同。请让公司所有者处理。',
+    requestPending: '您的合同申请正在审核中。在此期间您可以像普通客户一样付款创建运单。',
+  },
+}
+
 const getInitials = (text = '') => {
   const words = text.trim().split(/\s+/).filter(Boolean)
   const first = words[0]?.[0] || ''
@@ -329,7 +356,7 @@ function PackageList({ c, packages, onPackageChange, onAddPackage, onRemovePacka
   )
 }
 
-function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharges, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, isAfterHours, afterHoursMsg, onBack, onNext, onFinish, routeEst, calcRoutePrice, kmTotals, onCancelAll, prohibitedDoc, prohibitedDocError }) {
+function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharges, onSelectAddress, submitted, error, submitting, result, onChange, onPackageChange, onAddPackage, onRemovePackage, isAfterHours, afterHoursMsg, onBack, onNext, onFinish, routeEst, calcRoutePrice, kmTotals, onCancelAll, prohibitedDoc, prohibitedDocError, contractInfo }) {
   const placesContainers = React.useRef({})
   const [prohibitedModal, setProhibitedModal] = React.useState(null)
 
@@ -384,7 +411,8 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
       : config.required.every((k) => String(data[section][k] || '').trim() !== ''))
     : true
   const isServiceAvailable = section !== 'service' || data.service.service === 'Terrestre'
-  const canContinue = isComplete && isServiceAvailable
+  const contractBlocked = section === 'payment' && contractInfo?.blocked
+  const canContinue = isComplete && isServiceAvailable && !contractBlocked
   const today = new Date()
   const minBase = isAfterHours ? new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1) : today
   const minDate = `${minBase.getFullYear()}-${String(minBase.getMonth() + 1).padStart(2, '0')}-${String(minBase.getDate()).padStart(2, '0')}`
@@ -790,6 +818,17 @@ function ShipmentForm({ c, step, section, config, data, savedAddresses, surcharg
         </div>
       )}
 
+      {section === 'payment' && contractInfo?.active && (
+        <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12, border: '1.5px solid #137A45', background: 'rgba(19,122,69,.06)' }}>
+          <div style={{ fontSize: 13.5, lineHeight: 1.6, color: '#0F5F36' }}>{contractInfo.message}</div>
+        </div>
+      )}
+      {section === 'payment' && contractInfo?.blocked && (
+        <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12, border: '1.5px solid #D99A00', background: 'rgba(217,154,0,.08)' }}>
+          <div style={{ fontSize: 13.5, lineHeight: 1.6, color: '#8A6300' }}>{contractInfo.message}</div>
+        </div>
+      )}
+
       {section === 'payment' && (
         <div style={{ marginTop: 20, padding: '14px 16px', borderRadius: 12, border: `1.5px solid ${data.payment.prohibited ? '#137A45' : '#DCE6F5'}`, background: data.payment.prohibited ? 'rgba(19,122,69,.06)' : '#F8FAFE' }}>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
@@ -1031,8 +1070,9 @@ function ShipmentSuccess({ app, result, token, onNew, onTrack }) {
   )
 }
 
-function ShipmentCreateInner({ app, token, onTrack, user }) {
+function ShipmentCreateInner({ app, lang, token, onTrack, user }) {
   const c = app.create
+  const ct = CONTRACT_T[lang] || CONTRACT_T.es
   const [step, setStep] = React.useState(0)
   const [submitted, setSubmitted] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
@@ -1046,6 +1086,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
   const [routeEst, setRouteEst] = React.useState({ busy: false, km: null, text: '', err: '' })
   const [prohibitedDoc, setProhibitedDoc] = React.useState(null)
   const [prohibitedDocError, setProhibitedDocError] = React.useState('')
+  const [companyInfo, setCompanyInfo] = React.useState(null)
   const [data, setData] = React.useState({
     sender: emptyAddress(),
     recipient: emptyAddress(),
@@ -1141,8 +1182,39 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
 
   React.useEffect(() => { fetchProhibitedDoc() }, [fetchProhibitedDoc])
 
+  const userRoles = React.useMemo(() => (user?.roles || []).map((r) => r.name || r), [user])
+  const isContractUser = userRoles.some((r) => ['executive_client', 'company', 'shipment_agent'].includes(r))
+
+  React.useEffect(() => {
+    if (!token || !isContractUser) { setCompanyInfo(null); return }
+    api.getCompany(token).then(setCompanyInfo).catch(() => setCompanyInfo(null))
+  }, [token, isContractUser])
+
+  const contractState = companyInfo?.state
+  const contractUsage = companyInfo?.usage
+  const myMember = (companyInfo?.team || []).find((m) => m.is_me)
+  const isAgentMember = myMember?.role === 'agent' || (!myMember && userRoles.includes('shipment_agent'))
+  const contractMode = contractState === 'active' && (contractUsage?.remaining ?? 0) > 0
+  const contractBlocked = isContractUser && !contractMode && (
+    ['exhausted', 'expired', 'suspended'].includes(contractState) ||
+    (isAgentMember && contractState !== 'active')
+  )
+
   const sectionMap = { 0: 'sender', 1: 'recipient', 2: 'package', 3: 'service', 4: 'payment' }
   const section = sectionMap[step]
+
+  const contractInfo = section === 'payment' ? {
+    active: contractMode,
+    blocked: contractBlocked,
+    message: contractMode
+      ? ct.active(contractUsage)
+      : contractState === 'request' && !isAgentMember
+        ? ct.requestPending
+        : contractState === 'exhausted' ? ct.exhausted
+        : contractState === 'expired' ? ct.expired
+        : contractState === 'suspended' ? ct.suspended
+        : ct.noneAgent,
+  } : null
 
   const calcRoutePrice = async () => {
     const origin = [data.sender.address, data.sender.city, data.sender.country].filter(Boolean).join(', ')
@@ -1198,6 +1270,16 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
       }
     }
     if (step === 4) {
+      if (contractMode || contractBlocked) {
+        return {
+          keys: [],
+          fields: {},
+          placeholders: {},
+          required: [],
+          span2: [],
+          payment: c.payment,
+        }
+      }
       const method = data.payment.method || ''
       const baseKeys = ['method']
       const extraKeys = []
@@ -1367,7 +1449,13 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
 
   const validatePayment = () => {
     const p = data.payment
-    if (!p.method || !p.prohibited) {
+    if (!p.prohibited) {
+      return c.errStep
+    }
+    if (contractMode) {
+      return ''
+    }
+    if (!p.method) {
       return c.errStep
     }
     if (p.method === 'card' && (!p.paymentMethod || !p.cardholderName.trim() || !p.billingZip.trim())) {
@@ -1407,7 +1495,9 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
     setError('')
     let payment_method_id = data.payment.method
     let payment_meta = {}
-    if (data.payment.method === 'card') {
+    if (contractMode) {
+      payment_method_id = 'contract'
+    } else if (data.payment.method === 'card') {
       const cardElement = elements.getElement(CardElement)
       if (!stripe || !cardElement) {
         setError('La pasarela de pago aún no está lista.')
@@ -1474,7 +1564,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
           }
         }),
         notes: data.service.notes,
-        payment_method: data.payment.method,
+        payment_method: contractMode ? 'contract' : data.payment.method,
         prohibited_accepted: !!data.payment.prohibited,
         prohibited_document_id: data.payment.prohibitedDocId,
         payment_method_id,
@@ -1484,6 +1574,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
       const res = await api.createShipment(payload, token)
       setResult(res)
       setSubmitted(true)
+      if (contractMode) api.getCompany(token).then(setCompanyInfo).catch(() => {})
     } catch (err) {
       setError(err.message || 'No se pudo crear el envío.')
       if (err.status === 422) {
@@ -1493,7 +1584,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
     } finally {
       setSubmitting(false)
     }
-  }, [data, token, stripe, elements, c, fetchProhibitedDoc])
+  }, [data, token, stripe, elements, c, fetchProhibitedDoc, contractMode])
 
   const onNew = React.useCallback(() => {
     setSubmitted(false)
@@ -1652,6 +1743,7 @@ function ShipmentCreateInner({ app, token, onTrack, user }) {
             onCancelAll={onNew}
             prohibitedDoc={prohibitedDoc}
             prohibitedDocError={prohibitedDocError}
+            contractInfo={contractInfo}
           />
         ) : (
           <div style={{

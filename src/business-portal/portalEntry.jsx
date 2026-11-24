@@ -27,6 +27,8 @@ export default function BusinessPortalEntry({ lang, user, onLogout }) {
     email: user?.email || '',
     initials: (name || 'US').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
   }
+  let token = null
+  try { token = window.localStorage.getItem('tr3slog-token') } catch (e) {}
 
-  return <BusinessPortal key={lang} lang={lang} onLogout={onLogout} account={account} />
+  return <BusinessPortal key={lang} lang={lang} token={token} user={user} onLogout={onLogout} account={account} />
 }

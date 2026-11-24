@@ -45,6 +45,18 @@ export const api = {
     body: JSON.stringify(data),
   }).then(handle),
 
+  verifyInvitation: (token) => fetch(`${API_URL}/invitations/verify`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ token }),
+  }).then(handle),
+
+  acceptInvitation: (data) => fetch(`${API_URL}/invitations/accept`, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify(data),
+  }).then(handle),
+
   login: (data) => fetch(`${API_URL}/login`, {
     method: 'POST',
     headers: headers(),
@@ -107,6 +119,79 @@ export const api = {
 
   reviewShipmentReturn: (id, token) => fetch(`${API_URL}/shipments/${id}/return-review`, {
     method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
+  /* Empresas por contrato: admin */
+  getContracts: (token) => fetch(`${API_URL}/contracts`, {
+    headers: headers(token),
+  }).then(handle),
+
+  createContract: (data, token) => fetch(`${API_URL}/contracts`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  updateContract: (id, data, token) => fetch(`${API_URL}/contracts/${id}`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  approveContract: (id, data, token) => fetch(`${API_URL}/contracts/${id}/approve`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data || {}),
+  }).then(handle),
+
+  rejectContract: (id, token) => fetch(`${API_URL}/contracts/${id}/reject`, {
+    method: 'POST',
+    headers: headers(token),
+  }).then(handle),
+
+  addContractQuota: (id, extra, token) => fetch(`${API_URL}/contracts/${id}/add-quota`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify({ extra }),
+  }).then(handle),
+
+  /* Empresa por contrato: ejecutivo/agente */
+  parseBulkImport: (data, token) => fetch(`${API_URL}/bulk-import/parse`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  getCompany: (token) => fetch(`${API_URL}/company`, {
+    headers: headers(token),
+  }).then(handle),
+
+  requestCompanyContract: (data, token) => fetch(`${API_URL}/company/contract-request`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  inviteTeamMember: (data, token) => fetch(`${API_URL}/company/team/invite`, {
+    method: 'POST',
+    headers: headers(token),
+    body: JSON.stringify(data),
+  }).then(handle),
+
+  setTeamMemberStatus: (id, status, token) => fetch(`${API_URL}/company/team/${id}/status`, {
+    method: 'PATCH',
+    headers: headers(token),
+    body: JSON.stringify({ status }),
+  }).then(handle),
+
+  removeTeamMember: (id, token) => fetch(`${API_URL}/company/team/${id}`, {
+    method: 'DELETE',
+    headers: headers(token),
+  }).then(handle),
+
+  cancelTeamInvitation: (id, token) => fetch(`${API_URL}/company/invitations/${id}`, {
+    method: 'DELETE',
     headers: headers(token),
   }).then(handle),
 

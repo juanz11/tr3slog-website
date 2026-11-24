@@ -383,7 +383,7 @@ function DetailView({ app, shipment, token, onClose, onRefresh }) {
   )
 }
 
-export default function ShipmentsList({ app, token, query: externalQuery, onQueryChange, selectId, staff }) {
+export default function ShipmentsList({ app, token, query: externalQuery, onQueryChange, selectId, staff, companyName }) {
   const s = app.ship
   const isControlled = typeof externalQuery !== 'undefined'
   const [internalQuery, setInternalQuery] = React.useState('')
@@ -463,6 +463,19 @@ export default function ShipmentsList({ app, token, query: externalQuery, onQuer
         margin: '0 0 20px',
         color: '#001B45',
       }}>{s.title}</h1>
+
+      {companyName && (
+        <div style={{
+          marginBottom: 16, padding: '12px 16px', borderRadius: 12,
+          border: '1.5px solid #C9DCF5', background: 'rgba(8,124,240,.06)',
+          display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: '#0768C9',
+        }}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ flex: '0 0 auto' }}>
+            <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" />
+          </svg>
+          <span>Estás viendo los envíos de <strong>{companyName}</strong> (todos los miembros del equipo).</span>
+        </div>
+      )}
 
       <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, overflow: 'hidden' }}>
         <div style={{ padding: '18px 22px', borderBottom: '1px solid #DCE6F5', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
