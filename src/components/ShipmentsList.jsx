@@ -2,6 +2,7 @@ import React from 'react'
 import { api } from '../api'
 import { Pagination, usePagination, usePolling, SortControl, sortRows } from './Shared'
 import { PrintableLabel } from './ShipmentLabel'
+import ShipmentLiveMap from './ShipmentLiveMap'
 
 const CITY_CODES = {
   'san juan': 'PRSJ', 'santo domingo': 'DOSD', 'punta cana': 'DOPC', 'miami': 'MIAM',
@@ -314,6 +315,7 @@ function DetailView({ app, shipment, token, onClose, onRefresh }) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <ShipmentLiveMap app={app} shipment={shipment} token={token} />
           {shipment.driver && (
             <div style={cardBase}>
               <div style={sectionTitle}>Conductor asignado</div>

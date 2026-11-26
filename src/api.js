@@ -339,6 +339,18 @@ export const api = {
     headers: headers(token),
   }).then(handle),
 
+  getShipmentDriverLocation: (id, token) => fetch(`${API_URL}/shipments/${id}/driver-location`, {
+    headers: headers(token),
+  }).then(handle),
+
+  geoDirections: (params, token) => fetch(`${API_URL}/geo/directions?${new URLSearchParams(params)}`, {
+    headers: headers(token),
+  }).then(handle),
+
+  geoGeocode: (address, token) => fetch(`${API_URL}/geo/geocode?${new URLSearchParams({ address })}`, {
+    headers: headers(token),
+  }).then(handle),
+
   updateShipmentStatus: (id, status, token) => fetch(`${API_URL}/shipments/${id}`, {
     method: 'PUT',
     headers: headers(token),
