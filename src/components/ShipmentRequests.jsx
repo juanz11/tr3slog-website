@@ -18,6 +18,33 @@ const I18N = {
     updated: 'Solicitud actualizada.',
     statuses: { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada' },
     types: { driver: 'Conductor', same_day: 'Mismo día' },
+    details: 'Detalles',
+    close: 'Cerrar',
+    detailTitle: 'Detalle del envío',
+    loadingDetail: 'Cargando detalle…',
+    dReq: 'Solicitud',
+    dRoute: 'Ruta',
+    dService: 'Servicio',
+    dAmount: 'Monto',
+    dClient: 'Cliente',
+    dSender: 'Remitente',
+    dRecipient: 'Destinatario',
+    dDriver: 'Conductor',
+    dPackages: 'Paquetes',
+    dNotes: 'Notas',
+    dHistory: 'Historial de estados',
+    dPhone: 'Teléfono',
+    dEmail: 'Correo',
+    dWeight: 'Peso',
+    dDims: 'Dimensiones',
+    dPieces: 'Piezas',
+    dContent: 'Contenido',
+    dType: 'Tipo',
+    dBy: 'Solicitante',
+    dMsg: 'Mensaje',
+    dDate: 'Fecha',
+    dReviewedBy: 'Revisado por',
+    dReviewNotes: 'Nota de revisión',
   },
   en: {
     title: 'Pickup requests',
@@ -34,6 +61,33 @@ const I18N = {
     updated: 'Request updated.',
     statuses: { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' },
     types: { driver: 'Driver', same_day: 'Same day' },
+    details: 'Details',
+    close: 'Close',
+    detailTitle: 'Shipment details',
+    loadingDetail: 'Loading details…',
+    dReq: 'Request',
+    dRoute: 'Route',
+    dService: 'Service',
+    dAmount: 'Amount',
+    dClient: 'Client',
+    dSender: 'Sender',
+    dRecipient: 'Recipient',
+    dDriver: 'Driver',
+    dPackages: 'Packages',
+    dNotes: 'Notes',
+    dHistory: 'Status history',
+    dPhone: 'Phone',
+    dEmail: 'Email',
+    dWeight: 'Weight',
+    dDims: 'Dimensions',
+    dPieces: 'Pieces',
+    dContent: 'Content',
+    dType: 'Type',
+    dBy: 'Requester',
+    dMsg: 'Message',
+    dDate: 'Date',
+    dReviewedBy: 'Reviewed by',
+    dReviewNotes: 'Review note',
   },
   'zh-CN': {
     title: '取件请求',
@@ -50,6 +104,33 @@ const I18N = {
     updated: '请求已更新。',
     statuses: { pending: '待处理', approved: '已批准', rejected: '已拒绝' },
     types: { driver: '司机', same_day: '当日达' },
+    details: '详情',
+    close: '关闭',
+    detailTitle: '货件详情',
+    loadingDetail: '正在加载详情…',
+    dReq: '请求',
+    dRoute: '路线',
+    dService: '服务',
+    dAmount: '金额',
+    dClient: '客户',
+    dSender: '发件人',
+    dRecipient: '收件人',
+    dDriver: '司机',
+    dPackages: '包裹',
+    dNotes: '备注',
+    dHistory: '状态历史',
+    dPhone: '电话',
+    dEmail: '邮箱',
+    dWeight: '重量',
+    dDims: '尺寸',
+    dPieces: '件数',
+    dContent: '内容',
+    dType: '类型',
+    dBy: '申请人',
+    dMsg: '留言',
+    dDate: '日期',
+    dReviewedBy: '审核人',
+    dReviewNotes: '审核备注',
   },
 }
 
@@ -73,6 +154,28 @@ export default function ShipmentRequests({ app, lang, token }) {
   const [busy, setBusy] = React.useState(null)
   const [notes, setNotes] = React.useState({})
   const [driverSel, setDriverSel] = React.useState({})
+  const [detail, setDetail] = React.useState(null) // { loading, data, req }
+
+  const locale = lang === 'zh-CN' ? 'zh-CN' : lang === 'en' ? 'en-US' : 'es-ES'
+  const fmt = (date) => {
+    if (!date) return ''
+    const dt = new Date(date)
+    if (isNaN(dt.getTime())) return ''
+    return dt.toLocaleString(locale, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  }
+
+  const openDetail = (req) => {
+    const s = req.shipment || {}
+    const sid = s.id || req.shipment_id
+    setDetail({ loading: true, data: s, req })
+    if (!sid) {
+      setDetail({ loading: false, data: s, req })
+      return
+    }
+    api.getShipment(sid, token)
+      .then((data) => setDetail((cur) => (cur && cur.req?.id === req.id ? { loading: false, data, req } : cur)))
+      .catch(() => setDetail((cur) => (cur && cur.req?.id === req.id ? { loading: false, data: s, req } : cur)))
+  }
 
   const fetchRequests = React.useCallback(async (isPoll = false) => {
     if (!token) return
@@ -215,6 +318,12 @@ export default function ShipmentRequests({ app, lang, token }) {
                         <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 100, background: color.bg, color: color.fg, fontSize: 12, fontWeight: 700 }}>{d.statuses[st] || st}</span>
                       </td>
                       <td style={{ padding: '14px 16px' }}>
+                        <button
+                          onClick={() => openDetail(req)}
+                          style={{ padding: '7px 14px', borderRadius: 8, border: '1.5px solid #DCE6F5', background: '#fff', color: '#0768C9', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginBottom: st === 'pending' ? 8 : 0 }}
+                        >
+                          {d.details}
+                        </button>
                         {st === 'pending' && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
                             {isSameDay && (
@@ -268,6 +377,129 @@ export default function ShipmentRequests({ app, lang, token }) {
           </div>
         )}
       </section>
+
+      {detail && (
+        <DetailModal
+          d={d}
+          app={app}
+          fmt={fmt}
+          entry={detail}
+          onClose={() => setDetail(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function DetailModal({ d, app, fmt, entry, onClose }) {
+  const s = entry.data || {}
+  const req = entry.req || {}
+  const statusLabel = app?.dispatch?.statuses?.[s.status] || s.status || '—'
+  const pkgs = Array.isArray(s.packages) ? s.packages : []
+  const history = Array.isArray(s.status_history) ? s.status_history : []
+  const sect = { fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6', marginBottom: 8 }
+  const box = { background: '#F6FAFF', border: '1px solid #E3EBF7', borderRadius: 10, padding: '10px 14px' }
+  const line = { fontSize: 13, color: '#10233F', lineHeight: 1.55 }
+  const row = (k, v) => v ? <div style={{ display: 'flex', gap: 8, fontSize: 12.5, padding: '4px 0' }}><span style={{ minWidth: 120, color: '#6C82A6' }}>{k}</span><span style={{ color: '#10233F', fontWeight: 600 }}>{v}</span></div> : null
+  const person = (name, ...rest) => (
+    <div>
+      <div style={{ ...line, fontWeight: 700 }}>{name || '—'}</div>
+      {rest.filter(Boolean).map((v, i) => <div key={i} style={{ ...line, fontSize: 12.5, color: '#4A5B76' }}>{v}</div>)}
+    </div>
+  )
+  const addr = (o) => [o.address, [o.city, o.country].filter(Boolean).join(', '), o.zip].filter(Boolean).join(' · ')
+  const type = req.type || 'driver'
+  const requester = type === 'same_day'
+    ? (req.client?.name || s.client?.name || `ID ${req.client_id}`)
+    : (req.driver?.name || `ID ${req.driver_id}`)
+  const reqSt = req.status || 'pending'
+  const reqColor = STATUS_COLORS[reqSt] || STATUS_COLORS.pending
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(16,35,63,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: '#fff', borderRadius: 16, width: 760, maxWidth: '100%', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(16,35,63,.25)' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 24px', borderBottom: '1px solid #E3EAF4', position: 'sticky', top: 0, background: '#fff', borderRadius: '16px 16px 0 0', zIndex: 1 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#6C82A6' }}>{d.detailTitle}</div>
+            <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 17, fontWeight: 800, color: '#001B45' }}>{s.tracking_number || `ENV-${s.id}` || '—'}</div>
+          </div>
+          <span style={{ padding: '4px 12px', borderRadius: 100, background: '#EEF4FC', color: '#0768C9', fontSize: 12, fontWeight: 700 }}>{statusLabel}</span>
+          <button onClick={onClose} style={{ marginLeft: 'auto', border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#6C82A6', lineHeight: 1 }}>×</button>
+        </div>
+
+        {entry.loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#6C82A6', fontSize: 13 }}>{d.loadingDetail}</div>
+        ) : (
+          <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={box}>
+              <div style={sect}>{d.dReq}</div>
+              {row(d.dType, d.types[type] || type)}
+              {row(d.dBy, requester)}
+              {row(d.dDate, fmt(req.created_at))}
+              {req.message && row(d.dMsg, req.message)}
+              {row('', <span style={{ padding: '3px 10px', borderRadius: 100, background: reqColor.bg, color: reqColor.fg, fontSize: 12, fontWeight: 700 }}>{d.statuses[reqSt] || reqSt}</span>)}
+              {req.reviewer && row(d.dReviewedBy, `${req.reviewer.name}${req.reviewed_at ? ` · ${fmt(req.reviewed_at)}` : ''}`)}
+              {req.review_notes && row(d.dReviewNotes, req.review_notes)}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+              <div style={box}><div style={sect}>{d.dRoute}</div><div style={line}>{s.origin || '—'} → {s.destination || '—'}</div></div>
+              <div style={box}><div style={sect}>{d.dService}</div><div style={line}>{[s.service_type, s.delivery_mode].filter(Boolean).join(' · ') || '—'}</div></div>
+              <div style={box}><div style={sect}>{d.dAmount}</div><div style={line}>{s.amount != null ? `$${Number(s.amount).toFixed(2)}` : '—'}</div></div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+              <div style={box}><div style={sect}>{d.dClient}</div>{person(s.client?.name, s.client?.phone ? `${d.dPhone}: ${s.client.phone}` : null, s.client?.email ? `${d.dEmail}: ${s.client.email}` : null)}</div>
+              <div style={box}><div style={sect}>{d.dSender}</div>{person(s.sender_name, addr({ address: s.sender_address, city: s.sender_city, country: s.sender_country, zip: s.sender_zip }) || s.origin, s.sender_phone ? `${d.dPhone}: ${s.sender_phone}` : null, s.sender_company)}</div>
+              <div style={box}><div style={sect}>{d.dRecipient}</div>{person(s.recipient_name, addr({ address: s.recipient_address, city: s.recipient_city, country: s.recipient_country, zip: s.recipient_zip }) || s.destination, s.recipient_phone ? `${d.dPhone}: ${s.recipient_phone}` : null, s.recipient_company)}</div>
+              <div style={box}><div style={sect}>{d.dDriver}</div>{s.driver ? person(s.driver.name, s.driver.phone ? `${d.dPhone}: ${s.driver.phone}` : null) : <span style={{ ...line, color: '#8B9DBA' }}>—</span>}</div>
+            </div>
+
+            {pkgs.length > 0 && (
+              <div>
+                <div style={sect}>{d.dPackages} ({pkgs.length})</div>
+                <div style={{ border: '1px solid #E3EBF7', borderRadius: 10, overflow: 'hidden' }}>
+                  {pkgs.map((p, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', padding: '10px 14px', fontSize: 12.5, color: '#10233F', borderTop: i ? '1px solid #EDF2F8' : 'none', background: i % 2 ? '#F8FBFF' : '#fff', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, minWidth: 70 }}>{p.type || '—'}</span>
+                      <span>{d.dPieces}: {p.pieces ?? '—'}</span>
+                      <span>{d.dWeight}: {p.weight != null ? `${p.weight} ${p.weight_unit || 'kg'}` : '—'}</span>
+                      <span>{d.dDims}: {p.dimensions || '—'}</span>
+                      {p.content && <span style={{ flex: '1 1 100%', color: '#4A5B76' }}>{d.dContent}: {p.content}</span>}
+                      {p.fragile && <span style={{ background: '#C0392B', color: '#fff', padding: '2px 10px', borderRadius: 4, fontSize: 11, fontWeight: 800 }}>FRÁGIL</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {s.notes && <div style={box}><div style={sect}>{d.dNotes}</div><div style={line}>{s.notes}</div></div>}
+
+            {history.length > 0 && (
+              <div>
+                <div style={sect}>{d.dHistory}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {history.map((h, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 10, fontSize: 12.5 }}>
+                      <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 700, color: '#001B45', minWidth: 130 }}>{app?.dispatch?.statuses?.[h.status] || h.status}</span>
+                      <span style={{ color: '#6C82A6' }}>{fmt(h.at)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ padding: '14px 24px 20px', borderTop: '1px solid #E3EAF4', textAlign: 'right' }}>
+          <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 10, border: '1.5px solid #DCE6F5', background: '#fff', color: '#10233F', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{d.close}</button>
+        </div>
+      </div>
     </div>
   )
 }

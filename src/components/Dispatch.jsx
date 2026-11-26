@@ -1,6 +1,7 @@
 import React from 'react'
 import { api } from '../api'
 import { Pagination, usePagination, SortControl, sortRows } from './Shared'
+import ShipmentLiveMap from './ShipmentLiveMap'
 
 const STATUS_COLORS = {
   pending: { bg: '#EEF4FC', fg: '#10233F' },
@@ -165,7 +166,7 @@ function DetailField({ label, value, wide }) {
   )
 }
 
-function ShipmentDetail({ d, lang, shipment, drivers, onClose, onCancel }) {
+function ShipmentDetail({ d, lang, shipment, drivers, token, app, onClose, onCancel }) {
   const s = shipment
   const det = d.detail
   const f = det.fields
@@ -276,6 +277,8 @@ function ShipmentDetail({ d, lang, shipment, drivers, onClose, onCancel }) {
             <div style={{ fontSize: 14, color: '#6C82A6' }}>{d.unassigned}</div>
           )}
         </div>
+
+        <ShipmentLiveMap app={app} shipment={s} token={token} />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
           <PartyCard title={det.sections.sender} p={sender} fallbackCity={s.origin} />
@@ -755,7 +758,7 @@ export default function Dispatch({ app, lang, token, query: externalQuery, onQue
       </div>
 
       {selected && (
-        <ShipmentDetail d={d} lang={lang} shipment={selected} drivers={drivers} onClose={() => setSelected(null)} onCancel={cancelShipment} />
+        <ShipmentDetail d={d} lang={lang} shipment={selected} drivers={drivers} token={token} app={app} onClose={() => setSelected(null)} onCancel={cancelShipment} />
       )}
 
       {assignTarget && (

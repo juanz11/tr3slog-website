@@ -1,7 +1,7 @@
 import React from 'react'
 import { api } from '../api'
 import { usePolling } from './Shared'
-import { useGoogleMaps } from './useGoogleMaps'
+import { useGoogleMaps, useLeaflet, GOOGLE_MAPS_KEY } from './useGoogleMaps'
 
 const POLL_MS = 20000
 const DEFAULT_CENTER = { lat: 18.4861, lng: -69.9312 }
@@ -32,19 +32,98 @@ function decodePolyline(str) {
   return pts
 }
 
+/** Versión Leaflet/OSM: misma vista sin depender de la key de Google. */
+function LeafletMiniMap({ pos, destCoord, destAddress, driverName, token }) {
+  const { ready, failed } = useLeaflet()
+  const el = React.useRef(null)
+  const mapRef = React.useRef(null)
+  const markersRef = React.useRef([])
+  const routeRef = React.useRef(null)
+  const sigRef = React.useRef('')
+  const fitDoneRef = React.useRef(false)
+
+  React.useEffect(() => {
+    if (!ready || !el.current || mapRef.current) return
+    const map = window.L.map(el.current, { zoomControl: true })
+      .setView(pos ? [pos.lat, pos.lng] : [DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], 13)
+    window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap',
+    }).addTo(map)
+    mapRef.current = map
+  }, [ready])
+
+  const emojiIcon = (emoji, bg) => window.L.divIcon({
+    html: `<div style="width:30px;height:30px;border-radius:50%;background:${bg};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,27,69,.35);display:flex;align-items:center;justify-content:center;font-size:14px">${emoji}</div>`,
+    className: '',
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  })
+
+  React.useEffect(() => {
+    const L = window.L
+    const map = mapRef.current
+    if (!L || !map || !pos) return
+    markersRef.current.forEach((m) => m.remove())
+    markersRef.current = [
+      L.marker([pos.lat, pos.lng], { icon: emojiIcon('🚚', '#087CF0'), title: driverName || '' }).addTo(map),
+      ...(destCoord ? [L.marker([destCoord.lat, destCoord.lng], { icon: emojiIcon('📦', '#137A45'), title: destAddress || '' }).addTo(map)] : []),
+    ]
+    map.panTo([pos.lat, pos.lng])
+  }, [pos, destCoord, ready])
+
+  React.useEffect(() => {
+    const L = window.L
+    const map = mapRef.current
+    if (!L || !map || !pos || !destCoord || fitDoneRef.current) return
+    map.fitBounds([[pos.lat, pos.lng], [destCoord.lat, destCoord.lng]], { padding: [30, 30] })
+    fitDoneRef.current = true
+  }, [pos, destCoord])
+
+  React.useEffect(() => {
+    const L = window.L
+    const map = mapRef.current
+    if (!L || !map || !pos || !destCoord) return
+    const sig = `${pos.lat.toFixed(3)},${pos.lng.toFixed(3)}:${destCoord.lat.toFixed(4)},${destCoord.lng.toFixed(4)}`
+    if (sigRef.current === sig) return
+    sigRef.current = sig
+    api.geoDirections({
+      origin: `${pos.lat},${pos.lng}`,
+      destination: `${destCoord.lat},${destCoord.lng}`,
+    }, token).then((r) => {
+      const line = r?.route?.polyline ? decodePolyline(r.route.polyline) : null
+      if (!line?.length || !mapRef.current) return
+      routeRef.current?.remove()
+      routeRef.current = L.polyline(
+        line.map((p) => [p.lat, p.lng]),
+        { color: '#087CF0', weight: 5, opacity: 0.75 }
+      ).addTo(mapRef.current)
+    }).catch(() => {})
+  }, [pos, destCoord, token, ready])
+
+  if (failed) {
+    return <div style={{ fontSize: 13, color: '#6C82A6', padding: '10px 0' }}>El mapa no está disponible ahora.</div>
+  }
+  if (!ready) {
+    return <div style={{ fontSize: 13, color: '#6C82A6', padding: '10px 0' }}>Cargando mapa…</div>
+  }
+  return <div ref={el} style={{ width: '100%', height: 260, borderRadius: 12, background: '#EEF4FC' }} />
+}
+
 /**
  * Mapa del detalle de envío en camino: dónde va el chofer (GPS) y la ruta
  * solo hasta ESTE envío — sin mostrar las demás paradas del manifiesto.
  */
 export default function ShipmentLiveMap({ app, shipment, token }) {
-  const t = app.live || {}
+  const t = (app && app.live) || {}
   const { ready: mapsReady, failed: mapsFailed } = useGoogleMaps()
   const [live, setLive] = React.useState(null)
   const [destCoord, setDestCoord] = React.useState(null)
 
   const mapEl = React.useRef(null)
   const mapRef = React.useRef(null)
-  const overlaysRef = React.useRef([])
+  const markersRef = React.useRef([])
+  const routeRef = React.useRef(null)
   const routeSigRef = React.useRef('')
 
   const destAddress = shipment.recipient_address || shipment.destination || ''
@@ -55,6 +134,7 @@ export default function ShipmentLiveMap({ app, shipment, token }) {
       const data = await api.getShipmentDriverLocation(shipment.id, token)
       setLive(data)
     } catch (err) {
+      console.warn('[ShipmentLiveMap] driver-location:', err.message || err)
       if (!isPoll) setLive(null)
     }
   }, [token, shipment?.id])
@@ -67,7 +147,7 @@ export default function ShipmentLiveMap({ app, shipment, token }) {
     let cancelled = false
     api.geoGeocode(destAddress, token)
       .then((r) => { if (!cancelled && r?.status === 'OK') setDestCoord({ lat: r.lat, lng: r.lng }) })
-      .catch(() => {})
+      .catch((err) => console.warn('[ShipmentLiveMap] geocode:', err.message || err))
     return () => { cancelled = true }
   }, [destAddress, token])
 
@@ -84,33 +164,27 @@ export default function ShipmentLiveMap({ app, shipment, token }) {
       streetViewControl: false,
       fullscreenControl: true,
     })
-  }, [mapsReady])
+  }, [mapsReady, pos])
 
-  // Marcadores + polyline chofer→destino.
+  // Marcadores chofer/destino: se redibujan en cada actualización de posición.
   React.useEffect(() => {
     const g = window.google?.maps
     const map = mapRef.current
     if (!g || !map || !pos) return
 
-    overlaysRef.current.forEach((o) => o.setMap(null))
-    overlaysRef.current = []
-    const bounds = new g.LatLngBounds()
-
-    const driver = new g.Marker({
-      position: pos, map, zIndex: 10,
-      icon: {
-        path: g.SymbolPath.CIRCLE, scale: 15,
-        fillColor: '#087CF0', fillOpacity: 1,
-        strokeColor: '#fff', strokeWeight: 2.5,
-      },
-      label: { text: '🚚', fontSize: '13px' },
-      title: live?.conductor?.nombre || '',
-    })
-    overlaysRef.current.push(driver)
-    bounds.extend(pos)
-
-    if (destCoord) {
-      const dest = new g.Marker({
+    markersRef.current.forEach((m) => m.setMap(null))
+    markersRef.current = [
+      new g.Marker({
+        position: pos, map, zIndex: 10,
+        icon: {
+          path: g.SymbolPath.CIRCLE, scale: 15,
+          fillColor: '#087CF0', fillOpacity: 1,
+          strokeColor: '#fff', strokeWeight: 2.5,
+        },
+        label: { text: '🚚', fontSize: '13px' },
+        title: live?.conductor?.nombre || '',
+      }),
+      ...(destCoord ? [new g.Marker({
         position: destCoord, map,
         icon: {
           path: g.SymbolPath.CIRCLE, scale: 12,
@@ -119,39 +193,54 @@ export default function ShipmentLiveMap({ app, shipment, token }) {
         },
         label: { text: '📦', fontSize: '12px' },
         title: destAddress,
-      })
-      overlaysRef.current.push(dest)
-      bounds.extend(destCoord)
+      })] : []),
+    ]
+    map.panTo(pos)
+  }, [pos, destCoord, live?.conductor?.nombre, destAddress])
 
-      // Ruta por calles chofer→este envío (Google→OSRM en el backend).
-      const sig = `${pos.lat.toFixed(3)},${pos.lng.toFixed(3)}:${destCoord.lat.toFixed(4)},${destCoord.lng.toFixed(4)}`
-      if (routeSigRef.current !== sig) {
-        routeSigRef.current = sig
-        api.geoDirections({
-          origin: `${pos.lat},${pos.lng}`,
-          destination: `${destCoord.lat},${destCoord.lng}`,
-        }, token).then((r) => {
-          const line = r?.route?.polyline ? decodePolyline(r.route.polyline) : null
-          if (!line?.length) return
-          const poly = new g.Polyline({
-            path: line, map,
-            strokeColor: '#087CF0', strokeWeight: 5, strokeOpacity: 0.75,
-          })
-          overlaysRef.current.push(poly)
-        }).catch(() => {})
-      }
-    }
-
+  // Encuadre inicial: chofer + destino apenas haya ambos.
+  const fitDoneRef = React.useRef(false)
+  React.useEffect(() => {
+    const g = window.google?.maps
+    const map = mapRef.current
+    if (!g || !map || !pos || fitDoneRef.current) return
+    const bounds = new g.LatLngBounds()
+    bounds.extend(pos)
+    if (destCoord) bounds.extend(destCoord)
     map.fitBounds(bounds, 60)
-  }, [pos?.lat, pos?.lng, destCoord, mapsReady])
+    fitDoneRef.current = true
+  }, [pos, destCoord])
+
+  // Ruta por calles chofer→este envío (Google→OSRM en el backend); solo se
+  // recalcula cuando el origen/destino cambian de verdad.
+  React.useEffect(() => {
+    const g = window.google?.maps
+    const map = mapRef.current
+    if (!g || !map || !pos || !destCoord) return
+    const sig = `${pos.lat.toFixed(3)},${pos.lng.toFixed(3)}:${destCoord.lat.toFixed(4)},${destCoord.lng.toFixed(4)}`
+    if (routeSigRef.current === sig) return
+    routeSigRef.current = sig
+    api.geoDirections({
+      origin: `${pos.lat},${pos.lng}`,
+      destination: `${destCoord.lat},${destCoord.lng}`,
+    }, token).then((r) => {
+      const line = r?.route?.polyline ? decodePolyline(r.route.polyline) : null
+      if (!line?.length || !mapRef.current) return
+      routeRef.current?.setMap(null)
+      routeRef.current = new g.Polyline({
+        path: line, map: mapRef.current,
+        strokeColor: '#087CF0', strokeWeight: 5, strokeOpacity: 0.75,
+      })
+    }).catch((err) => console.warn('[ShipmentLiveMap] directions:', err.message || err))
+  }, [pos, destCoord, token])
 
   if (!live?.en_camino || !pos) return null
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 16, padding: 24 }}>
+    <div style={{ background: '#fff', border: '1px solid #DCE6F5', borderRadius: 14, padding: '18px 20px' }}>
       <div style={{
-        fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 13,
-        letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12, color: '#001B45',
+        fontFamily: 'Montserrat, "Noto Sans SC", sans-serif', fontWeight: 700, fontSize: 12,
+        letterSpacing: '.06em', textTransform: 'uppercase', margin: '0 0 12px', color: '#001B45',
         display: 'flex', alignItems: 'center', gap: 8,
       }}>
         <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#137A45' }}></span>
@@ -161,11 +250,18 @@ export default function ShipmentLiveMap({ app, shipment, token }) {
         </span>
       </div>
 
-      {mapsFailed || !mapsReady ? (
+      {!GOOGLE_MAPS_KEY || mapsFailed ? (
+        // Sin Maps JS activada cae a Leaflet + OpenStreetMap (sin key).
+        <LeafletMiniMap
+          pos={pos}
+          destCoord={destCoord}
+          destAddress={destAddress}
+          driverName={live.conductor?.nombre}
+          token={token}
+        />
+      ) : !mapsReady ? (
         <div style={{ fontSize: 13, color: '#6C82A6', padding: '10px 0' }}>
-          {mapsFailed
-            ? (t.mapFailTitle || 'Google Maps no pudo cargar')
-            : (t.loading || 'Cargando mapa…')}
+          {t.loading || 'Cargando mapa…'}
         </div>
       ) : (
         <div ref={mapEl} style={{ width: '100%', height: 260, borderRadius: 12, background: '#EEF4FC' }} />

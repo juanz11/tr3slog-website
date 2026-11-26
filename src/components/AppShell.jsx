@@ -59,7 +59,7 @@ export default function AppShell({ user, lang, langs, setLang, onLogout, onUserU
   const isExecutiveClient = !isAdmin && !isAdministrative && !isFinance && userRoles.includes('executive_client')
   const isShipmentAgent = !isAdmin && !isAdministrative && !isFinance && userRoles.includes('shipment_agent')
   const nav = isAdminRole
-    ? { dashboard: app.navA.dashboard, tracking: app.navA.tracking, incidents: app.navA.incidents, returns: app.navA.returns, contracts: app.navA.contracts, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
+    ? { dashboard: app.navA.dashboard, incidents: app.navA.incidents, returns: app.navA.returns, contracts: app.navA.contracts, audit: app.navA.audit, pricing: app.navA.pricing, users: app.navA.users, roles: app.navA.roles, profile: app.navA.profile }
     : isOpsSupervisor
       ? { ...app.navOps, profile: app.navA.profile }
       : isOperations

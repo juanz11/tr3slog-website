@@ -35,3 +35,40 @@ export function useGoogleMaps() {
   }, [])
   return { ready, failed }
 }
+
+const LEAFLET_JS = 'lf-leaflet-js'
+const LEAFLET_CSS = 'lf-leaflet-css'
+
+/** Leaflet + OSM: respaldo sin API key cuando Maps JS no está activado. */
+export function useLeaflet() {
+  const [ready, setReady] = React.useState(false)
+  const [failed, setFailed] = React.useState(false)
+  React.useEffect(() => {
+    if (window.L?.Map) { setReady(true); return }
+    if (!document.getElementById(LEAFLET_CSS)) {
+      const css = document.createElement('link')
+      css.id = LEAFLET_CSS
+      css.rel = 'stylesheet'
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      document.head.appendChild(css)
+    }
+    let s = document.getElementById(LEAFLET_JS)
+    const onLoad = () => setReady(true)
+    const onError = () => setFailed(true)
+    if (!s) {
+      s = document.createElement('script')
+      s.id = LEAFLET_JS
+      s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+      s.async = true
+      document.head.appendChild(s)
+    }
+    s.addEventListener('load', onLoad)
+    s.addEventListener('error', onError)
+    if (window.L?.Map) setReady(true)
+    return () => {
+      s?.removeEventListener?.('load', onLoad)
+      s?.removeEventListener?.('error', onError)
+    }
+  }, [])
+  return { ready, failed }
+}
